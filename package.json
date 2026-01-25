@@ -2,6 +2,10 @@
   "name": "traverum-widget",
   "version": "1.0.0",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/founderofveyond/traverum_v0.1.0_hotel-rosa.git"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
