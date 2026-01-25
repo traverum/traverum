@@ -1,0 +1,253 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Core Colors */
+    --background: 0 0% 100%;
+    --background-alt: 210 40% 98%;
+    --foreground: 217 33% 17%;
+    
+    /* Text Colors */
+    --text-muted: 215 16% 47%;
+    
+    /* Brand Colors - Will be overridden by hotel accent_color */
+    --accent: 217 91% 60%;
+    --accent-hover: 217 91% 55%;
+    --accent-foreground: 0 0% 100%;
+    --link-color: 217 33% 17%;
+    
+    /* Status Colors */
+    --success: 160 84% 30%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 44%;
+    --warning-foreground: 0 0% 100%;
+    
+    /* UI Colors */
+    --card: 0 0% 100%;
+    --card-foreground: 217 33% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 217 33% 17%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 217 33% 17%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215 16% 47%;
+    /* NOTE: --accent is defined above in Brand Colors, do not duplicate here */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Border & Input */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    
+    /* Radius */
+    --radius: 0.5rem;
+    --radius-card: 0.75rem;
+    --radius-button: 0.5rem;
+    
+    /* Font families - can be overridden per hotel */
+    --font-heading: var(--font-sans, 'Poppins, system-ui, sans-serif');
+    --font-body: 'Inter, system-ui, sans-serif';
+    
+    /* Font weights - can be overridden per hotel */
+    --font-weight-heading: 200;  /* Default: extra light */
+    --font-weight-base: 400;     /* Always 400 for readability */
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+  }
+}
+
+/* Override Tailwind font weights to use CSS variables (for hotel theming) */
+@layer utilities {
+  .font-heading {
+    font-family: var(--font-heading);
+    font-weight: var(--font-weight-heading);  /* Auto-apply heading weight */
+  }
+  
+  .font-body {
+    font-family: var(--font-body);
+    /* No font-weight - inherits base 400 for readability */
+  }
+  
+  .font-normal {
+    font-weight: var(--font-weight-base) !important;
+  }
+  .font-medium {
+    font-weight: var(--font-weight-medium) !important;
+  }
+  .font-semibold {
+    font-weight: var(--font-weight-semibold) !important;
+  }
+  .font-bold {
+    font-weight: var(--font-weight-bold) !important;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Utility classes for embed mode */
+.embed-section {
+  background: hsl(var(--background));
+}
+
+.embed-full {
+  background: hsl(var(--background-alt));
+  min-height: 100vh;
+}
+
+/* Button styles using CSS variables */
+.btn-primary {
+  @apply inline-flex items-center justify-center rounded-button px-4 py-2.5 text-sm font-medium text-accent-foreground transition-colors font-body;
+  background-color: hsl(var(--accent));
+}
+
+.btn-primary:hover {
+  background-color: hsl(var(--accent-hover));
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Card styles */
+.card {
+  @apply bg-card rounded-card shadow-card border border-border overflow-hidden transition-shadow;
+}
+
+.card:hover {
+  @apply shadow-card-hover;
+}
+
+/* Form input styles */
+.input {
+  @apply w-full rounded-button border border-input px-3 py-2 text-sm transition-colors font-body;
+  @apply focus:outline-none focus:ring-2 focus:border-transparent;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.input:focus {
+  border-color: hsl(var(--accent));
+  --tw-ring-color: hsl(var(--ring));
+}
+
+/* Price display */
+.price {
+  @apply font-semibold;
+  color: hsl(var(--accent));
+}
+
+/* Links use auto-calculated color for contrast */
+.text-link {
+  color: hsl(var(--link-color));
+}
+
+/* Calendar layout fix for react-day-picker v9 */
+.rdp {
+  --rdp-cell-size: 36px;
+}
+
+.rdp-month_grid {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rdp-weekdays {
+  display: flex;
+  width: 100%;
+}
+
+.rdp-weekday {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.rdp-week {
+  display: flex;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.rdp-day {
+  width: 36px;
+  height: 36px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rdp-day_button {
+  width: 36px;
+  height: 36px;
+}
+
+/* List styles for rich text descriptions */
+.font-body ul,
+.font-body ol {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+.font-body ul {
+  list-style-type: disc;
+}
+
+.font-body ol {
+  list-style-type: decimal;
+}
+
+.font-body li {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+}
+
+.font-body li:first-child {
+  margin-top: 0;
+}
+
+.font-body li:last-child {
+  margin-bottom: 0;
+}

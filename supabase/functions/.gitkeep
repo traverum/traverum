@@ -1,0 +1,9 @@
+# Edge Functions Directory
+# Place your Supabase Edge Functions here
+# Example structure:
+# functions/
+#   create-reservation/
+#     index.ts
+#   accept-reservation/
+#     index.ts
+#   etc.
