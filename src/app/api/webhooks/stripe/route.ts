@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { verifyWebhookSignature } from '@/lib/stripe'
+import { verifyWebhookSignature, stripe } from '@/lib/stripe'
 import { calculateCommissionSplit } from '@/lib/commission'
 import { sendEmail, getAppUrl } from '@/lib/email/index'
-import { guestPaymentConfirmed, supplierBookingConfirmed } from '@/lib/email/templates'
+import { 
+  guestPaymentConfirmed, 
+  supplierBookingConfirmed,
+  guestPaymentFailed,
+  guestRefundProcessed,
+  supplierPayoutSent,
+  adminAccountStatusChanged
+} from '@/lib/email/templates'
 import { generateCancelToken } from '@/lib/tokens'
 import type Stripe from 'stripe'
 
@@ -24,6 +31,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
   
+  console.log(`Processing webhook event: ${event.type}`)
+  
   // Handle the event
   switch (event.type) {
     case 'payment_intent.succeeded':
@@ -34,6 +43,22 @@ export async function POST(request: NextRequest) {
       await handleCheckoutComplete(event.data.object as Stripe.Checkout.Session)
       break
     
+    case 'payment_intent.payment_failed':
+      await handlePaymentFailed(event.data.object as Stripe.PaymentIntent)
+      break
+    
+    case 'charge.refunded':
+      await handleChargeRefunded(event.data.object as Stripe.Charge)
+      break
+    
+    case 'account.updated':
+      await handleAccountUpdated(event.data.object as Stripe.Account)
+      break
+    
+    case 'transfer.created':
+      await handleTransferCreated(event.data.object as Stripe.Transfer)
+      break
+    
     default:
       console.log(`Unhandled event type: ${event.type}`)
   }
@@ -41,6 +66,9 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ received: true })
 }
 
+// ============================================================================
+// payment_intent.succeeded - Guest payment successful
+// ============================================================================
 async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
   const reservationId = paymentIntent.metadata?.reservationId
   
@@ -52,6 +80,9 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
   await createBookingFromPayment(reservationId, paymentIntent.id, paymentIntent.latest_charge as string)
 }
 
+// ============================================================================
+// checkout.session.completed - Checkout session completed
+// ============================================================================
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const reservationId = session.metadata?.reservationId
   
@@ -64,8 +95,6 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const paymentIntentId = session.payment_intent as string
   
   if (paymentIntentId) {
-    // Import Stripe to get charge ID
-    const { stripe } = await import('@/lib/stripe')
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
     const chargeId = paymentIntent.latest_charge as string
     
@@ -73,6 +102,298 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   }
 }
 
+// ============================================================================
+// payment_intent.payment_failed - Payment failed
+// ============================================================================
+async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
+  const reservationId = paymentIntent.metadata?.reservationId
+  
+  if (!reservationId) {
+    console.error('No reservationId in failed payment intent metadata')
+    return
+  }
+  
+  const supabase = createAdminClient()
+  
+  // Get reservation with related data
+  const { data: reservationData } = await supabase
+    .from('reservations')
+    .select(`
+      *,
+      experience:experiences(*),
+      session:experience_sessions(*)
+    `)
+    .eq('id', reservationId)
+    .single()
+  
+  if (!reservationData) {
+    console.error(`Reservation ${reservationId} not found for failed payment`)
+    return
+  }
+  
+  const reservation = reservationData as any
+  const experience = reservation.experience
+  const session = reservation.session
+  
+  // Get error message from the payment intent
+  const lastError = paymentIntent.last_payment_error
+  const errorMessage = lastError?.message || 'Payment was declined'
+  
+  // Send payment failed email to guest
+  const guestEmailHtml = guestPaymentFailed({
+    experienceTitle: experience.title,
+    guestName: reservation.guest_name,
+    date: session?.session_date || reservation.requested_date || '',
+    time: session?.start_time || reservation.requested_time || '',
+    participants: reservation.participants,
+    totalCents: reservation.total_cents,
+    currency: experience.currency,
+    paymentUrl: reservation.stripe_payment_link_url || '',
+    errorMessage,
+  })
+  
+  await sendEmail({
+    to: reservation.guest_email,
+    subject: `Payment failed - ${experience.title}`,
+    html: guestEmailHtml,
+  })
+  
+  console.log(`Payment failed notification sent for reservation ${reservationId}`)
+}
+
+// ============================================================================
+// charge.refunded - Refund processed
+// ============================================================================
+async function handleChargeRefunded(charge: Stripe.Charge) {
+  const supabase = createAdminClient()
+  
+  // Find booking by charge ID
+  const { data: bookingData } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      reservation:reservations(
+        *,
+        experience:experiences(*)
+      )
+    `)
+    .eq('stripe_charge_id', charge.id)
+    .single()
+  
+  if (!bookingData) {
+    console.log(`No booking found for charge ${charge.id} - may be from external refund`)
+    return
+  }
+  
+  const booking = bookingData as any
+  const reservation = booking.reservation
+  const experience = reservation?.experience
+  
+  // Get the refund ID from the charge's refunds
+  const refundId = charge.refunds?.data?.[0]?.id || null
+  const refundAmount = charge.amount_refunded
+  
+  // Update booking with refund ID if not already cancelled
+  if (booking.booking_status !== 'cancelled') {
+    await (supabase
+      .from('bookings') as any)
+      .update({
+        stripe_refund_id: refundId,
+        booking_status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', booking.id)
+    
+    // Release session spots if applicable
+    if (booking.session_id) {
+      const { data: session } = await supabase
+        .from('experience_sessions')
+        .select('spots_available')
+        .eq('id', booking.session_id)
+        .single()
+      
+      if (session) {
+        await (supabase
+          .from('experience_sessions') as any)
+          .update({
+            spots_available: (session as any).spots_available + reservation.participants,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', booking.session_id)
+      }
+    }
+  } else {
+    // Just update the refund ID for audit trail
+    await (supabase
+      .from('bookings') as any)
+      .update({
+        stripe_refund_id: refundId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', booking.id)
+  }
+  
+  // Send refund confirmation email to guest
+  if (reservation && experience) {
+    const guestEmailHtml = guestRefundProcessed({
+      experienceTitle: experience.title,
+      guestName: reservation.guest_name,
+      date: reservation.session?.session_date || reservation.requested_date || '',
+      time: reservation.session?.start_time || reservation.requested_time || '',
+      participants: reservation.participants,
+      totalCents: booking.amount_cents,
+      currency: experience.currency,
+      bookingId: booking.id,
+      refundAmount,
+    })
+    
+    await sendEmail({
+      to: reservation.guest_email,
+      subject: `Refund processed - ${experience.title}`,
+      html: guestEmailHtml,
+    })
+  }
+  
+  console.log(`Refund processed for booking ${booking.id}, refund ID: ${refundId}`)
+}
+
+// ============================================================================
+// account.updated - Connected account status changed
+// ============================================================================
+async function handleAccountUpdated(account: Stripe.Account) {
+  const supabase = createAdminClient()
+  
+  // Find partner by Stripe account ID
+  const { data: partnerData } = await supabase
+    .from('partners')
+    .select('*')
+    .eq('stripe_account_id', account.id)
+    .single()
+  
+  if (!partnerData) {
+    console.log(`No partner found for Stripe account ${account.id}`)
+    return
+  }
+  
+  const partner = partnerData as any
+  
+  // Check if onboarding is complete
+  const chargesEnabled = account.charges_enabled || false
+  const payoutsEnabled = account.payouts_enabled || false
+  const detailsSubmitted = account.details_submitted || false
+  const isOnboardingComplete = chargesEnabled && payoutsEnabled && detailsSubmitted
+  
+  // Update partner record if onboarding status changed
+  if (partner.stripe_onboarding_complete !== isOnboardingComplete) {
+    await (supabase
+      .from('partners') as any)
+      .update({
+        stripe_onboarding_complete: isOnboardingComplete,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', partner.id)
+    
+    console.log(`Partner ${partner.id} onboarding status updated to: ${isOnboardingComplete}`)
+    
+    // Send admin notification email about status change
+    const adminEmail = process.env.ADMIN_EMAIL
+    if (adminEmail) {
+      const adminEmailHtml = adminAccountStatusChanged({
+        partnerName: partner.name,
+        partnerEmail: partner.email,
+        partnerType: partner.partner_type,
+        stripeAccountId: account.id,
+        isOnboardingComplete,
+        chargesEnabled,
+        payoutsEnabled,
+      })
+      
+      await sendEmail({
+        to: adminEmail,
+        subject: `Stripe account ${isOnboardingComplete ? 'verified' : 'needs attention'} - ${partner.name}`,
+        html: adminEmailHtml,
+      })
+    }
+  }
+}
+
+// ============================================================================
+// transfer.created - Payout to supplier initiated
+// ============================================================================
+async function handleTransferCreated(transfer: Stripe.Transfer) {
+  const bookingId = transfer.metadata?.bookingId
+  
+  if (!bookingId) {
+    console.log(`No bookingId in transfer metadata for transfer ${transfer.id}`)
+    return
+  }
+  
+  const supabase = createAdminClient()
+  
+  // Get booking with related data
+  const { data: bookingData } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      reservation:reservations(
+        *,
+        experience:experiences(
+          *,
+          supplier:partners!experiences_partner_fk(*)
+        ),
+        session:experience_sessions(*)
+      )
+    `)
+    .eq('id', bookingId)
+    .single()
+  
+  if (!bookingData) {
+    console.error(`Booking ${bookingId} not found for transfer`)
+    return
+  }
+  
+  const booking = bookingData as any
+  const reservation = booking.reservation
+  const experience = reservation?.experience
+  const supplier = experience?.supplier
+  const session = reservation?.session
+  
+  // Update booking with transfer ID if not already set
+  if (!booking.stripe_transfer_id) {
+    await (supabase
+      .from('bookings') as any)
+      .update({
+        stripe_transfer_id: transfer.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', bookingId)
+  }
+  
+  // Send payout notification to supplier
+  if (supplier) {
+    const supplierEmailHtml = supplierPayoutSent({
+      experienceTitle: experience.title,
+      bookingId: booking.id,
+      guestName: reservation.guest_name,
+      date: session?.session_date || reservation.requested_date || '',
+      payoutAmount: transfer.amount,
+      currency: transfer.currency,
+    })
+    
+    await sendEmail({
+      to: supplier.email,
+      subject: `Payment sent - ${experience.title}`,
+      html: supplierEmailHtml,
+    })
+  }
+  
+  console.log(`Transfer notification sent for booking ${bookingId}, transfer ID: ${transfer.id}`)
+}
+
+// ============================================================================
+// Helper: Create booking from successful payment
+// ============================================================================
 async function createBookingFromPayment(
   reservationId: string,
   paymentIntentId: string,
@@ -159,6 +480,15 @@ async function createBookingFromPayment(
     console.error('Failed to create booking:', bookingError)
     return
   }
+  
+  // Update reservation status to approved if it was pending
+  await (supabase
+    .from('reservations') as any)
+    .update({
+      reservation_status: 'approved',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', reservationId)
   
   // Update session spots if session-based booking
   if (reservation.session_id) {

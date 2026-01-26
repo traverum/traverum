@@ -389,3 +389,195 @@ export function supplierCompletionCheck(data: BaseEmailData & {
   `
   return baseTemplate(content, 'Confirm Experience')
 }
+
+// Guest: Payment failed
+export function guestPaymentFailed(data: BaseEmailData & {
+  paymentUrl: string
+  errorMessage?: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Payment Failed ❌</h1>
+      </div>
+      <p>Hi ${data.guestName},</p>
+      <p>Unfortunately, your payment for the following experience could not be processed.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Amount</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+        ${data.errorMessage ? `
+        <div class="info-row">
+          <span class="info-label">Reason</span>
+          <span class="info-value">${data.errorMessage}</span>
+        </div>
+        ` : ''}
+      </div>
+      
+      <p>Please try again with a different payment method or contact your bank if the issue persists.</p>
+      
+      <div class="text-center mt-4">
+        <a href="${data.paymentUrl}" class="btn btn-primary">Try Again</a>
+      </div>
+      
+      <p class="text-muted text-center mt-4">Your reservation is still held. Please complete payment soon to secure your booking.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Payment Failed')
+}
+
+// Guest: Refund processed
+export function guestRefundProcessed(data: BaseEmailData & {
+  bookingId: string
+  refundAmount: number
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Refund Processed 💳</h1>
+      </div>
+      <p>Hi ${data.guestName},</p>
+      <p>Your refund has been processed successfully. The funds will be returned to your original payment method within 5-10 business days.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Original Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Refund Amount</span>
+          <span class="info-value">${formatEmailPrice(data.refundAmount, data.currency)}</span>
+        </div>
+      </div>
+      
+      <p class="text-muted">We're sorry this experience didn't work out. We hope to see you again soon!</p>
+    </div>
+  `
+  return baseTemplate(content, 'Refund Processed')
+}
+
+// Supplier: Payout notification
+export function supplierPayoutSent(data: {
+  experienceTitle: string
+  bookingId: string
+  guestName: string
+  date: string
+  payoutAmount: number
+  currency?: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Payment Sent! 🎉</h1>
+      </div>
+      <p>Great news! Your payout has been initiated and is on its way to your bank account.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Guest</span>
+          <span class="info-value">${data.guestName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Payout Amount</span>
+          <span class="info-value">${formatEmailPrice(data.payoutAmount, data.currency)}</span>
+        </div>
+      </div>
+      
+      <p class="text-muted">Payouts typically arrive within 2-3 business days depending on your bank.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Payment Sent')
+}
+
+// Admin: Stripe account updated
+export function adminAccountStatusChanged(data: {
+  partnerName: string
+  partnerEmail: string
+  partnerType: string
+  stripeAccountId: string
+  isOnboardingComplete: boolean
+  chargesEnabled: boolean
+  payoutsEnabled: boolean
+}) {
+  const statusIcon = data.isOnboardingComplete ? '✅' : '⚠️'
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Stripe Account Update ${statusIcon}</h1>
+      </div>
+      <p>A partner's Stripe account status has changed:</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Partner</span>
+          <span class="info-value">${data.partnerName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Email</span>
+          <span class="info-value">${data.partnerEmail}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Type</span>
+          <span class="info-value">${data.partnerType}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Stripe Account</span>
+          <span class="info-value">${data.stripeAccountId}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Onboarding Complete</span>
+          <span class="info-value">${data.isOnboardingComplete ? 'Yes ✅' : 'No ❌'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Charges Enabled</span>
+          <span class="info-value">${data.chargesEnabled ? 'Yes ✅' : 'No ❌'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Payouts Enabled</span>
+          <span class="info-value">${data.payoutsEnabled ? 'Yes ✅' : 'No ❌'}</span>
+        </div>
+      </div>
+      
+      ${!data.isOnboardingComplete ? `
+      <p class="text-muted">This partner needs to complete their Stripe onboarding before they can receive payouts.</p>
+      ` : `
+      <p class="text-muted">This partner is fully set up and ready to receive payouts!</p>
+      `}
+    </div>
+  `
+  return baseTemplate(content, 'Stripe Account Update')
+}

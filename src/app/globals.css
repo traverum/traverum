@@ -123,11 +123,65 @@
 /* Utility classes for embed mode */
 .embed-section {
   background: hsl(var(--background));
+  overflow: hidden;
 }
 
 .embed-full {
   background: hsl(var(--background-alt));
   min-height: 100vh;
+}
+
+/* Prevent body scrolling in iframe */
+body.embed-section,
+html.embed-section {
+  overflow: hidden !important;
+  height: auto !important;
+}
+
+/* Hotel Rosa specific styling to match Avada theme */
+.hotel-rosa-theme.embed-section {
+  padding-top: 100px;
+  padding-bottom: 100px;
+  background: transparent; /* Let parent background show through */
+  overflow: hidden;
+}
+
+.hotel-rosa-theme .embed-section-container {
+  max-width: 1248px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: calc(4% / 2);
+  padding-right: calc(4% / 2);
+}
+
+.hotel-rosa-theme .embed-section-title {
+  text-align: center;
+  margin-bottom: 0;
+  font-size: 48px;
+  line-height: 1.2;
+  font-weight: 400;
+  color: hsl(var(--accent));
+}
+
+.hotel-rosa-theme .embed-section-subtitle {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.hotel-rosa-theme .embed-section-title-wrapper {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Hotel Rosa experience cards styling */
+.hotel-rosa-theme .embed-section .experience-card {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.hotel-rosa-theme .embed-section .experience-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Button styles using CSS variables */

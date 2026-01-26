@@ -99,12 +99,15 @@
       width: 100%;\
       min-height: 200px;\
       position: relative;\
+      overflow: hidden;\
     }\
     .traverum-iframe {\
       width: 100%;\
       border: none;\
       display: block;\
       transition: opacity 0.3s ease;\
+      overflow: hidden;\
+      scrolling: no;\
     }\
     .traverum-iframe.loading {\
       opacity: 0;\
@@ -145,6 +148,8 @@
   iframe.setAttribute('loading', 'lazy');
   iframe.setAttribute('allowfullscreen', 'true');
   iframe.setAttribute('allow', 'payment');
+  iframe.setAttribute('scrolling', 'no');
+  iframe.style.overflow = 'hidden';
   
   // Set initial height
   var currentHeight = 400;

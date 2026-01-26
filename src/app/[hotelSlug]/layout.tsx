@@ -151,6 +151,9 @@ export default async function HotelLayout({ children, params }: HotelLayoutProps
     .map(([key, value]) => `${key}: ${value};`)
     .join('\n    ');
   
+  // Hotel Rosa specific styling
+  const isHotelRosa = hotelSlug === 'hotel-rosa'
+  
   return (
     <>
       {/* Inject CSS variables at body level where Next.js font variables are available */}
@@ -165,10 +168,20 @@ export default async function HotelLayout({ children, params }: HotelLayoutProps
           [data-hotel-theme] {
             ${cssVarsString}
           }
+          /* Prevent scrolling in embed section mode */
+          body.embed-section,
+          html.embed-section {
+            overflow: hidden !important;
+            height: auto !important;
+          }
+          [data-hotel-theme].embed-section {
+            overflow: hidden;
+          }
         `
       }} />
       <div
         data-hotel-theme="true"
+        className={isHotelRosa ? 'hotel-rosa-theme' : ''}
         style={{
           fontFamily: bodyFont,
           fontSize: `${basePx}px`,

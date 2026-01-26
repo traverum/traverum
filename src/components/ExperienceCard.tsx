@@ -34,7 +34,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full' }: Ex
       {...linkProps}
       className={cn(
         'block rounded-card overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
-        embedMode === 'section' && 'hover:shadow-card-hover transition-shadow'
+        embedMode === 'section' && 'hover:shadow-card-hover transition-shadow experience-card'
       )}
     >
       <div className="relative aspect-[4/3] overflow-hidden">

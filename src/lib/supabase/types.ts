@@ -24,6 +24,7 @@ export type Database = {
           session_id: string
           stripe_charge_id: string | null
           stripe_payment_intent_id: string | null
+          stripe_refund_id: string | null
           stripe_transfer_id: string | null
           supplier_amount_cents: number
           updated_at: string | null
@@ -42,6 +43,7 @@ export type Database = {
           session_id: string
           stripe_charge_id?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
           stripe_transfer_id?: string | null
           supplier_amount_cents: number
           updated_at?: string | null
@@ -60,6 +62,7 @@ export type Database = {
           session_id?: string
           stripe_charge_id?: string | null
           stripe_payment_intent_id?: string | null
+          stripe_refund_id?: string | null
           stripe_transfer_id?: string | null
           supplier_amount_cents?: number
           updated_at?: string | null

@@ -42,7 +42,8 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
   
   return (
     <div className={cn(
-      embedMode === 'full' ? 'embed-full' : 'embed-section'
+      embedMode === 'full' ? 'embed-full' : 'embed-section',
+      embedMode === 'section' && 'overflow-hidden'
     )}>
       {/* Header - only in full mode */}
       {embedMode === 'full' && (
@@ -62,31 +63,45 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
           <div 
             className={cn(
               'w-full',
-              embedMode === 'section' ? 'mb-0' : 'mb-6'
+              embedMode === 'section' ? 'mb-0 embed-section-title-wrapper' : 'mb-6'
             )} 
             style={embedMode === 'section' ? { 
               marginTop: 0, 
               marginBottom: 0,
-              paddingTop: 'var(--wp--preset--spacing--50, 3rem)',
-              paddingBottom: 'var(--wp--preset--spacing--50, 3rem)',
+              paddingTop: hotelSlug === 'hotel-rosa' ? '0' : 'var(--wp--preset--spacing--50, 3rem)',
+              paddingBottom: hotelSlug === 'hotel-rosa' ? '0' : 'var(--wp--preset--spacing--50, 3rem)',
               paddingLeft: 0,
               paddingRight: 0
             } : {}}
           >
             <div 
               className={cn(
-                embedMode === 'section' ? 'max-w-[1480px] mx-auto px-4' : 'container mx-auto'
+                embedMode === 'section' 
+                  ? hotelSlug === 'hotel-rosa' 
+                    ? 'embed-section-container' 
+                    : 'max-w-[1480px] mx-auto px-4'
+                  : 'container mx-auto'
               )}
             >
               <h1 
-                className="font-heading text-foreground"
-                style={{ fontSize: 'var(--font-size-title)' }}
+                className={cn(
+                  "font-heading text-foreground",
+                  embedMode === 'section' && hotelSlug === 'hotel-rosa' && 'embed-section-title'
+                )}
+                style={{ 
+                  fontSize: embedMode === 'section' && hotelSlug === 'hotel-rosa' 
+                    ? '48px' 
+                    : 'var(--font-size-title)' 
+                }}
               >
                 {widgetTitle}
               </h1>
               {widgetSubtitle && (
                 <p 
-                  className="text-muted-foreground mt-2"
+                  className={cn(
+                    "text-muted-foreground mt-2",
+                    embedMode === 'section' && hotelSlug === 'hotel-rosa' && 'embed-section-subtitle'
+                  )}
                   style={{ fontSize: 'var(--font-size-h3)' }}
                 >
                   {widgetSubtitle}
@@ -96,10 +111,21 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
           </div>
         )}
         
-        <div className={cn(
-          'container',
-          embedMode === 'full' ? 'px-4' : 'p-4'
-        )}>
+        <div 
+          className={cn(
+            embedMode === 'section' && hotelSlug === 'hotel-rosa' 
+              ? 'embed-section-container' 
+              : 'container',
+            embedMode === 'full' ? 'px-4' : embedMode === 'section' && hotelSlug === 'hotel-rosa' ? '' : 'p-4'
+          )}
+          style={embedMode === 'section' && hotelSlug === 'hotel-rosa' ? {
+            maxWidth: '1248px',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            paddingLeft: 'calc(4% / 2)',
+            paddingRight: 'calc(4% / 2)'
+          } : {}}
+        >
         
         {/* Experience grid */}
         {experiences.length > 0 ? (
@@ -154,6 +180,10 @@ function EmbedResizer() {
       dangerouslySetInnerHTML={{
         __html: `
           (function() {
+            // Add embed-section class to body and html to prevent scrolling
+            document.body.classList.add('embed-section');
+            document.documentElement.classList.add('embed-section');
+            
             function sendHeight() {
               var height = document.body.scrollHeight;
               window.parent.postMessage({ type: 'traverum-resize', height: height }, '*');
