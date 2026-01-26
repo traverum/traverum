@@ -41,10 +41,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       *,
       experience:experiences(
         *,
-        supplier:partners!experiences_partner_fk(*)
+        supplier:partners!experiences_partner_id_fkey(*)
       ),
       session:experience_sessions(*),
-      hotel:partners!reservations_hotel_fk(*)
+      hotel:partners!reservations_hotel_id_fkey(*)
     `)
     .eq('id', id)
     .single()

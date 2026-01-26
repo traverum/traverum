@@ -340,7 +340,7 @@ async function handleTransferCreated(transfer: Stripe.Transfer) {
         *,
         experience:experiences(
           *,
-          supplier:partners!experiences_partner_fk(*)
+          supplier:partners!experiences_partner_id_fkey(*)
         ),
         session:experience_sessions(*)
       )
@@ -421,10 +421,10 @@ async function createBookingFromPayment(
       *,
       experience:experiences(
         *,
-        supplier:partners!experiences_partner_fk(*)
+        supplier:partners!experiences_partner_id_fkey(*)
       ),
       session:experience_sessions(*),
-      hotel:partners!reservations_hotel_fk(*)
+      hotel:partners!reservations_hotel_id_fkey(*)
     `)
     .eq('id', reservationId)
     .single()

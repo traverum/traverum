@@ -55,7 +55,7 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
     .from('hotel_configs')
     .select(`
       *,
-      partner:partners!hotel_configs_partner_fk (
+      partner:partners!hotel_configs_partner_id_fkey (
         id,
         name,
         email
@@ -76,9 +76,9 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
     .from('distributions')
     .select(`
       *,
-      experience:experiences!distributions_experience_fk (
+      experience:experiences!distributions_experience_id_fkey (
         *,
-        supplier:partners!experiences_partner_fk (
+        supplier:partners!experiences_partner_id_fkey (
           id,
           name,
           email,
@@ -165,9 +165,9 @@ export async function getExperienceForHotel(
     .from('distributions')
     .select(`
       *,
-      experience:experiences!distributions_experience_fk (
+      experience:experiences!distributions_experience_id_fkey (
         *,
-        supplier:partners!experiences_partner_fk (
+        supplier:partners!experiences_partner_id_fkey (
           id,
           name,
           email,

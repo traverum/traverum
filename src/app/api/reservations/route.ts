@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     // Get hotel config
     const { data: hotelData } = await supabase
       .from('hotel_configs')
-      .select('*, partner:partners!hotel_configs_partner_fk(*)')
+      .select('*, partner:partners!hotel_configs_partner_id_fkey(*)')
       .eq('slug', hotelSlug)
       .eq('is_active', true)
       .single()
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // Get experience with supplier
     const { data: experienceData } = await supabase
       .from('experiences')
-      .select('*, supplier:partners!experiences_partner_fk(*)')
+      .select('*, supplier:partners!experiences_partner_id_fkey(*)')
       .eq('id', experienceId)
       .single()
     

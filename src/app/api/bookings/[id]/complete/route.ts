@@ -39,7 +39,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         *,
         experience:experiences(
           *,
-          supplier:partners!experiences_partner_fk(*)
+          supplier:partners!experiences_partner_id_fkey(*)
         )
       )
     `)

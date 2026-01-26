@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         experience:experiences(
           title,
           currency,
-          supplier:partners!experiences_partner_fk(email, name)
+          supplier:partners!experiences_partner_id_fkey(email, name)
         ),
         session:experience_sessions(session_date, start_time)
       )
