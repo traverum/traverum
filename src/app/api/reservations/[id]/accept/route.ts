@@ -87,7 +87,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       experienceTitle: experience.title,
       amountCents: reservation.total_cents,
       currency: experience.currency,
-      successUrl: `${appUrl}/${hotelSlug}/confirmation/{CHECKOUT_SESSION_ID}`,
+      successUrl: `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`,
       cancelUrl: `${appUrl}/${hotelSlug}/reservation/${reservation.id}`,
     })
     
