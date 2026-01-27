@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     if (existingBooking) {
       return NextResponse.json({
         message: 'Booking already exists',
-        bookingId: existingBooking.id,
+        bookingId: (existingBooking as any).id,
       })
     }
 
