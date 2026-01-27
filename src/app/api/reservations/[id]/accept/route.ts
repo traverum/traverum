@@ -96,8 +96,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       
       if (existingSession) {
         // Use existing session and update spots
-        sessionId = existingSession.id
-        const newSpotsAvailable = existingSession.spots_available - reservation.participants
+        const session = existingSession as any
+        sessionId = session.id
+        const newSpotsAvailable = session.spots_available - reservation.participants
         
         if (newSpotsAvailable < 0) {
           return createErrorResponse('Not enough spots available in this session.', appUrl)
