@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { generateAcceptToken, generateDeclineToken } from '@/lib/tokens'
 import { sendEmail, getAppUrl } from '@/lib/email/index'
-import { guestRequestReceived, supplierNewRequest } from '@/lib/email/templates'
+import { 
+  guestRequestReceived, 
+  supplierNewRequest,
+  guestInstantBooking,
+  supplierNewBooking,
+} from '@/lib/email/templates'
 import { calculatePrice } from '@/lib/pricing'
+import { createPaymentLink } from '@/lib/stripe'
 import { addHours } from 'date-fns'
 
 export async function POST(request: NextRequest) {
@@ -120,7 +126,133 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Create reservation with recalculated price
+    const appUrl = getAppUrl()
+    
+    // =========================================================================
+    // SESSION-BASED BOOKING: Guest picked existing session, can pay immediately
+    // =========================================================================
+    if (!isRequest && sessionId && sessionData) {
+      // Deduct spots from session immediately
+      const newSpotsAvailable = sessionData.spots_available - participants
+      
+      await (supabase
+        .from('experience_sessions') as any)
+        .update({
+          spots_available: newSpotsAvailable,
+          session_status: newSpotsAvailable === 0 ? 'full' : 'available',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId)
+      
+      // Create reservation with status 'approved' (skip pending)
+      const paymentDeadline = addHours(new Date(), 24)
+      
+      const { data: reservation, error: reservationError } = await (supabase
+        .from('reservations') as any)
+        .insert({
+          experience_id: experienceId,
+          hotel_id: hotel.partner_id,
+          session_id: sessionId,
+          guest_name: guestName,
+          guest_email: guestEmail,
+          guest_phone: guestPhone || null,
+          participants,
+          total_cents: expectedTotal,
+          is_request: false,
+          reservation_status: 'approved', // Skip pending, go straight to approved
+          payment_deadline: paymentDeadline.toISOString(),
+        })
+        .select()
+        .single()
+      
+      if (reservationError || !reservation) {
+        console.error('Failed to create reservation:', reservationError)
+        // Rollback spots deduction
+        await (supabase
+          .from('experience_sessions') as any)
+          .update({
+            spots_available: sessionData.spots_available,
+            session_status: sessionData.session_status,
+          })
+          .eq('id', sessionId)
+        return NextResponse.json(
+          { error: 'Failed to create reservation' },
+          { status: 500 }
+        )
+      }
+      
+      // Create payment link immediately
+      const paymentLink = await createPaymentLink({
+        reservationId: reservation.id,
+        experienceTitle: experience.title,
+        amountCents: expectedTotal,
+        currency: experience.currency,
+        successUrl: `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`,
+        cancelUrl: `${appUrl}/${hotelSlug}/reservation/${reservation.id}`,
+      })
+      
+      // Update reservation with payment link
+      await (supabase
+        .from('reservations') as any)
+        .update({
+          stripe_payment_link_id: paymentLink.id,
+          stripe_payment_link_url: paymentLink.url,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reservation.id)
+      
+      // Send instant booking email to guest (with payment link)
+      const guestEmailHtml = guestInstantBooking({
+        experienceTitle: experience.title,
+        guestName,
+        date: date || '',
+        time: time || '',
+        participants,
+        totalCents: expectedTotal,
+        currency: experience.currency,
+        paymentUrl: paymentLink.url!,
+        meetingPoint: experience.meeting_point,
+        paymentDeadline: paymentDeadline.toISOString(),
+        hotelName: hotel.display_name,
+      })
+      
+      await sendEmail({
+        to: guestEmail,
+        subject: `Complete your booking - ${experience.title}`,
+        html: guestEmailHtml,
+      })
+      
+      // Send notification email to supplier (no accept/decline buttons)
+      const supplierEmailHtml = supplierNewBooking({
+        experienceTitle: experience.title,
+        guestName,
+        guestEmail,
+        guestPhone,
+        date: date || '',
+        time: time || '',
+        participants,
+        totalCents: expectedTotal,
+        currency: experience.currency,
+        hotelName: hotel.display_name,
+      })
+      
+      await sendEmail({
+        to: experience.supplier.email,
+        subject: `New booking pending payment - ${experience.title}`,
+        html: supplierEmailHtml,
+        replyTo: guestEmail,
+      })
+      
+      return NextResponse.json({
+        success: true,
+        reservationId: reservation.id,
+        paymentUrl: paymentLink.url, // Return payment URL for immediate redirect
+      })
+    }
+    
+    // =========================================================================
+    // REQUEST-BASED BOOKING: Guest requested custom date/time, needs approval
+    // =========================================================================
     const responseDeadline = addHours(new Date(), 48)
     
     const { data: reservation, error: reservationError } = await (supabase
@@ -133,10 +265,10 @@ export async function POST(request: NextRequest) {
         guest_email: guestEmail,
         guest_phone: guestPhone || null,
         participants,
-        total_cents: expectedTotal, // Use recalculated price
-        is_request: isRequest,
-        requested_date: isRequest ? requestDate : null,
-        requested_time: isRequest ? requestTime : null,
+        total_cents: expectedTotal,
+        is_request: true,
+        requested_date: requestDate || null,
+        requested_time: requestTime || null,
         reservation_status: 'pending',
         response_deadline: responseDeadline.toISOString(),
       })
@@ -155,18 +287,17 @@ export async function POST(request: NextRequest) {
     const acceptToken = generateAcceptToken(reservation.id)
     const declineToken = generateDeclineToken(reservation.id)
     
-    const appUrl = getAppUrl()
     const acceptUrl = `${appUrl}/api/reservations/${reservation.id}/accept?token=${acceptToken}`
     const declineUrl = `${appUrl}/api/reservations/${reservation.id}/decline?token=${declineToken}`
     
-    // Send email to guest
+    // Send email to guest (waiting for confirmation)
     const guestEmailHtml = guestRequestReceived({
       experienceTitle: experience.title,
       guestName,
       date: date || '',
       time: time || '',
       participants,
-      totalCents,
+      totalCents: expectedTotal,
       currency: experience.currency,
       hotelName: hotel.display_name,
     })
@@ -177,7 +308,7 @@ export async function POST(request: NextRequest) {
       html: guestEmailHtml,
     })
     
-    // Send email to supplier
+    // Send email to supplier (with accept/decline buttons)
     const supplierEmailHtml = supplierNewRequest({
       experienceTitle: experience.title,
       guestName,
@@ -186,7 +317,7 @@ export async function POST(request: NextRequest) {
       date: date || '',
       time: time || '',
       participants,
-      totalCents,
+      totalCents: expectedTotal,
       currency: experience.currency,
       acceptUrl,
       declineUrl,

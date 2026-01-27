@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature')
   
   if (!signature) {
+    console.error('Webhook request missing signature header')
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
   }
   
@@ -31,7 +32,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
   
-  console.log(`Processing webhook event: ${event.type}`)
+  console.log(`Processing webhook event: ${event.type}`, {
+    eventId: event.id,
+    objectId: (event.data.object as any)?.id,
+  })
   
   // Handle the event
   switch (event.type) {
@@ -70,10 +74,34 @@ export async function POST(request: NextRequest) {
 // payment_intent.succeeded - Guest payment successful
 // ============================================================================
 async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
-  const reservationId = paymentIntent.metadata?.reservationId
+  console.log('Payment intent succeeded:', {
+    paymentIntentId: paymentIntent.id,
+    metadata: paymentIntent.metadata,
+  })
+  
+  let reservationId = paymentIntent.metadata?.reservationId
+  
+  // If metadata not on payment intent, try to find via charge or other means
+  if (!reservationId) {
+    console.log('No reservationId in payment intent metadata, attempting fallback lookup')
+    
+    // Try to find reservation by searching for payment links that might match
+    // This is a fallback - ideally metadata should be present
+    try {
+      const supabase = createAdminClient()
+      // Note: This is a fallback - we'd need to store payment link -> payment intent mapping
+      // For now, log the issue so we can investigate
+      console.error('Payment intent missing reservationId metadata', {
+        paymentIntentId: paymentIntent.id,
+        chargeId: paymentIntent.latest_charge,
+      })
+    } catch (error) {
+      console.error('Error in fallback lookup:', error)
+    }
+  }
   
   if (!reservationId) {
-    console.error('No reservationId in payment intent metadata')
+    console.error('No reservationId found for payment intent:', paymentIntent.id)
     return
   }
   
@@ -84,10 +112,55 @@ async function handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
 // checkout.session.completed - Checkout session completed
 // ============================================================================
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
-  const reservationId = session.metadata?.reservationId
+  console.log('Checkout session completed:', {
+    sessionId: session.id,
+    paymentIntentId: session.payment_intent,
+    paymentLink: session.payment_link,
+    metadata: session.metadata,
+  })
+  
+  let reservationId = session.metadata?.reservationId
+  
+  // If metadata not on session, try to get it from payment intent
+  if (!reservationId && session.payment_intent) {
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(
+        session.payment_intent as string,
+        { expand: ['latest_charge'] }
+      )
+      reservationId = paymentIntent.metadata?.reservationId
+      console.log('Retrieved reservationId from payment intent:', reservationId)
+    } catch (error) {
+      console.error('Error retrieving payment intent:', error)
+    }
+  }
+  
+  // If still no reservationId, try to find it via payment link
+  if (!reservationId && session.payment_link) {
+    try {
+      const supabase = createAdminClient()
+      const { data: reservation } = await supabase
+        .from('reservations')
+        .select('id')
+        .eq('stripe_payment_link_id', session.payment_link)
+        .single()
+      
+      if (reservation) {
+        reservationId = reservation.id
+        console.log('Retrieved reservationId from payment link:', reservationId)
+      }
+    } catch (error) {
+      console.error('Error finding reservation by payment link:', error)
+    }
+  }
   
   if (!reservationId) {
-    console.error('No reservationId in checkout session metadata')
+    console.error('No reservationId found in checkout session', {
+      sessionId: session.id,
+      paymentIntentId: session.payment_intent,
+      paymentLink: session.payment_link,
+      sessionMetadata: session.metadata,
+    })
     return
   }
   
@@ -95,10 +168,16 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
   const paymentIntentId = session.payment_intent as string
   
   if (paymentIntentId) {
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
-    const chargeId = paymentIntent.latest_charge as string
-    
-    await createBookingFromPayment(reservationId, paymentIntentId, chargeId)
+    try {
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+      const chargeId = paymentIntent.latest_charge as string
+      
+      await createBookingFromPayment(reservationId, paymentIntentId, chargeId)
+    } catch (error) {
+      console.error('Error processing checkout completion:', error)
+    }
+  } else {
+    console.error('No payment_intent in checkout session:', session.id)
   }
 }
 
@@ -477,9 +556,16 @@ async function createBookingFromPayment(
     .single()
   
   if (bookingError || !booking) {
-    console.error('Failed to create booking:', bookingError)
+    console.error('Failed to create booking:', {
+      error: bookingError,
+      reservationId,
+      paymentIntentId,
+      chargeId,
+    })
     return
   }
+  
+  console.log(`Successfully created booking ${booking.id} for reservation ${reservationId}`)
   
   // Update reservation status to approved if it was pending
   await (supabase

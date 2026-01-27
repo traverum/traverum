@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { verifyToken } from '@/lib/tokens'
-import { createTransfer } from '@/lib/stripe'
+import { createTransfer, stripe } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
 
 interface RouteParams {
@@ -68,11 +68,26 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Transfer funds to supplier via Stripe Connect
     let transferId = null
     if (supplier.stripe_account_id && booking.supplier_amount_cents > 0) {
+      // Get charge ID from payment intent (required for test mode transfers)
+      let chargeId = booking.stripe_charge_id
+      
+      if (!chargeId && booking.stripe_payment_intent_id) {
+        try {
+          const paymentIntent = await stripe.paymentIntents.retrieve(
+            booking.stripe_payment_intent_id
+          )
+          chargeId = paymentIntent.latest_charge as string
+        } catch (error) {
+          console.error('Failed to retrieve payment intent:', error)
+        }
+      }
+      
       const transfer = await createTransfer(
         booking.supplier_amount_cents,
         experience.currency,
         supplier.stripe_account_id,
-        booking.id
+        booking.id,
+        chargeId || undefined // Pass charge ID as source_transaction for test mode
       )
       transferId = transfer.id
     }
@@ -108,9 +123,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     
     return createResponse('success', 'The experience has been marked as completed and payment has been transferred to your account.')
-  } catch (error) {
+  } catch (error: any) {
     console.error('Complete booking error:', error)
-    return createResponse('error', 'Failed to process completion. Please try again.')
+    const errorMessage = error?.message || error?.toString() || 'Unknown error'
+    console.error('Stripe error details:', {
+      message: errorMessage,
+      type: error?.type,
+      code: error?.code,
+      decline_code: error?.decline_code,
+    })
+    return createResponse('error', `Failed to process completion: ${errorMessage}`)
   }
 }
 

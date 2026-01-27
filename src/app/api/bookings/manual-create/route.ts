@@ -1,0 +1,282 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { stripe } from '@/lib/stripe'
+import { calculateCommissionSplit } from '@/lib/commission'
+import { sendEmail, getAppUrl } from '@/lib/email/index'
+import { 
+  guestPaymentConfirmed, 
+  supplierBookingConfirmed,
+} from '@/lib/email/templates'
+import { generateCancelToken } from '@/lib/tokens'
+
+/**
+ * Manual booking creation endpoint for debugging
+ * Use this to manually create a booking from a payment that succeeded
+ * but didn't trigger the webhook properly
+ * 
+ * Usage: POST /api/bookings/manual-create
+ * Body: { paymentIntentId: "pi_xxx" } or { reservationId: "xxx" }
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { paymentIntentId, reservationId, chargeId } = body
+
+    if (!paymentIntentId && !reservationId) {
+      return NextResponse.json(
+        { error: 'Either paymentIntentId or reservationId is required' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = createAdminClient()
+
+    // If paymentIntentId provided, find reservation from payment intent
+    let finalReservationId = reservationId
+    let finalPaymentIntentId = paymentIntentId
+    let finalChargeId = chargeId
+
+    if (paymentIntentId && !reservationId) {
+      // Retrieve payment intent from Stripe
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+      finalReservationId = paymentIntent.metadata?.reservationId
+      finalChargeId = paymentIntent.latest_charge as string
+
+      if (!finalReservationId) {
+        // Try to find by payment link
+        const { data: reservations } = await supabase
+          .from('reservations')
+          .select('id, stripe_payment_link_id')
+          .not('stripe_payment_link_id', 'is', null)
+
+        // Check each payment link to see if it matches
+        for (const res of reservations || []) {
+          try {
+            const paymentLink = await stripe.paymentLinks.retrieve(
+              res.stripe_payment_link_id!
+            )
+            // Check if this payment link's sessions match
+            // This is a simplified check - in production you'd want to check sessions
+            if (paymentLink.metadata?.reservationId === res.id) {
+              // This is a heuristic - we'd need to check actual sessions
+              console.log('Found potential match:', res.id)
+            }
+          } catch (e) {
+            // Skip
+          }
+        }
+
+        return NextResponse.json(
+          { 
+            error: 'Could not find reservationId from payment intent',
+            paymentIntent: {
+              id: paymentIntent.id,
+              metadata: paymentIntent.metadata,
+              amount: paymentIntent.amount,
+              currency: paymentIntent.currency,
+            }
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    if (!finalReservationId) {
+      return NextResponse.json(
+        { error: 'Reservation ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Check if booking already exists
+    const { data: existingBooking } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('reservation_id', finalReservationId)
+      .single()
+
+    if (existingBooking) {
+      return NextResponse.json({
+        message: 'Booking already exists',
+        bookingId: existingBooking.id,
+      })
+    }
+
+    // Get reservation with all related data
+    const { data: reservationData } = await supabase
+      .from('reservations')
+      .select(`
+        *,
+        experience:experiences(
+          *,
+          supplier:partners!experiences_partner_id_fkey(*)
+        ),
+        session:experience_sessions(*),
+        hotel:partners!reservations_hotel_id_fkey(*)
+      `)
+      .eq('id', finalReservationId)
+      .single()
+
+    if (!reservationData) {
+      return NextResponse.json(
+        { error: 'Reservation not found' },
+        { status: 404 }
+      )
+    }
+
+    const reservation = reservationData as any
+    const experience = reservation.experience
+    const supplier = experience.supplier
+    const session = reservation.session
+
+    // Get distribution for commission rates
+    const { data: distributionData } = await supabase
+      .from('distributions')
+      .select('*')
+      .eq('experience_id', experience.id)
+      .eq('hotel_id', reservation.hotel_id)
+      .eq('is_active', true)
+      .single()
+
+    if (!distributionData) {
+      return NextResponse.json(
+        { error: 'Distribution not found for experience and hotel' },
+        { status: 404 }
+      )
+    }
+
+    const distribution = distributionData as any
+
+    // Calculate commission split
+    const split = calculateCommissionSplit(reservation.total_cents, distribution)
+
+    // Get payment intent if not provided
+    if (!finalPaymentIntentId) {
+      // Try to find from reservation's payment link
+      if (reservation.stripe_payment_link_id) {
+        // This is complex - would need to list sessions
+        // For now, require paymentIntentId
+        return NextResponse.json(
+          { error: 'paymentIntentId required when not found in reservation' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Create booking
+    const { data: booking, error: bookingError } = await (supabase
+      .from('bookings') as any)
+      .insert({
+        reservation_id: finalReservationId,
+        session_id: reservation.session_id || session?.id,
+        amount_cents: reservation.total_cents,
+        supplier_amount_cents: split.supplierAmount,
+        hotel_amount_cents: split.hotelAmount,
+        platform_amount_cents: split.platformAmount,
+        stripe_payment_intent_id: finalPaymentIntentId || null,
+        stripe_charge_id: finalChargeId || null,
+        booking_status: 'confirmed',
+        paid_at: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (bookingError || !booking) {
+      console.error('Failed to create booking:', bookingError)
+      return NextResponse.json(
+        { error: 'Failed to create booking', details: bookingError },
+        { status: 500 }
+      )
+    }
+
+    // Update reservation status
+    await (supabase
+      .from('reservations') as any)
+      .update({
+        reservation_status: 'approved',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', finalReservationId)
+
+    // Update session spots if session-based booking
+    if (reservation.session_id) {
+      await (supabase
+        .from('experience_sessions') as any)
+        .update({
+          spots_available: session.spots_available - reservation.participants,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reservation.session_id)
+    }
+
+    // Get hotel config for URLs
+    const { data: hotelConfig } = await supabase
+      .from('hotel_configs')
+      .select('slug')
+      .eq('partner_id', reservation.hotel_id)
+      .single()
+
+    const hotelSlug = (hotelConfig as any)?.slug || 'default'
+    const date = session?.session_date || reservation.requested_date || ''
+    const time = session?.start_time || reservation.requested_time || ''
+
+    // Generate cancel token
+    const cancelToken = generateCancelToken(booking.id, new Date(date))
+    const appUrl = getAppUrl()
+    const cancelUrl = `${appUrl}/api/bookings/${booking.id}/cancel?token=${cancelToken}`
+
+    // Send confirmation email to guest
+    const guestEmailHtml = guestPaymentConfirmed({
+      experienceTitle: experience.title,
+      guestName: reservation.guest_name,
+      date,
+      time,
+      participants: reservation.participants,
+      totalCents: reservation.total_cents,
+      currency: experience.currency,
+      bookingId: booking.id,
+      meetingPoint: experience.meeting_point,
+      cancelUrl,
+      supplierName: supplier.name,
+    })
+
+    await sendEmail({
+      to: reservation.guest_email,
+      subject: `Booking confirmed! - ${experience.title}`,
+      html: guestEmailHtml,
+    })
+
+    // Send confirmation email to supplier
+    const supplierEmailHtml = supplierBookingConfirmed({
+      experienceTitle: experience.title,
+      guestName: reservation.guest_name,
+      guestEmail: reservation.guest_email,
+      guestPhone: reservation.guest_phone,
+      date,
+      time,
+      participants: reservation.participants,
+      totalCents: reservation.total_cents,
+      currency: experience.currency,
+      bookingId: booking.id,
+    })
+
+    await sendEmail({
+      to: supplier.email,
+      subject: `Payment received - ${experience.title}`,
+      html: supplierEmailHtml,
+      replyTo: reservation.guest_email,
+    })
+
+    return NextResponse.json({
+      success: true,
+      bookingId: booking.id,
+      message: 'Booking created successfully',
+    })
+  } catch (error: any) {
+    console.error('Manual booking creation error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', details: error.message },
+      { status: 500 }
+    )
+  }
+}

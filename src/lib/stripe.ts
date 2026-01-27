@@ -81,16 +81,25 @@ export async function createTransfer(
   amountCents: number,
   currency: string,
   destinationAccountId: string,
-  bookingId: string
+  bookingId: string,
+  sourceTransaction?: string // Charge ID - required for test mode transfers
 ) {
-  const transfer = await stripe.transfers.create({
+  const transferParams: Stripe.TransferCreateParams = {
     amount: amountCents,
     currency: currency.toLowerCase(),
     destination: destinationAccountId,
     metadata: {
       bookingId,
     },
-  })
+  }
+  
+  // In test mode, transfers require source_transaction (charge ID)
+  // This allows transferring funds even if platform balance is insufficient
+  if (sourceTransaction) {
+    transferParams.source_transaction = sourceTransaction
+  }
+  
+  const transfer = await stripe.transfers.create(transferParams)
   
   return transfer
 }

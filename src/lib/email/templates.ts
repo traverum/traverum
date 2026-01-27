@@ -230,7 +230,117 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
   return baseTemplate(content, 'Booking Confirmed')
 }
 
-// Supplier: New request
+// Guest: Instant booking (session-based, can pay immediately)
+export function guestInstantBooking(data: BaseEmailData & { 
+  paymentUrl: string
+  meetingPoint?: string | null
+  paymentDeadline: string
+  hotelName: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Complete Your Booking! 🎉</h1>
+      </div>
+      <p>Hi ${data.guestName},</p>
+      <p>Great choice! Your spot is reserved. Complete your payment to confirm the booking.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        ${data.meetingPoint ? `
+        <div class="info-row">
+          <span class="info-label">Meeting Point</span>
+          <span class="info-value">${data.meetingPoint}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Total to Pay</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+      </div>
+      
+      <div class="text-center mt-4">
+        <a href="${data.paymentUrl}" class="btn btn-primary">Pay Now</a>
+      </div>
+      
+      <p class="text-muted text-center mt-4">Complete payment by ${formatEmailDate(data.paymentDeadline)} to secure your spot.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Complete Your Booking')
+}
+
+// Supplier: New booking notification (session-based, no accept/decline)
+export function supplierNewBooking(data: BaseEmailData & {
+  guestEmail: string
+  guestPhone?: string | null
+  hotelName: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>New Booking Pending Payment</h1>
+      </div>
+      <p>A guest has booked your experience via ${data.hotelName}. Payment is pending.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Guest Name</span>
+          <span class="info-value">${data.guestName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Guest Email</span>
+          <span class="info-value">${data.guestEmail}</span>
+        </div>
+        ${data.guestPhone ? `
+        <div class="info-row">
+          <span class="info-label">Guest Phone</span>
+          <span class="info-value">${data.guestPhone}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Total Price</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+      </div>
+      
+      <p class="text-muted text-center mt-4">You'll receive a confirmation email once the guest completes payment.</p>
+    </div>
+  `
+  return baseTemplate(content, 'New Booking Pending Payment')
+}
+
+// Supplier: New request (request-based, needs accept/decline)
 export function supplierNewRequest(data: BaseEmailData & {
   guestEmail: string
   guestPhone?: string | null

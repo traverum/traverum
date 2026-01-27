@@ -7,33 +7,72 @@
 
 ## System Overview
 
-Traverum uses a **request-based booking flow**. Guests submit booking requests, suppliers approve or decline via email, guests pay via Stripe, and funds are transferred after the experience is confirmed complete.
+Traverum supports **two booking flows** depending on whether the guest picks an existing session or requests a custom date/time:
+
+1. **Session-Based Booking**: Guest picks an available session → Pays immediately (no approval needed)
+2. **Request-Based Booking**: Guest requests a custom date/time → Supplier approves → Guest pays
 
 **Key principle**: Suppliers manage everything via email. No dashboard required.
 
 ---
 
-## The Complete Flow
+## Flow A: Session-Based Booking (Instant)
+
+When a guest **selects an existing session** with available spots, they can pay immediately without waiting for supplier approval.
+
+### Phase 1: Guest Selects Session
+
+1. Guest visits hotel's embedded widget
+2. Guest selects: experience, **existing session** (with date/time), number of participants
+3. Guest enters: first name, last name, email, phone number
+4. Guest clicks "Book Now"
+5. System **deducts spots** from the session immediately
+6. System creates reservation with status **`approved`** (skip pending)
+7. System creates Stripe Payment Link immediately
+8. System sets `payment_deadline` to 24 hours from now
+9. System sends email to guest: **"Complete your booking!"** with Pay Now button
+10. System sends email to supplier: **"New booking pending payment"** (notification only, no accept/decline)
+
+### Phase 2: Guest Pays
+
+Same as Request-Based Flow Phase 3 (below)
+
+---
+
+## Flow B: Request-Based Booking (Approval Required)
+
+When a guest **requests a custom date/time** (not an existing session), the supplier must approve before the guest can pay.
 
 ### Phase 1: Guest Submits Request
 
 1. Guest visits hotel's embedded widget
-2. Guest selects: experience, date, time, number of participants
+2. Guest selects: experience, **custom date/time** (via "Request Different Time")
 3. Guest enters: first name, last name, email, phone number
 4. Guest clicks "Send Request"
-5. System creates reservation with status `pending`
+5. System creates reservation with status **`pending`**
 6. System sets `response_deadline` to 48 hours from now
-7. System sends email to supplier: "New booking request" with Accept and Decline buttons
-8. System sends email to guest: "Request received, awaiting confirmation"
+7. System sends email to supplier: **"New booking request"** with Accept and Decline buttons
+8. System sends email to guest: **"Request received, awaiting confirmation"**
 
 ### Phase 2: Supplier Responds
 
 **If supplier clicks "Accept":**
-1. System updates reservation status to `approved`
-2. System sets `payment_deadline` to 24 hours from now
-3. System creates Stripe Payment Link for the total amount
-4. System stores the payment link URL on the reservation
-5. System sends email to guest: "Booking approved!" with payment button/link
+1. **Session is created for the requested date/time:**
+   - System checks if a session already exists for that date/time
+   - If session exists: Reuses it and deducts spots (spots_available -= participants)
+   - If no session exists: Creates a new session with:
+     - `session_date` = requested_date
+     - `start_time` = requested_time
+     - `spots_total` = experience.max_participants
+     - `spots_available` = max_participants - reservation.participants
+     - `session_status` = 'available'
+   - System links reservation to the session (sets `session_id`)
+   - **Business benefit**: The new session becomes visible in the widget, allowing other guests to book remaining spots
+2. System updates reservation status to `approved`
+3. System sets `payment_deadline` to 24 hours from now
+4. System creates Stripe Payment Link for the total amount
+5. System stores the payment link URL on the reservation
+6. System sends email to guest: "Booking approved!" with payment button/link
 
 **If supplier clicks "Decline":**
 1. System updates reservation status to `declined`
@@ -45,18 +84,20 @@ Traverum uses a **request-based booking flow**. Guests submit booking requests, 
 2. System updates reservation status to `expired`
 3. System sends email to guest: "Request expired - provider did not respond"
 
-### Phase 3: Guest Pays
+### Phase 3: Guest Pays (Both Flows)
 
 **If guest completes payment:**
-1. Stripe sends webhook `payment_intent.succeeded`
-2. System creates booking record with status `confirmed`
-3. System stores `stripe_charge_id` for later refund/transfer operations
-4. System calculates and stores the three-way split amounts:
-   - Supplier amount (80%)
-   - Hotel amount (12%)
-   - Platform amount (8%)
-5. System sends email to supplier: "Payment received! Booking confirmed" with guest details
-6. System sends email to guest: "Payment successful!" with:
+1. Stripe sends webhook `payment_intent.succeeded` or `checkout.session.completed`
+2. System extracts `reservationId` from payment intent metadata (or looks up via payment link)
+3. System creates booking record with status `confirmed`:
+   - **Requires `session_id`**: All bookings must have a session (sessions are auto-created on accept for request-based bookings)
+   - Stores `stripe_payment_intent_id` and `stripe_charge_id` for later refund/transfer operations
+   - Calculates and stores the three-way split amounts:
+     - Supplier amount (80%)
+     - Hotel amount (12%)
+     - Platform amount (8%)
+4. System sends email to supplier: "Payment received! Booking confirmed" with guest details
+5. System sends email to guest: "Payment successful!" with:
    - Booking confirmation details
    - Experience information (date, time, meeting point)
    - Cancel link (only works if 7+ days before experience)
@@ -92,10 +133,14 @@ Traverum uses a **request-based booking flow**. Guests submit booking requests, 
 
 **If supplier clicks "Yes, it happened":**
 1. System updates booking status to `completed`
-2. System creates Stripe transfer to supplier's connected account for their 80%
-3. System records hotel commission (12%) in database for monthly batch payout
-4. System sends email to supplier: "Payment has been transferred to your account"
-5. Optionally: System sends email to hotel: "Your widget earned commission on a booking"
+2. System creates Stripe transfer to supplier's connected account for their 80%:
+   - Retrieves charge ID from payment intent (if not stored)
+   - Uses `source_transaction` parameter (charge ID) for transfers, especially important in test mode
+   - This allows transfers even if platform balance is insufficient
+3. System stores `stripe_transfer_id` on booking record
+4. System records hotel commission (12%) in database for monthly batch payout
+5. System sends email to supplier: "Payment has been transferred to your account"
+6. Optionally: System sends email to hotel: "Your widget earned commission on a booking"
 
 **If supplier clicks "No, it did not happen":**
 1. System updates booking status to `cancelled`
@@ -164,30 +209,41 @@ Traverum uses a **request-based booking flow**. Guests submit booking requests, 
 ### State Transitions
 
 ```
-RESERVATION:
-pending â†’ approved (supplier accepts)
-pending â†’ declined (supplier declines)
-pending â†’ expired (48h timeout)
-approved â†’ expired (24h timeout, no payment)
-approved â†’ [booking created] (payment succeeds)
+RESERVATION (Session-Based):
+[created as approved] → expired (24h timeout, no payment)
+[created as approved] → [booking created] (payment succeeds)
+
+RESERVATION (Request-Based):
+pending → approved (supplier accepts)
+pending → declined (supplier declines)
+pending → expired (48h timeout)
+approved → expired (24h timeout, no payment)
+approved → [booking created] (payment succeeds)
 
 BOOKING:
-confirmed â†’ completed (supplier confirms or 7-day auto-complete)
-confirmed â†’ cancelled (guest cancels or supplier reports no-experience)
+confirmed → completed (supplier confirms or 7-day auto-complete)
+confirmed → cancelled (guest cancels or supplier reports no-experience)
 ```
 
 ---
 
 ## Emails to Implement
 
-### Request Phase
+### Session-Based Booking Emails
 
 | Template | Recipient | When | Must Include |
 |----------|-----------|------|--------------|
-| `supplier_new_request` | Supplier | Request created | Guest name, date, time, participants, Accept button, Decline button |
+| `guest_instant_booking` | Guest | Session booked | Experience name, date, time, **Pay Now button**, payment deadline |
+| `supplier_new_booking` | Supplier | Session booked | Guest details, date, time, participants, "Payment pending" note |
+
+### Request-Based Booking Emails
+
+| Template | Recipient | When | Must Include |
+|----------|-----------|------|--------------|
+| `supplier_new_request` | Supplier | Request created | Guest name, date, time, participants, **Accept button**, **Decline button** |
 | `guest_request_received` | Guest | Request created | Experience name, date, time, "waiting for confirmation" message |
 
-### Decision Phase
+### Decision Phase (Request-Based Only)
 
 | Template | Recipient | When | Must Include |
 |----------|-----------|------|--------------|
@@ -253,18 +309,35 @@ All action links must be:
 
 ## Stripe Operations
 
-### When Supplier Accepts
+### When Guest Picks Session (Session-Based Booking)
+- Deduct spots from session immediately
+- Create reservation with status `approved`
+- Create Payment Link with reservation metadata
+- Store payment link URL on reservation record
+- **No supplier approval needed**
+
+### When Supplier Accepts (Request-Based Booking)
+- **Create or reuse session for requested date/time**:
+  - Check if session exists for that date/time
+  - If exists: Reuse and update spots_available
+  - If not: Create new session with full capacity, making it visible in widget
+  - Link reservation to session (sets `session_id`)
 - Create Payment Link with reservation metadata
 - Store payment link URL on reservation record
 
 ### When Payment Succeeds (Webhook)
-- Extract reservation ID from payment intent metadata
+- Listen for `payment_intent.succeeded` or `checkout.session.completed` events
+- Extract reservation ID from payment intent metadata (or look up via payment link if metadata missing)
 - Create booking record with charge ID stored
 - Calculate split amounts based on distribution table
+- **Idempotency**: Check if booking already exists before creating (prevents duplicates)
 
 ### When Completion Confirmed
-- Create Transfer to supplier's connected Stripe account
-- Amount: `supplier_amount_cents` from booking record
+- Retrieve charge ID from payment intent (if not already stored)
+- Create Transfer to supplier's connected Stripe account:
+  - Amount: `supplier_amount_cents` from booking record
+  - Use `source_transaction` parameter (charge ID) - required for test mode transfers
+  - This allows transfers even if platform balance is insufficient
 - Store transfer ID on booking record
 
 ### When Refund Needed
@@ -286,26 +359,40 @@ All action links must be:
 | Supplier has no Stripe account yet | Block accept action, prompt to complete Stripe onboarding |
 | Experience session is full | Reject request at submission time |
 | Double payment attempt | Stripe handles this, only one charge goes through |
+| Multiple requests for same date/time | On accept, system checks for existing session and reuses it, updating spots accordingly |
+| Request-based booking accepted | Session is automatically created, making remaining spots available to other guests in widget |
 
 ---
 
 ## Data to Store
 
-### On Reservation Creation
+### On Session-Based Reservation Creation
 - Experience ID, Session ID, Hotel ID
 - Guest name, email, phone
 - Number of participants
 - Total price in cents
-- Response deadline timestamp
-- Status: `pending`
+- Payment deadline timestamp (24 hours)
+- Stripe payment link ID and URL
+- Status: **`approved`** (immediate)
 
-### On Supplier Accept
+### On Request-Based Reservation Creation
+- Experience ID, Hotel ID (no session yet)
+- Guest name, email, phone
+- Number of participants
+- Total price in cents
+- Requested date/time
+- Response deadline timestamp (48 hours)
+- Status: **`pending`**
+
+### On Supplier Accept (Request-Based Only)
+- **Session ID** (created or reused for requested date/time)
 - Payment deadline timestamp
 - Stripe payment link ID and URL
 - Status: `approved`
 
 ### On Payment Success
 - Create booking record with:
+  - **Session ID** (required - always available since sessions are created on accept)
   - Stripe payment intent ID
   - Stripe charge ID
   - Total amount, supplier amount, hotel amount, platform amount
@@ -314,7 +401,7 @@ All action links must be:
 
 ### On Completion
 - Completion confirmed at timestamp
-- Stripe transfer ID
+- Stripe transfer ID (created with `source_transaction` for test mode compatibility)
 - Status: `completed`
 
 ---
@@ -334,13 +421,30 @@ All action links must be:
 
 ## Summary
 
-This is a **4-phase flow**:
+Traverum supports **two booking flows**:
 
-1. **Request** â†’ Guest submits, supplier gets email
-2. **Decision** â†’ Supplier accepts or declines via email
-3. **Payment** â†’ Guest pays via Stripe link
-4. **Settlement** â†’ Supplier confirms completion, funds transfer
+### Flow A: Session-Based (Instant)
+```
+Guest picks session → Spots deducted → Pay immediately → Booking confirmed
+```
+- No supplier approval needed
+- Guest can pay right away
+- Supplier notified (FYI only)
+
+### Flow B: Request-Based (Approval Required)
+```
+Guest requests time → Supplier approves → Session created → Pay → Booking confirmed
+```
+- Supplier must accept/decline
+- On accept: Session created for requested time (visible to other guests!)
+- Guest then pays
+
+### Common Final Steps
+1. **Payment** → Guest pays via Stripe link
+2. **Settlement** → After experience, supplier confirms → Funds transferred
 
 Everything happens via email links. No dashboards required for MVP.
 
 The system is designed to be **self-correcting**: timeouts auto-expire stale requests, auto-completion ensures funds don't get stuck, and refunds happen automatically when needed.
+
+**Business benefit**: Request-based bookings create new inventory (sessions) that suppliers can fill with additional guests, maximizing revenue from popular time slots.
