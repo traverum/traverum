@@ -146,7 +146,7 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
         .single()
       
       if (reservation) {
-        reservationId = reservation.id
+        reservationId = (reservation as any).id
         console.log('Retrieved reservationId from payment link:', reservationId)
       }
     } catch (error) {
