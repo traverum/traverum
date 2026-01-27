@@ -50,10 +50,12 @@ export async function POST(request: NextRequest) {
           .not('stripe_payment_link_id', 'is', null)
 
         // Check each payment link to see if it matches
-        for (const res of reservations || []) {
+        const reservationsList = (reservations || []) as Array<{ id: string; stripe_payment_link_id: string | null }>
+        for (const res of reservationsList) {
+          if (!res.stripe_payment_link_id) continue
           try {
             const paymentLink = await stripe.paymentLinks.retrieve(
-              res.stripe_payment_link_id!
+              res.stripe_payment_link_id
             )
             // Check if this payment link's sessions match
             // This is a simplified check - in production you'd want to check sessions
