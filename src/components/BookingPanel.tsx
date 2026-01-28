@@ -102,7 +102,7 @@ export function BookingPanel({ experience, sessions, hotelSlug }: BookingPanelPr
       <div className="bg-background-alt rounded-card p-5 font-body">
         {/* Price */}
         <div className="flex items-baseline gap-1.5 mb-4">
-          <span className="text-2xl font-bold text-foreground">{displayPrice.price}</span>
+          <span className="text-2xl font-bold text-foreground tabular-nums">{displayPrice.price}</span>
           <span className="text-muted-foreground">{displayPrice.suffix}</span>
         </div>
 
@@ -110,15 +110,16 @@ export function BookingPanel({ experience, sessions, hotelSlug }: BookingPanelPr
         <button
           type="button"
           onClick={() => setDateDrawerOpen(true)}
-          className="w-full flex items-center justify-between px-4 py-3 border border-border rounded-button bg-background hover:border-accent/50 transition-colors text-left"
+          className="w-full flex items-center justify-between px-4 py-3 border border-border rounded-button bg-background hover:border-accent/50 transition-colors duration-150 text-left touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
+          aria-label="Select date and time"
         >
           <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-muted-foreground" />
-            <span className={hasDateSelection ? 'text-foreground font-medium' : 'text-muted-foreground'}>
+            <Calendar className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+            <span className={hasDateSelection ? 'text-foreground font-medium tabular-nums' : 'text-muted-foreground'}>
               {getDateDisplayText()}
             </span>
           </div>
-          <ChevronDown className="w-5 h-5 text-muted-foreground" />
+          <ChevronDown className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
         </button>
 
         {/* Participants Selector */}
@@ -131,7 +132,7 @@ export function BookingPanel({ experience, sessions, hotelSlug }: BookingPanelPr
             availableSpots={selectedSession?.spots_available}
           />
           {isMinEnforced && (
-            <p className="text-xs text-muted-foreground mt-2">
+            <p className="text-xs text-muted-foreground mt-2 tabular-nums">
               Minimum {experience.min_participants} {experience.min_participants === 1 ? 'person' : 'people'} required
             </p>
           )}
@@ -142,9 +143,9 @@ export function BookingPanel({ experience, sessions, hotelSlug }: BookingPanelPr
           <div className="flex items-center justify-between mb-3">
             <span className="text-muted-foreground">Total</span>
             <div className="text-right">
-              <span className="text-xl font-bold text-foreground">{formatPrice(priceCalc.totalPrice, experience.currency)}</span>
+              <span className="text-xl font-bold text-foreground tabular-nums">{formatPrice(priceCalc.totalPrice, experience.currency)}</span>
               {isMinEnforced && priceCalc.effectiveParticipants > participants && (
-                <p className="text-xs text-muted-foreground mt-0.5">
+                <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
                   ({participants} × {formatPrice(priceCalc.pricePerPerson || 0, experience.currency)} = {formatPrice(priceCalc.totalPrice, experience.currency)})
                 </p>
               )}
@@ -155,9 +156,9 @@ export function BookingPanel({ experience, sessions, hotelSlug }: BookingPanelPr
             type="button"
             onClick={handleContinue}
             disabled={!hasDateSelection}
-            className="w-full py-3.5 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            className="w-full py-3.5 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
-            {isCustomRequest ? 'Send Request' : 'Reserve'}
+            {isCustomRequest ? 'Send Request' : 'Book Now'}
           </button>
         </div>
       </div>

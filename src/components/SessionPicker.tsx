@@ -1,15 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Info, ChevronDown, Check } from 'lucide-react'
-import { format } from 'date-fns'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { Check, Mail } from 'lucide-react'
+import { format, isSameDay } from 'date-fns'
 import { Calendar } from '@/components/ui/calendar'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import { formatTime, cn } from '@/lib/utils'
 import type { ExperienceSession } from '@/lib/supabase/types'
 
@@ -32,6 +27,17 @@ const timeGroups = {
   evening: ['18:00', '19:00', '20:00', '21:00']
 }
 
+// Animation variants with reduced motion support
+const fadeInVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1 },
+}
+
+const slideInVariants = {
+  hidden: { opacity: 0, y: -8 },
+  visible: { opacity: 1, y: 0 },
+}
+
 export function SessionPicker({
   sessions,
   selectedSessionId,
@@ -43,7 +49,7 @@ export function SessionPicker({
   onCustomTimeChange,
   participants,
 }: SessionPickerProps) {
-  const [slotsOpen, setSlotsOpen] = useState(false)
+  const shouldReduceMotion = useReducedMotion()
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(
     customDate ? new Date(customDate) : undefined
   )
@@ -56,25 +62,52 @@ export function SessionPicker({
     return sessions.filter(session => session.spots_available >= participants)
   }, [sessions, participants])
 
-  const hasAvailableSessions = availableSessions.length > 0
-
-  // Transform sessions to display format
-  const transformedSessions = useMemo(() => {
-    return availableSessions.map(session => ({
-      id: session.id,
-      date: format(new Date(session.session_date), 'dd.MM.yyyy'),
-      time: formatTime(session.start_time),
-      spotsLeft: session.spots_available,
-    }))
+  // Group sessions by date (YYYY-MM-DD format)
+  const sessionsByDate = useMemo(() => {
+    const grouped: Record<string, ExperienceSession[]> = {}
+    availableSessions.forEach(session => {
+      const dateKey = format(new Date(session.session_date), 'yyyy-MM-dd')
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = []
+      }
+      grouped[dateKey].push(session)
+    })
+    return grouped
   }, [availableSessions])
 
-  // Handle calendar date selection for custom request
+  // Check if a date has sessions
+  const dateHasSessions = (date: Date): boolean => {
+    const dateKey = format(date, 'yyyy-MM-dd')
+    return !!sessionsByDate[dateKey] && sessionsByDate[dateKey].length > 0
+  }
+
+  // Get sessions for selected date
+  const selectedDateSessions = useMemo(() => {
+    if (!selectedCalendarDate) return []
+    const dateKey = format(selectedCalendarDate, 'yyyy-MM-dd')
+    return sessionsByDate[dateKey] || []
+  }, [selectedCalendarDate, sessionsByDate])
+
+  // Handle calendar date selection
   const handleCalendarDateSelect = (date: Date | undefined) => {
     setSelectedCalendarDate(date)
     if (date) {
-      onCustomDateChange(format(date, 'yyyy-MM-dd'))
-      // Clear session selection - we're in request mode
-      onSessionSelect(null, true)
+      const dateKey = format(date, 'yyyy-MM-dd')
+      onCustomDateChange(dateKey)
+      
+      if (dateHasSessions(date)) {
+        // Date has sessions - clear custom request, user will select a session
+        onSessionSelect(null, false)
+        onCustomTimeChange('')
+      } else {
+        // Date has no sessions - this is a request
+        onSessionSelect(null, true)
+      }
+    } else {
+      // Date cleared
+      onCustomDateChange('')
+      onCustomTimeChange('')
+      onSessionSelect(null, false)
     }
   }
 
@@ -87,174 +120,199 @@ export function SessionPicker({
   // Handle selecting a confirmed session
   const handleSessionSelect = (sessionId: string) => {
     onSessionSelect(sessionId, false)
-    setSlotsOpen(false)
+    // Clear custom request when selecting a session
+    onCustomTimeChange('')
   }
 
   return (
-    <div className="space-y-5 font-body">
-      {/* Primary: Request Form */}
-      <div className="space-y-4">
-        <div>
-          <p className="text-sm font-medium text-foreground mb-3">
-            Pick your preferred date & time
-          </p>
-          
-          {/* Calendar */}
-          <div className="flex justify-center mb-4">
-            <Calendar
-              mode="single"
-              selected={selectedCalendarDate}
-              onSelect={handleCalendarDateSelect}
-              disabled={(date) => {
-                const dateOnly = new Date(date)
-                dateOnly.setHours(0, 0, 0, 0)
-                return dateOnly < today
-              }}
-              className="rounded-lg border border-border"
-            />
-          </div>
+    <div className="font-body">
+      {/* Desktop: side-by-side layout, Mobile: stacked */}
+      <div className="flex flex-col md:flex-row md:gap-6 md:items-start">
+        {/* Calendar */}
+        <div className="flex justify-center md:flex-shrink-0">
+          <Calendar
+            selected={selectedCalendarDate}
+            onSelect={handleCalendarDateSelect}
+            disabled={(date) => {
+              const dateOnly = new Date(date)
+              dateOnly.setHours(0, 0, 0, 0)
+              return dateOnly < today
+            }}
+            datesWithSessions={Object.keys(sessionsByDate)}
+            className="rounded-lg border border-border p-2"
+          />
+        </div>
 
-          {/* Time Selection */}
-          <AnimatePresence>
-            {selectedCalendarDate && (
+        {/* Sessions/Times - Right side on desktop, below on mobile */}
+        <div className="flex-1 mt-4 md:mt-0 min-w-0">
+          {/* Show sessions if date has sessions */}
+          <AnimatePresence mode="wait">
+            {selectedCalendarDate && selectedDateSessions.length > 0 && (
               <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
+                initial={shouldReduceMotion ? false : slideInVariants.hidden}
+                animate={slideInVariants.visible}
+                exit={shouldReduceMotion ? undefined : fadeInVariants.hidden}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+                className="space-y-3"
               >
-                <p className="text-sm text-muted-foreground mb-3">
-                  Select preferred time for {format(selectedCalendarDate, 'EEE, d MMM')}
+                <p className="text-sm font-medium text-foreground">
+                  {format(selectedCalendarDate, 'EEEE, d MMMM')}
                 </p>
                 
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  {selectedDateSessions.map((session) => {
+                    const isSelected = selectedSessionId === session.id && !isCustomRequest
+                    return (
+                      <button
+                        key={session.id}
+                        type="button"
+                        onClick={() => handleSessionSelect(session.id)}
+                        className={cn(
+                          'relative px-3 py-2.5 rounded-lg border text-left touch-manipulation',
+                          'transition-colors duration-150',
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+                          isSelected
+                            ? 'border-accent bg-accent/10 ring-1 ring-accent/30'
+                            : 'border-border hover:border-accent/50 hover:bg-muted/30 bg-background'
+                        )}
+                        aria-pressed={isSelected}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
+                            <Check className="w-2.5 h-2.5 text-accent-foreground" aria-hidden="true" />
+                          </div>
+                        )}
+                        <div className="text-sm font-medium text-foreground mb-0.5">
+                          {formatTime(session.start_time)}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground tabular-nums">
+                          {session.spots_available} {session.spots_available === 1 ? 'spot' : 'spots'} left
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Show time picker if date has no sessions (request flow) */}
+          <AnimatePresence mode="wait">
+            {selectedCalendarDate && selectedDateSessions.length === 0 && (
+              <motion.div
+                initial={shouldReduceMotion ? false : slideInVariants.hidden}
+                animate={slideInVariants.visible}
+                exit={shouldReduceMotion ? undefined : fadeInVariants.hidden}
+                transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
+                className="space-y-3"
+              >
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    {format(selectedCalendarDate, 'EEEE, d MMMM')}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    No sessions available. Request your preferred time.
+                  </p>
+                </div>
+
+                {/* How it works */}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
+                  <Mail className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+                  <span>Provider confirms within 48h → You pay after approval</span>
+                </div>
+                  
+                <fieldset className="space-y-3">
+                  <legend className="sr-only">Select a time</legend>
+                  
                   {/* Morning */}
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Morning</p>
-                    <div className="flex flex-wrap gap-2">
-                      {timeGroups.morning.map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => handleTimeSelect(time)}
-                          className={cn(
-                            'px-3 py-2 text-sm rounded-button border transition-all',
-                            customTime === time && isCustomRequest
-                              ? 'border-accent bg-accent/10 text-accent font-medium'
-                              : 'border-border bg-background hover:border-accent/50 text-foreground'
-                          )}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                    <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Morning</p>
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Morning times">
+                      {timeGroups.morning.map((time) => {
+                        const isSelected = customTime === time && isCustomRequest
+                        return (
+                          <button
+                            key={time}
+                            type="button"
+                            onClick={() => handleTimeSelect(time)}
+                            aria-pressed={isSelected}
+                            className={cn(
+                              'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
+                              'transition-colors duration-150',
+                              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+                              isSelected
+                                ? 'border-accent bg-accent/10 text-accent font-semibold'
+                                : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
+                            )}
+                          >
+                            {time}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
 
                   {/* Afternoon */}
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Afternoon</p>
-                    <div className="flex flex-wrap gap-2">
-                      {timeGroups.afternoon.map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => handleTimeSelect(time)}
-                          className={cn(
-                            'px-3 py-2 text-sm rounded-button border transition-all',
-                            customTime === time && isCustomRequest
-                              ? 'border-accent bg-accent/10 text-accent font-medium'
-                              : 'border-border bg-background hover:border-accent/50 text-foreground'
-                          )}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                    <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Afternoon</p>
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Afternoon times">
+                      {timeGroups.afternoon.map((time) => {
+                        const isSelected = customTime === time && isCustomRequest
+                        return (
+                          <button
+                            key={time}
+                            type="button"
+                            onClick={() => handleTimeSelect(time)}
+                            aria-pressed={isSelected}
+                            className={cn(
+                              'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
+                              'transition-colors duration-150',
+                              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+                              isSelected
+                                ? 'border-accent bg-accent/10 text-accent font-semibold'
+                                : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
+                            )}
+                          >
+                            {time}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
 
                   {/* Evening */}
                   <div>
-                    <p className="text-xs text-muted-foreground mb-2">Evening</p>
-                    <div className="flex flex-wrap gap-2">
-                      {timeGroups.evening.map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => handleTimeSelect(time)}
-                          className={cn(
-                            'px-3 py-2 text-sm rounded-button border transition-all',
-                            customTime === time && isCustomRequest
-                              ? 'border-accent bg-accent/10 text-accent font-medium'
-                              : 'border-border bg-background hover:border-accent/50 text-foreground'
-                          )}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                    <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Evening</p>
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Evening times">
+                      {timeGroups.evening.map((time) => {
+                        const isSelected = customTime === time && isCustomRequest
+                        return (
+                          <button
+                            key={time}
+                            type="button"
+                            onClick={() => handleTimeSelect(time)}
+                            aria-pressed={isSelected}
+                            className={cn(
+                              'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
+                              'transition-colors duration-150',
+                              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+                              isSelected
+                                ? 'border-accent bg-accent/10 text-accent font-semibold'
+                                : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
+                            )}
+                          >
+                            {time}
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
-                </div>
+                </fieldset>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
-
-        {/* Info message */}
-        <div className="flex items-start gap-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-          <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
-          <span>Provider will confirm your request within 48 hours</span>
-        </div>
       </div>
-
-      {/* Secondary: Available Sessions (Collapsible) */}
-      {hasAvailableSessions && (
-        <Collapsible open={slotsOpen} onOpenChange={setSlotsOpen}>
-          <CollapsibleTrigger className="w-full flex items-center justify-between py-3 px-4 bg-success/10 text-success rounded-lg hover:bg-success/15 transition-colors">
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {availableSessions.length} confirmed {availableSessions.length === 1 ? 'slot' : 'slots'} available
-              </span>
-            </div>
-            <ChevronDown className={cn('w-4 h-4 transition-transform duration-200', slotsOpen && 'rotate-180')} />
-          </CollapsibleTrigger>
-          
-          <CollapsibleContent>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-3 space-y-2"
-            >
-              <p className="text-xs text-muted-foreground mb-2">
-                Select a confirmed slot for instant booking
-              </p>
-              {transformedSessions.map((session) => (
-                <button
-                  key={session.id}
-                  type="button"
-                  onClick={() => handleSessionSelect(session.id)}
-                  className={cn(
-                    'w-full flex items-center justify-between py-3 px-4 rounded-lg border-2 transition-all',
-                    selectedSessionId === session.id && !isCustomRequest
-                      ? 'border-accent bg-accent/10'
-                      : 'border-border hover:border-accent/50 bg-background'
-                  )}
-                >
-                  <span className="text-sm font-medium text-foreground">
-                    {session.date} · {session.time}
-                  </span>
-                  <span className={cn(
-                    'text-xs',
-                    session.spotsLeft <= 3 ? 'text-warning' : 'text-muted-foreground'
-                  )}>
-                    {session.spotsLeft} spots left
-                  </span>
-                </button>
-              ))}
-            </motion.div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
     </div>
   )
 }

@@ -129,10 +129,11 @@ export async function POST(request: NextRequest) {
     const appUrl = getAppUrl()
     
     // =========================================================================
-    // SESSION-BASED BOOKING: Guest picked existing session, can pay immediately
+    // SESSION-BASED BOOKING: Guest picked existing session, pay immediately
+    // Direct payment flow - no reservation step shown to user
     // =========================================================================
     if (!isRequest && sessionId && sessionData) {
-      // Deduct spots from session immediately
+      // Hold spots by deducting them immediately (will be released if payment fails)
       const newSpotsAvailable = sessionData.spots_available - participants
       
       await (supabase
@@ -144,7 +145,8 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', sessionId)
       
-      // Create reservation with status 'approved' (skip pending)
+      // Create minimal reservation for data integrity (user doesn't see this)
+      // Status is 'approved' since payment is immediate
       const paymentDeadline = addHours(new Date(), 24)
       
       const { data: reservation, error: reservationError } = await (supabase
@@ -159,8 +161,9 @@ export async function POST(request: NextRequest) {
           participants,
           total_cents: expectedTotal,
           is_request: false,
-          reservation_status: 'approved', // Skip pending, go straight to approved
+          reservation_status: 'approved', // Payment is immediate, so approved
           payment_deadline: paymentDeadline.toISOString(),
+          response_deadline: paymentDeadline.toISOString(), // Required field
         })
         .select()
         .single()
@@ -181,14 +184,14 @@ export async function POST(request: NextRequest) {
         )
       }
       
-      // Create payment link immediately
+      // Create payment link immediately - user goes straight to payment
       const paymentLink = await createPaymentLink({
         reservationId: reservation.id,
         experienceTitle: experience.title,
         amountCents: expectedTotal,
         currency: experience.currency,
         successUrl: `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`,
-        cancelUrl: `${appUrl}/${hotelSlug}/reservation/${reservation.id}`,
+        cancelUrl: `${appUrl}/${hotelSlug}`, // Cancel goes back to hotel page
       })
       
       // Update reservation with payment link
@@ -201,52 +204,11 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', reservation.id)
       
-      // Send instant booking email to guest (with payment link)
-      const guestEmailHtml = guestInstantBooking({
-        experienceTitle: experience.title,
-        guestName,
-        date: date || '',
-        time: time || '',
-        participants,
-        totalCents: expectedTotal,
-        currency: experience.currency,
-        paymentUrl: paymentLink.url!,
-        meetingPoint: experience.meeting_point,
-        paymentDeadline: paymentDeadline.toISOString(),
-        hotelName: hotel.display_name,
-      })
-      
-      await sendEmail({
-        to: guestEmail,
-        subject: `Complete your booking - ${experience.title}`,
-        html: guestEmailHtml,
-      })
-      
-      // Send notification email to supplier (no accept/decline buttons)
-      const supplierEmailHtml = supplierNewBooking({
-        experienceTitle: experience.title,
-        guestName,
-        guestEmail,
-        guestPhone,
-        date: date || '',
-        time: time || '',
-        participants,
-        totalCents: expectedTotal,
-        currency: experience.currency,
-        hotelName: hotel.display_name,
-      })
-      
-      await sendEmail({
-        to: experience.supplier.email,
-        subject: `New booking pending payment - ${experience.title}`,
-        html: supplierEmailHtml,
-        replyTo: guestEmail,
-      })
-      
+      // Return payment URL for immediate redirect (user never sees reservation page)
       return NextResponse.json({
         success: true,
-        reservationId: reservation.id,
-        paymentUrl: paymentLink.url, // Return payment URL for immediate redirect
+        paymentUrl: paymentLink.url, // Direct redirect to payment
+        bookingId: reservation.id, // For confirmation page reference
       })
     }
     

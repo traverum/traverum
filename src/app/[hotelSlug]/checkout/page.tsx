@@ -128,7 +128,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
         </Link>
         
         <h1 className="text-2xl text-foreground mb-6">
-          Complete Your Booking
+          {isRequest ? 'Complete Your Request' : 'Complete Your Booking'}
         </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

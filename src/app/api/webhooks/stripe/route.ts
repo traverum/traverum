@@ -214,6 +214,20 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
   const experience = reservation.experience
   const session = reservation.session
   
+  // Release spots if this was a session-based booking
+  if (reservation.session_id && session) {
+    await (supabase
+      .from('experience_sessions') as any)
+      .update({
+        spots_available: (session as any).spots_available + reservation.participants,
+        session_status: 'available',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', reservation.session_id)
+    
+    console.log(`Released ${reservation.participants} spots for session ${reservation.session_id} due to payment failure`)
+  }
+  
   // Get error message from the payment intent
   const lastError = paymentIntent.last_payment_error
   const errorMessage = lastError?.message || 'Payment was declined'
@@ -576,16 +590,8 @@ async function createBookingFromPayment(
     })
     .eq('id', reservationId)
   
-  // Update session spots if session-based booking
-  if (reservation.session_id) {
-    await (supabase
-      .from('experience_sessions') as any)
-      .update({
-        spots_available: session.spots_available - reservation.participants,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', reservation.session_id)
-  }
+  // Note: Spots were already deducted when reservation was created for session-based bookings
+  // No need to deduct again here - spots are already held
   
   // Get hotel config for URLs
   const { data: hotelConfig } = await supabase

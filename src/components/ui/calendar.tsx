@@ -1,70 +1,180 @@
 'use client'
 
 import * as React from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { DayPicker } from 'react-day-picker'
-import { enGB } from 'date-fns/locale'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
+import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay'
+import dayjs, { Dayjs } from 'dayjs'
 import { cn } from '@/lib/utils'
+import { ThemeProvider, createTheme } from '@mui/material/styles'
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
+interface CalendarProps {
+  selected?: Date
+  onSelect?: (date: Date | undefined) => void
+  disabled?: (date: Date) => boolean
+  className?: string
+  datesWithSessions?: string[] // Array of date strings in YYYY-MM-DD format
+}
 
-function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
-  return (
-    <DayPicker
-      showOutsideDays={showOutsideDays}
-      locale={enGB}
-      weekStartsOn={1}
-      className={cn('p-3 pointer-events-auto select-none', className)}
-      classNames={{
-        // v9 class names
-        months: 'flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0',
-        month: 'space-y-4',
-        month_caption: 'flex justify-center pt-1 relative items-center',
-        caption_label: 'text-sm font-medium text-foreground',
-        nav: 'space-x-1 flex items-center',
-        button_previous: cn(
-          'absolute left-1 h-7 w-7 bg-transparent p-0 inline-flex items-center justify-center',
-          'border border-border rounded-md text-muted-foreground',
-          'hover:bg-muted hover:text-foreground transition-colors',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
-        ),
-        button_next: cn(
-          'absolute right-1 h-7 w-7 bg-transparent p-0 inline-flex items-center justify-center',
-          'border border-border rounded-md text-muted-foreground',
-          'hover:bg-muted hover:text-foreground transition-colors',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent'
-        ),
-        // Grid structure
-        month_grid: 'w-full border-collapse space-y-1',
-        weekdays: 'flex',
-        weekday: 'text-muted-foreground rounded-md w-9 font-normal text-[0.8rem] text-center',
-        week: 'flex w-full mt-2',
-        day: 'h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20',
-        day_button: cn(
-          'h-9 w-9 p-0 font-normal inline-flex items-center justify-center rounded-md',
-          'hover:bg-muted text-foreground transition-colors',
-          'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
-          'aria-selected:opacity-100'
-        ),
-        // States
-        selected: 'bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
-        today: 'bg-muted text-foreground font-semibold',
-        outside: 'text-muted-foreground/40 aria-selected:bg-accent/50 aria-selected:text-muted-foreground/40',
-        disabled: 'text-muted-foreground/30 cursor-not-allowed',
-        range_middle: 'aria-selected:bg-accent aria-selected:text-accent-foreground',
-        hidden: 'invisible',
-        ...classNames,
-      }}
-      components={{
-        Chevron: ({ orientation }) => {
-          if (orientation === 'left') {
-            return <ChevronLeft className="h-4 w-4" />
-          }
-          return <ChevronRight className="h-4 w-4" />
+const theme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: {
+      main: 'hsl(var(--accent))',
+    },
+    background: {
+      default: 'transparent',
+      paper: 'transparent',
+    },
+  },
+  components: {
+    MuiPickersDay: {
+      styleOverrides: {
+        root: {
+          color: 'hsl(var(--foreground))',
+          fontVariantNumeric: 'tabular-nums',
+          '&.Mui-selected': {
+            backgroundColor: 'hsl(var(--accent))',
+            color: 'hsl(var(--accent-foreground))',
+            fontWeight: 500,
+            '&:hover': {
+              backgroundColor: 'hsl(var(--accent))',
+            },
+            '&:focus': {
+              backgroundColor: 'hsl(var(--accent))',
+            },
+          },
+          '&.Mui-disabled': {
+            color: 'hsl(var(--muted-foreground) / 0.3)',
+          },
+          '&:hover': {
+            backgroundColor: 'hsl(var(--muted))',
+          },
         },
-      }}
-      {...props}
-    />
+      },
+    },
+    MuiPickersCalendarHeader: {
+      styleOverrides: {
+        root: {
+          paddingLeft: '16px',
+          paddingRight: '16px',
+          marginBottom: '8px',
+        },
+        label: {
+          color: 'hsl(var(--foreground))',
+          fontWeight: 600,
+          fontSize: '0.875rem',
+        },
+      },
+    },
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          color: 'hsl(var(--muted-foreground))',
+          '&:hover': {
+            backgroundColor: 'hsl(var(--muted))',
+            color: 'hsl(var(--foreground))',
+          },
+        },
+      },
+    },
+    MuiDayCalendar: {
+      styleOverrides: {
+        header: {
+          color: 'hsl(var(--muted-foreground))',
+          fontWeight: 500,
+          fontSize: '0.75rem',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
+        },
+      },
+    },
+  },
+})
+
+function Calendar({ selected, onSelect, disabled, className, datesWithSessions = [] }: CalendarProps) {
+  const [value, setValue] = React.useState<Dayjs | null>(
+    selected ? dayjs(selected) : null
+  )
+
+  React.useEffect(() => {
+    if (selected) {
+      setValue(dayjs(selected))
+    }
+  }, [selected])
+
+  const handleChange = (newValue: Dayjs | null) => {
+    setValue(newValue)
+    if (onSelect) {
+      onSelect(newValue ? newValue.toDate() : undefined)
+    }
+  }
+
+  const shouldDisableDate = (date: Dayjs) => {
+    if (!disabled) return false
+    return disabled(date.toDate())
+  }
+
+  // Custom day component with dot indicator
+  const CustomDay = React.useCallback((props: PickersDayProps<Dayjs>) => {
+    const { day, ...other } = props
+    const dateKey = day.format('YYYY-MM-DD')
+    const hasSessions = datesWithSessions.includes(dateKey)
+
+    return (
+      <PickersDay
+        {...other}
+        day={day}
+        sx={{
+          position: 'relative',
+          fontSize: '0.875rem',
+          width: '36px',
+          height: '36px',
+          borderRadius: '6px',
+          '&::after': hasSessions
+            ? {
+                content: '""',
+                position: 'absolute',
+                bottom: '4px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '4px',
+                height: '4px',
+                borderRadius: '50%',
+                backgroundColor: 'hsl(var(--accent))',
+              }
+            : {},
+        }}
+      />
+    )
+  }, [datesWithSessions])
+
+  return (
+    <ThemeProvider theme={theme}>
+      <div className={cn('w-full', className)}>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <DateCalendar
+            value={value}
+            onChange={handleChange}
+            shouldDisableDate={shouldDisableDate}
+            showDaysOutsideCurrentMonth={false}
+            slots={{
+              day: CustomDay,
+            }}
+            sx={{
+              width: '100%',
+              '& .MuiPickersDay-root': {
+                fontSize: '0.875rem',
+                width: '36px',
+                height: '36px',
+                borderRadius: '6px',
+              },
+            }}
+          />
+        </LocalizationProvider>
+      </div>
+    </ThemeProvider>
   )
 }
 Calendar.displayName = 'Calendar'

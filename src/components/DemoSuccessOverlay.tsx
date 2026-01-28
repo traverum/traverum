@@ -13,6 +13,7 @@ interface DemoSuccessOverlayProps {
   currency: string
   guestName: string
   hotelSlug: string
+  isRequest?: boolean
   onClose: () => void
 }
 
@@ -25,6 +26,7 @@ export function DemoSuccessOverlay({
   currency,
   guestName,
   hotelSlug,
+  isRequest = false,
   onClose,
 }: DemoSuccessOverlayProps) {
   const searchParams = useSearchParams()
@@ -87,7 +89,7 @@ export function DemoSuccessOverlay({
             transition={{ delay: 0.3 }}
             className="text-2xl font-heading text-card-foreground mb-2"
           >
-            Request Sent!
+            {isRequest ? 'Request Sent!' : 'Booking Confirmed!'}
           </motion.h2>
 
           <motion.p

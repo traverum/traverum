@@ -89,22 +89,26 @@ export default async function ReservationPage({ params, searchParams }: Reservat
             
             {/* Status title */}
             <h1 className="text-3xl text-card-foreground mb-3">
-              {reservation.reservation_status === 'pending' && 'Request Sent!'}
+              {reservation.reservation_status === 'pending' && (reservation.is_request ? 'Request Sent!' : 'Booking Processing!')}
               {reservation.reservation_status === 'approved' && 'Booking Approved!'}
               {reservation.reservation_status === 'declined' && 'Booking Unavailable'}
-              {reservation.reservation_status === 'expired' && 'Request Expired'}
+              {reservation.reservation_status === 'expired' && (reservation.is_request ? 'Request Expired' : 'Booking Expired')}
             </h1>
             
             {/* Status message */}
             <p className="text-muted-foreground mb-8 text-base">
-              {reservation.reservation_status === 'pending' && 
+              {reservation.reservation_status === 'pending' && reservation.is_request && 
                 'Your booking request has been sent to the experience provider. They will respond within 48 hours.'}
+              {reservation.reservation_status === 'pending' && !reservation.is_request && 
+                'Your booking is being processed. You will be redirected to payment shortly.'}
               {reservation.reservation_status === 'approved' && 
                 'Great news! Your booking has been approved. Check your email for the payment link.'}
               {reservation.reservation_status === 'declined' && 
                 'Unfortunately, the provider was unable to accept your booking for this time.'}
-              {reservation.reservation_status === 'expired' && 
+              {reservation.reservation_status === 'expired' && reservation.is_request && 
                 'This booking request has expired. The provider did not respond in time.'}
+              {reservation.reservation_status === 'expired' && !reservation.is_request && 
+                'This booking has expired. The payment window has closed.'}
             </p>
             
             {/* Booking details */}

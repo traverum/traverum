@@ -108,11 +108,18 @@ export function CheckoutForm({
         throw new Error(result.error || 'Failed to create reservation')
       }
       
-      // Redirect to confirmation page
-      const next = returnUrl
-        ? `/${hotelSlug}/reservation/${result.reservationId}?returnUrl=${encodeURIComponent(returnUrl)}`
-        : `/${hotelSlug}/reservation/${result.reservationId}`
-      router.push(next)
+      // For session-based bookings, redirect directly to payment
+      // For request-based bookings, redirect to reservation page
+      if (!isRequest && result.paymentUrl) {
+        // Direct redirect to payment (standard e-commerce flow)
+        window.location.href = result.paymentUrl
+      } else {
+        // Request-based: redirect to reservation page to wait for approval
+        const next = returnUrl
+          ? `/${hotelSlug}/reservation/${result.reservationId}?returnUrl=${encodeURIComponent(returnUrl)}`
+          : `/${hotelSlug}/reservation/${result.reservationId}`
+        router.push(next)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
     } finally {
@@ -220,12 +227,24 @@ export function CheckoutForm({
             isSubmitting && 'opacity-50 cursor-not-allowed'
           )}
         >
-          {isSubmitting ? 'Sending...' : 'Send Request'}
+          {isSubmitting 
+            ? (isRequest ? 'Sending...' : 'Processing...') 
+            : (isRequest ? 'Send Request' : 'Book Now')
+          }
         </button>
         
         <p className="text-xs text-center text-muted-foreground">
-          By submitting, you agree to our terms of service and privacy policy.
-          You won't be charged until the provider accepts and you complete payment.
+          {isRequest ? (
+            <>
+              By submitting, you agree to our terms of service and privacy policy.
+              You won't be charged until the provider accepts and you complete payment.
+            </>
+          ) : (
+            <>
+              By booking, you agree to our terms of service and privacy policy.
+              You'll be redirected to complete payment securely.
+            </>
+          )}
         </p>
       </form>
       
@@ -241,6 +260,7 @@ export function CheckoutForm({
             currency={currency}
             guestName={`${submittedData.firstName} ${submittedData.lastName}`}
             hotelSlug={hotelSlug}
+            isRequest={isRequest}
             onClose={() => setShowDemoSuccess(false)}
           />
         )}
