@@ -17,6 +17,7 @@ import {
 import { SortableImage } from './SortableImage';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { optimizeCoverImage, optimizeGalleryImage } from '@/lib/image-optimization';
 
 export interface MediaItem {
   id: string;
@@ -93,65 +94,74 @@ export function ImageUploader({
       return;
     }
 
-    // Validate file sizes (max 5MB each)
-    const maxSize = 5 * 1024 * 1024;
-    const oversizedFiles = filesToUpload.filter(f => f.size > maxSize);
-    if (oversizedFiles.length > 0) {
-      toast({
-        title: 'File too large',
-        description: 'Each image must be under 5MB.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
+    // Note: File size validation removed - optimization will handle large files
     setUploading(true);
 
     try {
       const newImages: MediaItem[] = [];
       const tempExpId = experienceId || 'temp-' + Date.now();
 
-      for (const file of filesToUpload) {
-        const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg';
-        const fileName = `${crypto.randomUUID()}.${fileExt}`;
-        const storagePath = `partners/${partnerId}/experiences/${tempExpId}/${fileName}`;
+      for (let i = 0; i < filesToUpload.length; i++) {
+        const file = filesToUpload[i];
+        
+        try {
+          // Determine if this is a cover image (first image overall)
+          const isCoverImage = images.length === 0 && i === 0;
+          
+          // Optimize image before upload
+          const optimizedFile = isCoverImage
+            ? await optimizeCoverImage(file)
+            : await optimizeGalleryImage(file);
+          
+          // Generate filename with .webp extension
+          const fileName = `${crypto.randomUUID()}.webp`;
+          const storagePath = `partners/${partnerId}/experiences/${tempExpId}/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('traverum-assets')
-          .upload(storagePath, file, {
-            cacheControl: '3600',
-            upsert: false,
-          });
+          const { error: uploadError } = await supabase.storage
+            .from('traverum-assets')
+            .upload(storagePath, optimizedFile, {
+              cacheControl: '3600',
+              upsert: false,
+              contentType: 'image/webp',
+            });
 
-        if (uploadError) {
-          console.error('Upload error:', uploadError);
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            toast({
+              title: 'Upload failed',
+              description: uploadError.message,
+              variant: 'destructive',
+            });
+            continue;
+          }
+
+          const { data: urlData } = supabase.storage
+            .from('traverum-assets')
+            .getPublicUrl(storagePath);
+
+          const newImage: MediaItem = {
+            id: crypto.randomUUID(),
+            url: urlData.publicUrl,
+            storage_path: storagePath,
+            sort_order: images.length + newImages.length,
+          };
+
+          newImages.push(newImage);
+        } catch (error: any) {
+          console.error('Error processing image:', error);
           toast({
-            title: 'Upload failed',
-            description: uploadError.message,
+            title: 'Image processing failed',
+            description: error.message || 'Failed to process image.',
             variant: 'destructive',
           });
-          continue;
         }
-
-        const { data: urlData } = supabase.storage
-          .from('traverum-assets')
-          .getPublicUrl(storagePath);
-
-        const newImage: MediaItem = {
-          id: crypto.randomUUID(),
-          url: urlData.publicUrl,
-          storage_path: storagePath,
-          sort_order: images.length + newImages.length,
-        };
-
-        newImages.push(newImage);
       }
 
       if (newImages.length > 0) {
         onImagesChange([...images, ...newImages]);
         toast({
           title: 'Images uploaded',
-          description: `${newImages.length} image${newImages.length > 1 ? 's' : ''} uploaded successfully.`,
+          description: `${newImages.length} image${newImages.length > 1 ? 's' : ''} uploaded and optimized successfully.`,
         });
       }
     } catch (error: any) {
@@ -221,7 +231,7 @@ export function ImageUploader({
           onClick={() => fileInputRef.current?.click()}
         >
           <p className="text-sm text-muted-foreground mb-1">No images yet</p>
-          <p className="text-xs text-muted-foreground">Click to upload JPG, PNG, or WebP (max 5MB each)</p>
+          <p className="text-xs text-muted-foreground">Click to upload JPG, PNG, or WebP (images will be automatically optimized)</p>
         </div>
       ) : (
         <DndContext
