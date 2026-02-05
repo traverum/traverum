@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Traverum Design System
+   Primary: Teal #0F766E (HSL: 173 79% 26%)
+   Font: Poppins
+   Style: Premium minimal with generous whitespace
+*/
+
+@layer base {
+  :root {
+    /* Warm White Backgrounds (All Same) */
+    --background: 40 20% 99%; /* #FEFCF9 - warm white */
+    --background-alt: 40 20% 99%; /* Same warm white */
+    --foreground: 0 0% 22%; /* rgb(55, 53, 47) - warm gray */
+
+    --card: 40 20% 99%; /* Same warm white */
+    --card-foreground: 0 0% 22%;
+
+    --popover: 40 20% 99%; /* Same warm white */
+    --popover-foreground: 0 0% 22%;
+
+    /* Primary Accent (ONLY Vibrant Color) */
+    --primary: 173 79% 26%; /* #0D9488 - Traverum teal */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 15% 95%;
+    --secondary-foreground: 0 0% 22%;
+
+    --muted: 40 10% 96%;
+    --muted-foreground: 0 0% 40%; /* rgba(55, 53, 47, 0.4) */
+
+    --accent: 40 15% 94%;
+    --accent-foreground: 0 0% 22%;
+
+    /* Muted Semantic Colors */
+    --destructive: 20 45% 60%; /* #B8866B - muted terracotta */
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 120 20% 55%; /* #6B8E6B - muted sage green */
+    --success-foreground: 0 0% 100%;
+
+    --warning: 40 45% 55%; /* #C9A961 - muted gold */
+    --warning-foreground: 0 0% 100%;
+
+    --info: 210 35% 60%; /* #7A9CC6 - muted blue-gray */
+    --info-foreground: 0 0% 100%;
+
+    /* Notion-Style Borders */
+    --border: 0 0% 22% / 0.09; /* rgba(55, 53, 47, 0.09) */
+    --input: 0 0% 22% / 0.09;
+    --ring: 173 79% 26%;
+
+    /* Compact Border Radius */
+    --radius: 0.1875rem; /* 3px */
+    --radius-card: 0.25rem; /* 4px */
+    --radius-button: 0.1875rem; /* 3px */
+
+    /* Sidebar (Same Warm White) */
+    --sidebar-background: 40 20% 99%;
+    --sidebar-foreground: 0 0% 22%;
+    --sidebar-primary: 173 79% 26%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 40 15% 92%;
+    --sidebar-accent-foreground: 0 0% 22%;
+    --sidebar-border: 0 0% 22% / 0.09;
+    --sidebar-ring: 173 79% 26%;
+  }
+
+  .dark {
+    /* Warm Dark Gray (Not Cool Black) */
+    --background: 220 10% 18%; /* #2F3437 - warm dark gray */
+    --background-alt: 220 10% 18%;
+    --foreground: 0 0% 90%;
+
+    --card: 220 10% 18%;
+    --card-foreground: 0 0% 90%;
+
+    --popover: 220 10% 18%;
+    --popover-foreground: 0 0% 90%;
+
+    --primary: 173 65% 45%;
+    --primary-foreground: 220 10% 18%;
+
+    --secondary: 220 10% 22%;
+    --secondary-foreground: 0 0% 90%;
+
+    --muted: 220 10% 25%;
+    --muted-foreground: 0 0% 60%;
+
+    --accent: 220 10% 22%;
+    --accent-foreground: 0 0% 90%;
+
+    --destructive: 20 45% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --success: 120 20% 50%;
+    --success-foreground: 0 0% 98%;
+
+    --warning: 40 45% 50%;
+    --warning-foreground: 220 10% 18%;
+
+    --info: 210 35% 55%;
+    --info-foreground: 0 0% 98%;
+
+    --border: 0 0% 100% / 0.09;
+    --input: 0 0% 100% / 0.09;
+    --ring: 173 65% 45%;
+
+    --sidebar-background: 220 10% 18%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 173 65% 45%;
+    --sidebar-primary-foreground: 220 10% 18%;
+    --sidebar-accent: 220 10% 22%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 100% / 0.09;
+    --sidebar-ring: 173 65% 45%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  html {
+    font-family: 'Poppins', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .bg-background-alt {
+    background-color: hsl(var(--background-alt));
+  }
+  
+  /* Text color utilities for warm gray system */
+  .text-secondary {
+    color: rgba(55, 53, 47, 0.65);
+  }
+  
+  .text-muted {
+    color: rgba(55, 53, 47, 0.4);
+  }
+  
+  /* Transition utilities */
+  .transition-ui {
+    transition: all 0.02s ease-in; /* 20ms for UI feedback */
+  }
+  
+  .transition-state {
+    transition: all 0.15s ease; /* 150ms for state changes */
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

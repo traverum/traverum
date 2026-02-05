@@ -1,0 +1,7 @@
+project_id = "vwbxkkzzpacqzqvqxqvf"
+
+[functions.create-connect-account]
+verify_jwt = false
+
+[functions.stripe-webhooks]
+verify_jwt = false

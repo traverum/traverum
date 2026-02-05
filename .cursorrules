@@ -1,0 +1,31 @@
+# Traverum Monorepo
+
+## Project Overview
+Traverum is a white-label booking platform that transforms hotels into "Destination Hubs" by enabling them to sell local experiences.
+
+## Repository Structure
+- apps/widget - Next.js 14 customer-facing booking widget (book.traverum.com)
+- apps/dashboard - Vite+React supplier dashboard (dashboard.traverum.com)  
+- packages/shared - Shared TypeScript types and utilities
+
+## Tech Stack
+- Payments: Stripe Connect
+- Database: Supabase (PostgreSQL)
+
+## Key Conventions
+- All prices in cents, display as EUR (€)
+- UUIDs for primary keys
+- Booking ref format: TRV-XXXXXX
+- European dates: DD/MM/YYYY
+- 24-hour time format
+
+## Design System
+- Primary: Teal #0D9488
+- Font: Poppins
+- Style: Professional SaaS, shadcn/ui components
+
+## When Editing
+- Keep Supabase types in sync across apps via @traverum/shared
+- Widget handles customer booking flow
+- Dashboard handles supplier and hotel management
+- Both share same Supabase projectSS
