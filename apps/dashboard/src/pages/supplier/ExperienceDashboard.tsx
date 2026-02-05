@@ -33,6 +33,8 @@ import { CancellationPolicy, DEFAULT_WEEKDAYS, DEFAULT_START_TIME, DEFAULT_END_T
 import { useDebounce } from '@/hooks/useDebounce';
 import { Check, HelpCircle, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LocationAutocomplete } from '@/components/LocationAutocomplete';
+import { LanguageSelector } from '@/components/LanguageSelector';
 import {
   Tooltip,
   TooltipContent,
@@ -83,7 +85,10 @@ export default function ExperienceDashboard() {
   const [description, setDescription] = useState('');
   const [images, setImages] = useState<MediaItem[]>([]);
   const [durationMinutes, setDurationMinutes] = useState('');
-  const [meetingPoint, setMeetingPoint] = useState('');
+  const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
+  const [locationAddress, setLocationAddress] = useState('');
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
   const [minParticipants, setMinParticipants] = useState('1');
   const [maxParticipants, setMaxParticipants] = useState('');
   
@@ -115,7 +120,39 @@ export default function ExperienceDashboard() {
       setCategory(tags.length > 0 ? tags[0] : null);
       setDescription(experience.description);
       setDurationMinutes(experience.duration_minutes.toString());
-      setMeetingPoint(experience.meeting_point || '');
+      setAvailableLanguages((experience as any).available_languages || []);
+      
+      // Location
+      const expLocationAddress = (experience as any).location_address || '';
+      setLocationAddress(expLocationAddress);
+      // If location exists, extract lat/lng from PostGIS POINT
+      const expLocation = (experience as any).location;
+      if (expLocation) {
+        // Supabase returns PostGIS geography as string "POINT(lng lat)" or as GeoJSON object
+        try {
+          if (typeof expLocation === 'string') {
+            // Parse "POINT(lng lat)" format
+            const match = expLocation.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+            if (match) {
+              setLocationLng(parseFloat(match[1]));
+              setLocationLat(parseFloat(match[2]));
+            }
+          } else if (expLocation && typeof expLocation === 'object') {
+            // Supabase might return as GeoJSON: { type: 'Point', coordinates: [lng, lat] }
+            if ('coordinates' in expLocation && Array.isArray(expLocation.coordinates) && expLocation.coordinates.length >= 2) {
+              setLocationLng(expLocation.coordinates[0]);
+              setLocationLat(expLocation.coordinates[1]);
+            } else if ('x' in expLocation && 'y' in expLocation) {
+              // Alternative format: { x: lng, y: lat }
+              setLocationLng(expLocation.x);
+              setLocationLat(expLocation.y);
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing location:', e);
+        }
+      }
+      
       setMinParticipants(((experience as any).min_participants || 1).toString());
       setMaxParticipants(experience.max_participants.toString());
       
@@ -173,7 +210,9 @@ export default function ExperienceDashboard() {
   const debouncedTitle = useDebounce(title, 2000);
   const debouncedCategory = useDebounce(category, 2000);
   const debouncedDescription = useDebounce(description, 2000);
-  const debouncedMeetingPoint = useDebounce(meetingPoint, 2000);
+  const debouncedLocationAddress = useDebounce(locationAddress, 2000);
+  const debouncedLocationLat = useDebounce(locationLat, 2000);
+  const debouncedLocationLng = useDebounce(locationLng, 2000);
   const debouncedDuration = useDebounce(durationMinutes, 2000);
   const debouncedMinParticipants = useDebounce(minParticipants, 2000);
   const debouncedMaxParticipants = useDebounce(maxParticipants, 2000);
@@ -186,6 +225,7 @@ export default function ExperienceDashboard() {
   const debouncedCancellationPolicy = useDebounce(cancellationPolicy, 2000);
   const debouncedForceMajeure = useDebounce(forceMajeureRefund, 2000);
   const debouncedAllowsRequests = useDebounce(allowsRequests, 2000);
+  const debouncedAvailableLanguages = useDebounce(availableLanguages, 2000);
 
   // Auto-save on debounced changes (only for form fields, not availability/images)
   useEffect(() => {
@@ -211,13 +251,21 @@ export default function ExperienceDashboard() {
         }
         const legacyPriceCents = debouncedPricingType === 'per_person' || debouncedPricingType === 'per_day' ? extraP : baseP;
 
+        // Prepare location data if available
+        let locationData: any = {};
+        if (debouncedLocationAddress.trim() && debouncedLocationLat !== null && debouncedLocationLng !== null) {
+          locationData.location_address = debouncedLocationAddress.trim();
+          // Format as PostGIS POINT: POINT(longitude latitude) - note: lng comes first in PostGIS
+          locationData.location = `POINT(${debouncedLocationLng} ${debouncedLocationLat})`;
+        }
+
         const experienceData: any = {
           title: debouncedTitle.trim() || 'New Experience',
           slug: slugify(debouncedTitle || 'new-experience'),
           description: debouncedDescription.trim(),
           tags: debouncedCategory ? [debouncedCategory] : [], // Store category as single-element array
-          meeting_point: debouncedMeetingPoint.trim() || null,
           duration_minutes: durationValue,
+          ...locationData,
           max_participants: maxP,
           min_participants: minP,
           price_cents: legacyPriceCents,
@@ -228,6 +276,7 @@ export default function ExperienceDashboard() {
           cancellation_policy: debouncedCancellationPolicy,
           force_majeure_refund: debouncedForceMajeure,
           allows_requests: debouncedAllowsRequests,
+          available_languages: debouncedAvailableLanguages,
         };
 
         // Add rental pricing fields only for per_day type
@@ -275,11 +324,11 @@ export default function ExperienceDashboard() {
     autoSave();
   }, [
     experienceId,
-    debouncedTitle, debouncedCategory, debouncedDescription, debouncedMeetingPoint, debouncedDuration,
+    debouncedTitle, debouncedCategory, debouncedDescription, debouncedLocationAddress, debouncedLocationLat, debouncedLocationLng, debouncedDuration,
     debouncedMinParticipants, debouncedMaxParticipants, debouncedPricingType,
     debouncedBasePrice, debouncedIncludedParticipants, debouncedExtraPersonPrice,
     debouncedMinDays, debouncedMaxDays,
-    debouncedCancellationPolicy, debouncedForceMajeure, debouncedAllowsRequests,
+    debouncedCancellationPolicy, debouncedForceMajeure, debouncedAllowsRequests, debouncedAvailableLanguages,
     refetchExperiences,
   ]);
 
@@ -470,6 +519,20 @@ export default function ExperienceDashboard() {
   const isAvailabilityComplete = weekdays.length > 0;
   const isPoliciesComplete = true;
 
+  // Handle location selection from autocomplete (with coordinates)
+  const handleLocationChange = (address: string, lat: number, lng: number) => {
+    setLocationAddress(address);
+    setLocationLat(lat);
+    setLocationLng(lng);
+  };
+
+  // Handle address change when user types (without coordinates yet)
+  const handleAddressChange = (address: string) => {
+    setLocationAddress(address);
+    // Clear coordinates when user manually types
+    setLocationLat(null);
+    setLocationLng(null);
+  };
 
   const currentStatus = (experience as any)?.experience_status || 'draft';
 
@@ -600,15 +663,20 @@ export default function ExperienceDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="meetingPoint" className="text-sm">Meeting Point</Label>
-                  <Input
-                    id="meetingPoint"
-                    placeholder="e.g., Main hotel lobby"
-                    value={meetingPoint}
-                    onChange={(e) => setMeetingPoint(e.target.value)}
-                    className="h-8"
+                  <LanguageSelector
+                    selectedLanguages={availableLanguages}
+                    onLanguagesChange={setAvailableLanguages}
                   />
                 </div>
+
+                <LocationAutocomplete
+                  value={locationAddress}
+                  onChange={handleLocationChange}
+                  onAddressChange={handleAddressChange}
+                  placeholder="e.g., 123 Main Street, Barcelona, Spain"
+                  label="Experience Location"
+                  required
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   {pricingType !== 'per_day' && (

@@ -13,13 +13,9 @@ graph TB
     
     Supplier[Supplier Sets Experience Location] --> Geocode2[Geocode Address/Map Pick]
     Geocode2 --> ExpDB[(Experience Location in DB)]
-    
-    Session[Session Override Optional] --> Geocode3[Geocode if Different]
-    Geocode3 --> SessionDB[(Session Location in DB)]
-    
+        
     HotelDB --> Filter[Radius Filter Query]
     ExpDB --> Filter
-    SessionDB --> Filter
     Filter --> Results[Experiences Within Radius]
 ```
 
@@ -47,15 +43,6 @@ graph TB
   - `location` (geography(POINT, 4326)) - PostGIS geography point (mandatory)
 - Add GIST index on `location`
 - Add constraint: `location IS NOT NULL` (enforced after migration)
-
-### 4. Add Location Fields to Experience Sessions Table
-
-- **File**: `apps/dashboard/supabase/migrations/[timestamp]_add_session_location.sql`
-- Add columns:
-  - `location_address` (text, nullable) - Override address if different
-  - `location` (geography(POINT, 4326), nullable) - Override location if different
-- Add GIST index on `location`
-- Logic: If session has location, use it; otherwise use experience location
 
 ## Geocoding Service Integration
 
@@ -116,18 +103,10 @@ graph TB
 - **File**: `apps/dashboard/src/pages/supplier/ExperienceForm.tsx`
 - Add location section:
   - Address input with autocomplete
-  - "Pick on Map" button (opens map picker modal)
-  - Map picker component (optional, can be future enhancement)
   - Display selected coordinates
   - Make location mandatory (validation)
   - Geocode address on save
   - Show error if geocoding fails
-
-### 2. Location Picker Component (Future Enhancement)
-
-- **File**: `apps/dashboard/src/components/LocationPicker.tsx` (new, optional for MVP)
-- Interactive map for selecting location
-- Reverse geocode selected point to show address
 
 ### 3. Update Experience Types
 
@@ -210,35 +189,11 @@ graph TB
 5. Test session location override logic
 6. Test migration of existing data
 
-## Future Enhancements (Out of Scope)
-
-- Interactive map view of experiences
-- Multiple locations per experience (create separate experiences instead)
-- Location-based sorting and filtering UI
-- Distance-based pricing adjustments
-- Location analytics (where bookings come from)
-
 ## Implementation Order
 
 1. Database schema changes (PostGIS, columns, indexes)
 2. Geocoding service integration
-3. Hotel location settings page
-4. Update experience selection with radius filtering
 5. Supplier experience form location field
 6. Migration of existing data
 7. Documentation updates
 8. Testing and validation
-
-## Implementation Tasks
-
-- [ ] Create migration to enable PostGIS extension in Supabase
-- [ ] Add location fields (address, location geography, radius_km) to partners table with GIST index
-- [ ] Add location fields (location_address, location geography) to experiences table with GIST index and NOT NULL constraint
-- [ ] Add optional location override fields to experience_sessions table with GIST index
-- [ ] Create geocoding utility library with Mapbox/Google Maps integration for address to coordinates conversion
-- [ ] Create hotel location settings page with address input, geocoding, and radius selector
-- [ ] Update experience selection query to filter by radius using PostGIS ST_DWithin and show distances
-- [ ] Add mandatory location field to experience form with address input and geocoding
-- [ ] Create migration to geocode existing meeting_point addresses and set default hotel locations
-- [ ] Update TypeScript types to include new location fields in experiences, partners, and sessions
-- [ ] Update hotel and supplier dashboard documentation to include location system information

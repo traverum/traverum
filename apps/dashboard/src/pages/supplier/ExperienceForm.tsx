@@ -18,6 +18,8 @@ import { FormSection } from '@/components/experience/FormSection';
 import { AvailabilityEditor, defaultAvailability } from '@/components/experience/AvailabilityEditor';
 import { CancellationPolicySelector, defaultCancellationPolicy } from '@/components/experience/CancellationPolicySelector';
 import { CancellationPolicy, DEFAULT_WEEKDAYS, DEFAULT_START_TIME, DEFAULT_END_TIME } from '@/lib/availability';
+import { LocationAutocomplete } from '@/components/LocationAutocomplete';
+import { LanguageSelector } from '@/components/LanguageSelector';
 
 function slugify(text: string): string {
   return text
@@ -56,6 +58,7 @@ export default function ExperienceForm() {
   // Section open states - all collapsed by default for compact view
   const [openSections, setOpenSections] = useState({
     basicInfo: false,
+    location: false,
     pricing: false,
     availability: false,
     policies: false,
@@ -68,6 +71,12 @@ export default function ExperienceForm() {
   const [images, setImages] = useState<MediaItem[]>([]);
   const [durationMinutes, setDurationMinutes] = useState('');
   const [meetingPoint, setMeetingPoint] = useState('');
+  const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
+  
+  // Location state
+  const [locationAddress, setLocationAddress] = useState('');
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
   
   // Pricing state
   const [pricingType, setPricingType] = useState<PricingType>('per_person');
@@ -102,6 +111,38 @@ export default function ExperienceForm() {
         setDescription(experience.description);
         setDurationMinutes(experience.duration_minutes.toString());
         setMeetingPoint(experience.meeting_point || '');
+        setAvailableLanguages((experience as any).available_languages || []);
+        
+        // Location
+        const expLocationAddress = (experience as any).location_address || '';
+        setLocationAddress(expLocationAddress);
+        // If location exists, extract lat/lng from PostGIS POINT
+        const expLocation = (experience as any).location;
+        if (expLocation) {
+          // Supabase returns PostGIS geography as string "POINT(lng lat)" or as GeoJSON object
+          try {
+            if (typeof expLocation === 'string') {
+              // Parse "POINT(lng lat)" format
+              const match = expLocation.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+              if (match) {
+                setLocationLng(parseFloat(match[1]));
+                setLocationLat(parseFloat(match[2]));
+              }
+            } else if (expLocation && typeof expLocation === 'object') {
+              // Supabase might return as GeoJSON: { type: 'Point', coordinates: [lng, lat] }
+              if ('coordinates' in expLocation && Array.isArray(expLocation.coordinates) && expLocation.coordinates.length >= 2) {
+                setLocationLng(expLocation.coordinates[0]);
+                setLocationLat(expLocation.coordinates[1]);
+              } else if ('x' in expLocation && 'y' in expLocation) {
+                // Alternative format: { x: lng, y: lat }
+                setLocationLng(expLocation.x);
+                setLocationLat(expLocation.y);
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing location:', e);
+          }
+        }
         
         // Pricing
         const expPricingType = (experience as any).pricing_type || 'per_person';
@@ -158,6 +199,7 @@ export default function ExperienceForm() {
 
   // Section completion checks
   const isBasicInfoComplete = title.length >= 3 && description.length >= 50 && durationMinutes && category !== null;
+  const isLocationComplete = locationAddress.trim().length > 0 && locationLat !== null && locationLng !== null;
   const isPricingComplete = useMemo(() => {
     const maxP = parseInt(maxParticipants) || 0;
     const baseP = Math.round((parseFloat(basePriceCents) || 0) * 100);
@@ -196,6 +238,21 @@ export default function ExperienceForm() {
     if (!pricingConfig) return [];
     return getPriceExamples(pricingConfig);
   }, [pricingConfig]);
+
+  // Handle location selection from autocomplete (with coordinates)
+  const handleLocationChange = (address: string, lat: number, lng: number) => {
+    setLocationAddress(address);
+    setLocationLat(lat);
+    setLocationLng(lng);
+  };
+
+  // Handle address change when user types (without coordinates yet)
+  const handleAddressChange = (address: string) => {
+    setLocationAddress(address);
+    // Clear coordinates when user manually types
+    setLocationLat(null);
+    setLocationLng(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,11 +326,40 @@ export default function ExperienceForm() {
       return;
     }
 
+    // Validate location (mandatory for new experiences)
+    if (!isEditing && (!locationAddress.trim() || locationLat === null || locationLng === null)) {
+      toast({ 
+        title: 'Validation error', 
+        description: 'Please set a location for your experience. Hotels need to know where experiences are located.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    // If editing and location is set, validate it
+    if (isEditing && locationAddress.trim() && (locationLat === null || locationLng === null)) {
+      toast({ 
+        title: 'Validation error', 
+        description: 'Please geocode the location address to save coordinates.', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       const coverImageUrl = images.length > 0 ? images[0].url : null;
       const legacyPriceCents = pricingType === 'per_person' ? extraP : baseP;
+
+      // Prepare location data if available
+      // Supabase expects PostGIS geography as a string in WKT format: 'POINT(lng lat)'
+      let locationData: any = {};
+      if (locationAddress.trim() && locationLat !== null && locationLng !== null) {
+        locationData.location_address = locationAddress.trim();
+        // Format as PostGIS POINT: POINT(longitude latitude) - note: lng comes first in PostGIS
+        locationData.location = `POINT(${locationLng} ${locationLat})`;
+      }
 
       const experienceData = {
         partner_id: partner.id,
@@ -296,6 +382,8 @@ export default function ExperienceForm() {
         min_participants: pricingType === 'flat_rate' ? 1 : minP,
         cancellation_policy: cancellationPolicy,
         force_majeure_refund: forceMajeureRefund,
+        available_languages: availableLanguages,
+        ...locationData,
       };
 
       let experienceId = id;
@@ -522,14 +610,53 @@ export default function ExperienceForm() {
                   disabled={loading}
                 />
               </div>
+
+              {/* Available Languages */}
+              <div className="space-y-2">
+                <LanguageSelector
+                  selectedLanguages={availableLanguages}
+                  onLanguagesChange={setAvailableLanguages}
+                  disabled={loading}
+                />
+              </div>
             </div>
           </FormSection>
 
-          {/* Section 2: Pricing */}
+          {/* Section 2: Location */}
+          <FormSection
+            title="Location"
+            description="Set the location where this experience takes place. Hotels will use this to find experiences near them."
+            stepNumber={2}
+            isComplete={isLocationComplete}
+            isOpen={openSections.location}
+            onOpenChange={(open) => setOpenSections(s => ({ ...s, location: open }))}
+          >
+            <div className="space-y-6">
+              <LocationAutocomplete
+                value={locationAddress}
+                onChange={handleLocationChange}
+                onAddressChange={handleAddressChange}
+                placeholder="e.g., 123 Main Street, Barcelona, Spain"
+                label="Experience Location Address"
+                required
+                disabled={loading}
+              />
+
+              {!isLocationComplete && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <p className="text-sm text-amber-900 dark:text-amber-100">
+                    <strong>Location is required.</strong> Hotels need to know where your experience is located to show it to their guests.
+                  </p>
+                </div>
+              )}
+            </div>
+          </FormSection>
+
+          {/* Section 3: Pricing */}
           <FormSection
             title="Pricing"
             description="Choose how you want to charge for this experience"
-            stepNumber={2}
+            stepNumber={3}
             isComplete={isPricingComplete}
             isOpen={openSections.pricing}
             onOpenChange={(open) => setOpenSections(s => ({ ...s, pricing: open }))}
@@ -648,11 +775,11 @@ export default function ExperienceForm() {
             </div>
           </FormSection>
 
-          {/* Section 3: Availability */}
+          {/* Section 4: Availability */}
           <FormSection
             title="Availability"
             description="When can guests book this experience?"
-            stepNumber={3}
+            stepNumber={4}
             isComplete={isAvailabilityComplete}
             isOpen={openSections.availability}
             onOpenChange={(open) => setOpenSections(s => ({ ...s, availability: open }))}
@@ -672,11 +799,11 @@ export default function ExperienceForm() {
             />
           </FormSection>
 
-          {/* Section 4: Policies */}
+          {/* Section 5: Policies */}
           <FormSection
             title="Policies"
             description="Set cancellation rules and booking preferences"
-            stepNumber={4}
+            stepNumber={5}
             isComplete={isPoliciesComplete}
             isOpen={openSections.policies}
             onOpenChange={(open) => setOpenSections(s => ({ ...s, policies: open }))}
