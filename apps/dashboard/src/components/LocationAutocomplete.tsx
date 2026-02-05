@@ -163,10 +163,12 @@ export function LocationAutocomplete({
     window.addEventListener('error', (event) => {
       if (event.message && event.message.includes('RefererNotAllowedMapError')) {
         const currentUrl = window.location.origin + window.location.pathname;
+        const isProduction = window.location.protocol === 'https:';
         console.error('❌ LocationAutocomplete: RefererNotAllowedMapError');
         console.error('Current URL that needs to be authorized:', currentUrl);
         console.error('Add this pattern to Google Cloud Console:', window.location.origin + '/*');
-        const error = `HTTP referrer restriction error. Add "${window.location.origin}/*" to your API key's allowed referrers in Google Cloud Console.`;
+        console.error('Environment:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+        const error = `HTTP referrer restriction error.\n\nCurrent URL: ${currentUrl}\n\nAdd "${window.location.origin}/*" to your API key's allowed referrers in Google Cloud Console:\n1. Go to: https://console.cloud.google.com/apis/credentials\n2. Click your API key\n3. Add: ${window.location.origin}/*\n4. Save and wait 2-3 minutes`;
         setErrorMessage(error);
         setStatus('error');
         onError?.(error);
