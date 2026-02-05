@@ -353,11 +353,11 @@ export default function ExperienceForm() {
       const legacyPriceCents = pricingType === 'per_person' ? extraP : baseP;
 
       // Prepare location data if available
-      // Supabase expects PostGIS geography as a string in WKT format: 'POINT(lng lat)'
+      // Supabase expects PostGIS geography as WKT format: POINT(lng lat) - note: lng comes first in PostGIS
       let locationData: any = {};
       if (locationAddress.trim() && locationLat !== null && locationLng !== null) {
         locationData.location_address = locationAddress.trim();
-        // Format as PostGIS POINT: POINT(longitude latitude) - note: lng comes first in PostGIS
+        // Format as WKT for PostGIS geography: POINT(lng lat)
         locationData.location = `POINT(${locationLng} ${locationLat})`;
       }
 
@@ -368,7 +368,8 @@ export default function ExperienceForm() {
         description: description.trim(),
         tags: category ? [category] : [], // Store category as single-element array for backwards compatibility
         image_url: coverImageUrl,
-        price_cents: legacyPriceCents,
+        // Database constraint requires price_cents > 0, so only set if greater than 0
+        price_cents: legacyPriceCents > 0 ? legacyPriceCents : 1, // Use 1 as minimum to satisfy constraint
         currency: 'EUR',
         duration_minutes: durationValue,
         max_participants: participantsValue,
@@ -636,7 +637,6 @@ export default function ExperienceForm() {
                 value={locationAddress}
                 onChange={handleLocationChange}
                 onAddressChange={handleAddressChange}
-                placeholder="e.g., 123 Main Street, Barcelona, Spain"
                 label="Experience Location Address"
                 required
                 disabled={loading}

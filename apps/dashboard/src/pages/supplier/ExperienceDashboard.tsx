@@ -255,12 +255,8 @@ export default function ExperienceDashboard() {
         let locationData: any = {};
         if (debouncedLocationAddress.trim() && debouncedLocationLat !== null && debouncedLocationLng !== null) {
           locationData.location_address = debouncedLocationAddress.trim();
-          // Format as GeoJSON for PostGIS geography: { type: 'Point', coordinates: [lng, lat] }
-          // Note: lng comes first in GeoJSON coordinates array
-          locationData.location = {
-            type: 'Point',
-            coordinates: [debouncedLocationLng, debouncedLocationLat],
-          };
+          // Format as WKT for PostGIS geography: POINT(lng lat) - note: lng comes first in PostGIS
+          locationData.location = `POINT(${debouncedLocationLng} ${debouncedLocationLat})`;
         }
 
         const experienceData: any = {
@@ -272,7 +268,8 @@ export default function ExperienceDashboard() {
           ...locationData,
           max_participants: maxP,
           min_participants: minP,
-          price_cents: legacyPriceCents,
+          // Only update price_cents if it's greater than 0 (database constraint requires price_cents > 0)
+          ...(legacyPriceCents > 0 ? { price_cents: legacyPriceCents } : {}),
           pricing_type: debouncedPricingType,
           base_price_cents: debouncedPricingType === 'flat_rate' || debouncedPricingType === 'base_plus_extra' ? baseP : 0,
           included_participants: debouncedPricingType === 'base_plus_extra' ? inclP : (debouncedPricingType === 'flat_rate' ? maxP : 0),
@@ -677,7 +674,6 @@ export default function ExperienceDashboard() {
                   value={locationAddress}
                   onChange={handleLocationChange}
                   onAddressChange={handleAddressChange}
-                  placeholder="e.g., 123 Main Street, Barcelona, Spain"
                   label="Experience Location"
                   required
                 />

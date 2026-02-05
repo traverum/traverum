@@ -10,6 +10,7 @@ interface Guest {
   participants: number;
   total_cents: number;
   reservation_status: string;
+  preferred_language: string | null;
   created_at: string;
   booking: {
     id: string;
@@ -106,6 +107,7 @@ export function useSessionDetail(sessionId: string) {
         participants: r.participants,
         total_cents: r.total_cents,
         reservation_status: r.reservation_status,
+        preferred_language: (r as any).preferred_language || null,
         created_at: r.created_at,
         booking: bookingsMap.get(r.id) || null,
       })) as Guest[];

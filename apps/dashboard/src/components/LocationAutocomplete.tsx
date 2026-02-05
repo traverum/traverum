@@ -30,7 +30,7 @@ export function LocationAutocomplete({
   onChange,
   onAddressChange,
   onError,
-  placeholder = 'e.g., 123 Main Street, Barcelona, Spain',
+  placeholder = 'Enter address',
   label,
   required = false,
   disabled = false,
@@ -283,15 +283,6 @@ export function LocationAutocomplete({
         )}
       </div>
       
-      {status === 'success' && coordinates && (
-        <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded text-xs">
-          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
-          <span className="text-green-900 dark:text-green-100">
-            Location found: {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
-          </span>
-        </div>
-      )}
-
       {status === 'error' && errorMessage && (
         <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs">
           <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
@@ -299,11 +290,6 @@ export function LocationAutocomplete({
         </div>
       )}
 
-      {!value && (
-        <p className="text-xs text-muted-foreground">
-          Start typing an address and select from the suggestions.
-        </p>
-      )}
     </div>
   );
 }

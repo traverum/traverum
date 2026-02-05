@@ -63,10 +63,10 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, disable
     if (selectedLanguages.length === 0) {
       return 'Select languages...';
     }
-    if (selectedLanguages.length <= 3) {
-      return selectedLanguages.map(code => getLanguageFlag(code)).join(' ');
+    if (selectedLanguages.length === 1) {
+      return getLanguageName(selectedLanguages[0]);
     }
-    return `${selectedLanguages.slice(0, 3).map(code => getLanguageFlag(code)).join(' ')} +${selectedLanguages.length - 3}`;
+    return `${selectedLanguages.length} languages selected`;
   };
 
   return (
@@ -78,7 +78,7 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, disable
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-8"
+            className="w-full justify-between h-8 border-0 bg-[rgba(242,241,238,0.6)] px-[10px] py-1 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:shadow-[inset_0_0_0_1px_rgba(35,131,226,0.57)] disabled:cursor-not-allowed disabled:opacity-50"
             disabled={disabled}
           >
             <span className="flex items-center gap-1.5">
@@ -114,7 +114,6 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, disable
                     htmlFor={`lang-${language.code}`}
                     className="flex items-center gap-2 flex-1 cursor-pointer text-sm"
                   >
-                    <span className="text-lg">{language.flag}</span>
                     <span>{language.name}</span>
                   </label>
                 </div>
@@ -130,9 +129,6 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, disable
           )}
         </PopoverContent>
       </Popover>
-      <p className="text-xs text-muted-foreground">
-        Select the languages you can offer this experience in. Guests will see these options when booking.
-      </p>
     </div>
   );
 }

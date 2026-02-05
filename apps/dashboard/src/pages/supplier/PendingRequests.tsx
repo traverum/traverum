@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
+import { getLanguageName, getLanguageFlag } from '@/components/LanguageSelector';
 
 export default function PendingRequests() {
   const { requests, isLoading } = usePendingRequests();
@@ -57,6 +58,9 @@ export default function PendingRequests() {
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mb-3">
                           <span>{request.participants} {request.participants === 1 ? 'person' : 'people'}</span>
                           <span>€{(request.total_cents / 100).toFixed(0)}</span>
+                          {(request as any).preferred_language && (
+                            <span>{getLanguageFlag((request as any).preferred_language)} {getLanguageName((request as any).preferred_language)}</span>
+                          )}
                           {request.is_request && request.requested_date && (
                             <span>
                               Requested: {format(parseISO(request.requested_date), 'dd/MM/yyyy')}
