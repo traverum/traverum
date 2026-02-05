@@ -1,8 +1,6 @@
 {
   "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter @traverum/widget build",
-  "framework": "nextjs",
-  "rootDirectory": "apps/widget",
   "crons": [
     {
       "path": "/api/cron/expire-reservations",
