@@ -202,7 +202,8 @@ export function LocationAutocomplete({
     try {
       console.log('✅ LocationAutocomplete: Initializing autocomplete...');
       const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-        types: ['address', 'establishment'],
+        // Remove types restriction to allow all place types (addresses, establishments, etc.)
+        // The 'address' type cannot be mixed with other types, so we remove the restriction
         fields: ['formatted_address', 'geometry', 'place_id'],
       });
 

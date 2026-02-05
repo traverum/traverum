@@ -255,8 +255,12 @@ export default function ExperienceDashboard() {
         let locationData: any = {};
         if (debouncedLocationAddress.trim() && debouncedLocationLat !== null && debouncedLocationLng !== null) {
           locationData.location_address = debouncedLocationAddress.trim();
-          // Format as PostGIS POINT: POINT(longitude latitude) - note: lng comes first in PostGIS
-          locationData.location = `POINT(${debouncedLocationLng} ${debouncedLocationLat})`;
+          // Format as GeoJSON for PostGIS geography: { type: 'Point', coordinates: [lng, lat] }
+          // Note: lng comes first in GeoJSON coordinates array
+          locationData.location = {
+            type: 'Point',
+            coordinates: [debouncedLocationLng, debouncedLocationLat],
+          };
         }
 
         const experienceData: any = {
