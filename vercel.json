@@ -1,5 +1,5 @@
 {
   "installCommand": "pnpm install",
-  "buildCommand": "cd apps/dashboard && pnpm build",
-  "outputDirectory": "dist"
+  "buildCommand": "pnpm --filter @traverum/dashboard build",
+  "outputDirectory": "apps/dashboard/dist"
 }
