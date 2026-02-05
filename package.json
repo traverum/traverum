@@ -2,17 +2,18 @@
   "name": "traverum",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@8.15.0",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
     "dev": "turbo run dev",
-    "dev:widget": "npm run dev --workspace=@traverum/widget",
-    "dev:dashboard": "npm run dev --workspace=@traverum/dashboard",
+    "dev:widget": "pnpm --filter @traverum/widget dev",
+    "dev:dashboard": "pnpm --filter @traverum/dashboard dev",
     "build": "turbo run build",
-    "build:widget": "npm run build --workspace=@traverum/widget",
-    "build:dashboard": "npm run build --workspace=@traverum/dashboard",
+    "build:widget": "pnpm --filter @traverum/widget build",
+    "build:dashboard": "pnpm --filter @traverum/dashboard build",
     "lint": "turbo run lint"
   },
   "devDependencies": {
