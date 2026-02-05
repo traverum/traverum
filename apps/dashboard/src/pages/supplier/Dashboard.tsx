@@ -78,6 +78,19 @@ export default function SupplierDashboard() {
     return time.slice(0, 5); // "10:00:00" -> "10:00"
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active':
+        return 'bg-success';
+      case 'draft':
+        return 'bg-warning';
+      case 'archive':
+        return 'bg-muted-foreground';
+      default:
+        return 'bg-muted-foreground';
+    }
+  };
+
   // Only show loading if query is actually enabled and loading
   const isSessionsLoading = sessionsLoading && !!activePartnerId && experiences.length > 0 && !supplierLoading;
 
@@ -205,6 +218,97 @@ export default function SupplierDashboard() {
                     </CardContent>
                   </Card>
                 ))}
+              </div>
+              {/* Fade overlay on right */}
+              <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+            </div>
+          )}
+        </div>
+
+        {/* Experiences Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-sm font-medium text-foreground">Experiences</h2>
+            <button
+              onClick={() => navigate('/supplier/experiences')}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              See all
+            </button>
+          </div>
+          {supplierLoading ? (
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-40 w-[240px] bg-muted animate-pulse rounded-sm flex-shrink-0" />
+              ))}
+            </div>
+          ) : experiences.length === 0 ? (
+            <Card className="border border-border">
+              <CardContent className="p-6 text-center">
+                <p className="text-sm text-secondary">No experiences yet</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="relative">
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+                {experiences.slice(0, 6).map((experience) => {
+                  const status = experience.experience_status || 'draft';
+                  const coverImage = (experience as any).cover_url || experience.image_url;
+                  
+                  return (
+                    <Card
+                      key={experience.id}
+                      className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[240px]"
+                      onClick={() => navigate(`/supplier/experiences/${experience.id}`)}
+                    >
+                      <CardContent className="p-0">
+                        {/* Cover Image */}
+                        <div className="relative aspect-[4/3] overflow-hidden">
+                          {coverImage ? (
+                            <img
+                              src={coverImage}
+                              alt={experience.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-muted flex items-center justify-center">
+                              <span className="text-2xl">✨</span>
+                            </div>
+                          )}
+                          {/* Status Badge */}
+                          <Badge
+                            className={cn(
+                              'absolute top-2 right-2 text-xs font-medium',
+                              getStatusColor(status)
+                            )}
+                          >
+                            {status.charAt(0).toUpperCase() + status.slice(1)}
+                          </Badge>
+                        </div>
+                        
+                        {/* Title */}
+                        <div className="p-3">
+                          <h3 className="text-sm font-medium text-foreground line-clamp-2">
+                            {experience.title}
+                          </h3>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+                {experiences.length > 6 && (
+                  <Card
+                    className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[120px] flex items-center justify-center"
+                    onClick={() => navigate('/supplier/experiences')}
+                  >
+                    <CardContent className="p-4 text-center">
+                      <ChevronRight className="h-5 w-5 text-muted-foreground mx-auto mb-1" />
+                      <p className="text-xs text-secondary">
+                        {experiences.length - 6} more
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
               {/* Fade overlay on right */}
               <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
