@@ -579,13 +579,63 @@ export default function ExperienceDashboard() {
 
       <main className="container max-w-6xl mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="w-full h-9">
-            <TabsTrigger value="basic" className="text-sm">Basic</TabsTrigger>
-            <TabsTrigger value="pricing" className="text-sm">Pricing</TabsTrigger>
-            <TabsTrigger value="availability" className="text-sm">Availability</TabsTrigger>
-            <TabsTrigger value="policies" className="text-sm">Policies</TabsTrigger>
-            <TabsTrigger value="settings" className="text-sm">Settings</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center gap-3">
+            <TabsList className="flex-1 h-9">
+              <TabsTrigger value="basic" className="text-sm">Basic</TabsTrigger>
+              <TabsTrigger value="pricing" className="text-sm">Pricing</TabsTrigger>
+              <TabsTrigger value="availability" className="text-sm">Availability</TabsTrigger>
+              <TabsTrigger value="policies" className="text-sm">Policies</TabsTrigger>
+              <TabsTrigger value="settings" className="text-sm">Settings</TabsTrigger>
+            </TabsList>
+            {/* Status Selector */}
+            <div className="flex items-center gap-2">
+              <Select
+                value={currentStatus}
+                onValueChange={handleStatusChange}
+                disabled={statusUpdating}
+              >
+                <SelectTrigger className={cn(
+                  "h-9 min-w-[120px] border-0 bg-[rgba(242,241,238,0.6)]",
+                  currentStatus === 'active' && "bg-success/10 text-success border-success/20",
+                  currentStatus === 'draft' && "bg-warning/10 text-warning border-warning/20",
+                  currentStatus === 'archived' && "bg-muted text-muted-foreground"
+                )}>
+                  <SelectValue>
+                    <span className="flex items-center gap-1.5">
+                      <span className={cn(
+                        "w-2 h-2 rounded-full",
+                        currentStatus === 'active' && "bg-success",
+                        currentStatus === 'draft' && "bg-warning",
+                        currentStatus === 'archived' && "bg-muted-foreground"
+                      )} />
+                      <span className="capitalize">{currentStatus}</span>
+                      {statusUpdating && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+                    </span>
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-success" />
+                      <span>Active</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="draft">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-warning" />
+                      <span>Draft</span>
+                    </span>
+                  </SelectItem>
+                  <SelectItem value="archived">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+                      <span>Archived</span>
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
           {/* Tab 1: Basic Info */}
           <TabsContent value="basic">
@@ -918,28 +968,6 @@ export default function ExperienceDashboard() {
           <TabsContent value="settings">
             <Card className="border-[#B8866B]/30">
               <CardContent className="pt-4 space-y-6">
-                {/* Status */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Status</Label>
-                  <Select
-                    value={currentStatus}
-                    onValueChange={handleStatusChange}
-                    disabled={statusUpdating}
-                  >
-                    <SelectTrigger className="w-[140px] h-9">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="archive">Archive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {statusUpdating && (
-                    <p className="text-xs text-muted-foreground">Updating status...</p>
-                  )}
-                </div>
-
                 {/* Delete Experience */}
                 <div className="pt-4 border-t border-border">
                   <div className="flex items-center gap-2 mb-2">
