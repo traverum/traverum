@@ -24,8 +24,21 @@ Traverum is a white-label booking platform that transforms hotels into "Destinat
 - Font: Poppins
 - Style: Professional SaaS, shadcn/ui components
 
+## Vercel Deployment (CRITICAL)
+There are TWO separate Vercel projects. NEVER mix them up.
+
+| Project | App | Framework | Root Directory | Domain |
+|---------|-----|-----------|----------------|--------|
+| **Dashboard** | apps/dashboard | Vite (React) | `apps/dashboard` | dashboard.traverum.com |
+| **Widget** | apps/widget | Next.js 14 | `apps/widget` | book.traverum.com |
+
+- Dashboard vercel.json lives in `apps/dashboard/vercel.json`
+- Widget vercel.json lives in `apps/widget/vercel.json`
+- NEVER deploy the widget to the dashboard Vercel project or vice versa
+- Dashboard has NO Next.js dependency — if you see Next.js errors on dashboard, the wrong app is deployed
+
 ## When Editing
 - Keep Supabase types in sync across apps via @traverum/shared
 - Widget handles customer booking flow
 - Dashboard handles supplier and hotel management
-- Both share same Supabase projectSS
+- Both share same Supabase project
