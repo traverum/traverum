@@ -1,6 +1,6 @@
 /**
  * Traverum Widget — Shadow DOM Embed
- *
+ * 
  * Usage:
  *   <traverum-widget hotel="hotel-slug" max="3"></traverum-widget>
  *   <script src="https://book.traverum.com/embed.js" async></script>
@@ -17,13 +17,13 @@
  */
 (function () {
   'use strict';
-
+  
   /* ───────── Detect widget base URL from script src ───────── */
   var scriptEl = document.currentScript || (function () {
     var s = document.getElementsByTagName('script');
     return s[s.length - 1];
   })();
-
+  
   var WIDGET_URL = '';
   var scriptSrc = (scriptEl && (scriptEl.src || scriptEl.getAttribute('src'))) || '';
   if (scriptSrc) {
@@ -122,22 +122,30 @@
       // Show skeleton immediately
       this._shadow.innerHTML = this._baseStyles() + skeletonHTML(Math.min(max, 3));
 
-      // Fetch data
-      var apiUrl = WIDGET_URL + '/api/embed/' + encodeURIComponent(hotel) + '?max=' + max;
+      // Fetch data (add timestamp to bust cache during development)
+      var cacheBuster = window.location.hostname === 'localhost' ? '&_t=' + Date.now() : '';
+      var apiUrl = WIDGET_URL + '/api/embed/' + encodeURIComponent(hotel) + '?max=' + max + cacheBuster;
       var self = this;
 
       fetch(apiUrl)
         .then(function (r) {
-          if (!r.ok) throw new Error('HTTP ' + r.status);
+          if (!r.ok) {
+            console.error('Traverum widget API error:', r.status, r.statusText, 'URL:', apiUrl);
+            throw new Error('HTTP ' + r.status + ': ' + r.statusText);
+          }
           return r.json();
         })
         .then(function (data) {
+          if (!data || !data.experiences) {
+            console.warn('Traverum widget: No experiences data received', data);
+          }
           self._render(data, hotel, hideTitle, buttonLabel);
         })
         .catch(function (err) {
           console.error('Traverum widget load error:', err);
+          console.error('Hotel slug:', hotel, 'API URL:', apiUrl);
           self._shadow.innerHTML = self._baseStyles() +
-            '<p class="trv-error">Unable to load experiences. Please try again later.</p>';
+            '<p class="trv-error">Unable to load experiences. Check console for details.</p>';
         });
     }
 
@@ -162,6 +170,24 @@
       var headingWeight = theme.headingFontWeight || '200';
       var basePx = parseInt(theme.fontSizeBase) || 16;
 
+      // Spacing & alignment
+      var textAlign = theme.textAlign || 'left';
+      var sectionPadding = theme.sectionPadding || '0';
+      var titleMargin = theme.titleMargin || '1.5rem';
+      var gridGap = theme.gridGap || '1.25rem';
+      var ctaMargin = theme.ctaMargin || '1.75rem';
+      var gridMinWidth = theme.gridMinWidth || '280px';
+      
+      // Debug logging
+      if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
+        console.log('Traverum widget theme:', {
+          textAlign: textAlign,
+          sectionPadding: sectionPadding,
+          titleMargin: titleMargin,
+          gridGap: gridGap,
+        });
+      }
+
       var bookingBase = WIDGET_URL + '/' + hotelSlug;
 
       // Build scoped CSS
@@ -178,16 +204,26 @@
         '  --_font-body: var(--trv-font-body, ' + bodyFont + ');\n' +
         '  --_heading-weight: var(--trv-heading-weight, ' + headingWeight + ');\n' +
         '  --_base-px: var(--trv-base-px, ' + basePx + 'px);\n' +
+        '  --_text-align: var(--trv-text-align, ' + textAlign + ');\n' +
+        '  --_section-padding: var(--trv-section-padding, ' + sectionPadding + ');\n' +
+        '  --_title-margin: var(--trv-title-margin, ' + titleMargin + ');\n' +
+        '  --_grid-gap: var(--trv-grid-gap, ' + gridGap + ');\n' +
+        '  --_cta-margin: var(--trv-cta-margin, ' + ctaMargin + ');\n' +
+        '  --_grid-min: var(--trv-grid-columns, ' + gridMinWidth + ');\n' +
         '  font-family: var(--_font-body);\n' +
         '  font-size: var(--_base-px);\n' +
         '  color: var(--_text);\n' +
         '  line-height: 1.5;\n' +
         '  box-sizing: border-box;\n' +
+        '  padding: var(--_section-padding);\n' +
         '}\n' +
         '*, *::before, *::after { box-sizing: border-box; }\n' +
 
         /* ── Header ── */
-        '.trv-header { margin-bottom: 1.5rem; }\n' +
+        '.trv-header {\n' +
+        '  margin-bottom: var(--_title-margin);\n' +
+        '  text-align: var(--_text-align);\n' +
+        '}\n' +
         '.trv-title {\n' +
         '  font-family: var(--_font-heading);\n' +
         '  font-weight: var(--_heading-weight);\n' +
@@ -206,8 +242,8 @@
         /* ── Grid ── */
         '.trv-grid {\n' +
         '  display: grid;\n' +
-        '  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));\n' +
-        '  gap: 1.25rem;\n' +
+        '  grid-template-columns: repeat(auto-fill, minmax(var(--_grid-min), 1fr));\n' +
+        '  gap: var(--_grid-gap);\n' +
         '}\n' +
 
         /* ── Card ── */
@@ -219,12 +255,11 @@
         '  color: inherit;\n' +
         '  background: var(--_bg);\n' +
         '  border: 1px solid rgba(0,0,0,0.08);\n' +
-        '  transition: transform 0.2s ease, box-shadow 0.2s ease;\n' +
+        '  transition: box-shadow 0.2s ease;\n' +
         '  cursor: pointer;\n' +
         '}\n' +
         '.trv-card:hover {\n' +
-        '  transform: translateY(-3px);\n' +
-        '  box-shadow: 0 8px 24px rgba(0,0,0,0.12);\n' +
+        '  box-shadow: 0 2px 8px rgba(0,0,0,0.08);\n' +
         '}\n' +
         '.trv-card:focus-visible {\n' +
         '  outline: 2px solid var(--_accent);\n' +
@@ -245,9 +280,7 @@
         '  width: 100%;\n' +
         '  height: 100%;\n' +
         '  object-fit: cover;\n' +
-        '  transition: transform 0.3s ease;\n' +
         '}\n' +
-        '.trv-card:hover .trv-img { transform: scale(1.04); }\n' +
         '.trv-img-overlay {\n' +
         '  position: absolute;\n' +
         '  inset: 0;\n' +
@@ -292,7 +325,7 @@
         '}\n' +
 
         /* ── CTA button ── */
-        '.trv-cta-wrap { text-align: center; margin-top: 1.75rem; }\n' +
+        '.trv-cta-wrap { text-align: var(--_text-align); margin-top: var(--_cta-margin); }\n' +
         '.trv-cta {\n' +
         '  display: inline-flex;\n' +
         '  align-items: center;\n' +
@@ -340,7 +373,7 @@
 
         /* ── Empty ── */
         '.trv-empty {\n' +
-        '  text-align: center;\n' +
+        '  text-align: var(--_text-align);\n' +
         '  padding: 3rem 1rem;\n' +
         '  color: var(--_text);\n' +
         '  opacity: 0.5;\n' +
@@ -357,7 +390,7 @@
 
         /* ── Powered by ── */
         '.trv-powered {\n' +
-        '  text-align: center;\n' +
+        '  text-align: var(--_text-align);\n' +
         '  margin-top: 1.25rem;\n' +
         '  font-size: 0.7rem;\n' +
         '  opacity: 0.35;\n' +
@@ -470,30 +503,85 @@
 
   /* Register custom element (guard against double-registration) */
   if (!customElements.get('traverum-widget')) {
-    customElements.define('traverum-widget', TraverumWidget);
+    try {
+      customElements.define('traverum-widget', TraverumWidget);
+      console.log('Traverum widget: Custom element registered');
+    } catch (err) {
+      console.error('Traverum widget: Failed to register custom element', err);
+    }
+  } else {
+    console.log('Traverum widget: Custom element already registered');
   }
 
-  /* ─── Legacy support: auto-init for <div id="traverum-widget"> ─── */
-  /* If someone uses the old embed pattern, convert it automatically */
-  (function legacyCompat() {
-    var container = document.getElementById('traverum-widget');
-    if (!container || container.tagName.toLowerCase() === 'traverum-widget') return;
-
-    // Read data attributes from the script tag
-    var hotel = scriptEl && scriptEl.getAttribute('data-hotel');
-    if (!hotel) return;
-
-    var max = (scriptEl && scriptEl.getAttribute('data-max-experiences')) || '3';
-    var mode = (scriptEl && scriptEl.getAttribute('data-mode')) || 'section';
-
-    // Replace div with the web component
-    var widget = document.createElement('traverum-widget');
-    widget.setAttribute('hotel', hotel);
-    widget.setAttribute('max', max);
-    if (mode === 'section') {
-      // section mode defaults (legacy compat)
+  /* ─── WordPress compatibility: Auto-initialize if custom element was stripped ─── */
+  /* WordPress sanitizes HTML and may remove unknown custom elements */
+  (function wordpressCompat() {
+    // Wait for DOM to be ready
+    function initWidgets() {
+      // Find all traverum-widget elements (if they survived sanitization)
+      var existingWidgets = document.querySelectorAll('traverum-widget');
+      
+      // Also check for divs with data attributes (WordPress fallback)
+      var fallbackContainers = document.querySelectorAll('[data-traverum-hotel]');
+      
+      // Process existing widgets
+      existingWidgets.forEach(function(widget) {
+        // Widget already exists, it will initialize via connectedCallback
+        if (!widget.hasAttribute('hotel')) {
+          var hotel = widget.getAttribute('data-hotel') || widget.getAttribute('data-traverum-hotel');
+          if (hotel) widget.setAttribute('hotel', hotel);
+        }
+      });
+      
+      // Process fallback containers (WordPress stripped the custom element)
+      fallbackContainers.forEach(function(container) {
+        if (container.tagName.toLowerCase() === 'traverum-widget') return; // Already a widget
+        
+        var hotel = container.getAttribute('data-traverum-hotel') || container.getAttribute('data-hotel');
+        if (!hotel) return;
+        
+        var max = container.getAttribute('data-max') || container.getAttribute('data-max-experiences') || '3';
+        
+        // Create widget element
+        var widget = document.createElement('traverum-widget');
+        widget.setAttribute('hotel', hotel);
+        widget.setAttribute('max', max);
+        
+        // Replace container with widget
+        if (container.parentNode) {
+          container.parentNode.replaceChild(widget, container);
+        }
+      });
+      
+      // Also check script tag for data attributes (legacy pattern)
+      if (scriptEl) {
+        var scriptHotel = scriptEl.getAttribute('data-hotel');
+        if (scriptHotel) {
+          // Look for any container that might need initialization
+          var containers = document.querySelectorAll('[id*="traverum"], [class*="traverum"]');
+          containers.forEach(function(container) {
+            if (container.tagName.toLowerCase() !== 'traverum-widget' && !container.hasAttribute('data-traverum-initialized')) {
+              var widget = document.createElement('traverum-widget');
+              widget.setAttribute('hotel', scriptHotel);
+              widget.setAttribute('max', scriptEl.getAttribute('data-max-experiences') || '3');
+              container.setAttribute('data-traverum-initialized', 'true');
+              container.appendChild(widget);
+            }
+          });
+        }
+      }
     }
-    container.parentNode.replaceChild(widget, container);
+    
+    // Initialize immediately if DOM is ready, otherwise wait
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initWidgets);
+    } else {
+      initWidgets();
+    }
+    
+    // Also try after a short delay (in case WordPress modifies DOM after load)
+    setTimeout(initWidgets, 100);
+    setTimeout(initWidgets, 500);
   })();
 
   /* ─── Public API ─── */

@@ -71,7 +71,13 @@ Returns JSON with three sections:
     "headingFontFamily": "Playfair Display, serif",
     "bodyFontFamily": "Inter, system-ui, sans-serif",
     "headingFontWeight": "400",
-    "fontSizeBase": "16"
+    "fontSizeBase": "16",
+    "textAlign": "center",
+    "sectionPadding": "3rem 0",
+    "titleMargin": "2rem",
+    "gridGap": "1.5rem",
+    "ctaMargin": "2rem",
+    "gridMinWidth": "280px"
   },
   "experiences": [
     {
@@ -112,8 +118,16 @@ CSS custom properties **do cross** the Shadow DOM boundary. The widget uses inte
 
 ```css
 :host {
+  /* Colors & Fonts */
   --_accent: var(--trv-accent, #2563eb);
   --_font-heading: var(--trv-font-heading, Poppins, sans-serif);
+  /* Spacing & Alignment */
+  --_text-align: var(--trv-text-align, left);
+  --_section-padding: var(--trv-section-padding, 0);
+  --_title-margin: var(--trv-title-margin, 1.5rem);
+  --_grid-gap: var(--trv-grid-gap, 1.25rem);
+  --_cta-margin: var(--trv-cta-margin, 1.75rem);
+  --_grid-min: var(--trv-grid-columns, 280px);
   /* ... */
 }
 ```
@@ -124,8 +138,25 @@ Hotels can optionally override from their own CSS:
 traverum-widget {
   --trv-accent: #8B4513;
   --trv-font-heading: 'Playfair Display', serif;
+  --trv-text-align: center;
+  --trv-section-padding: 80px 0;
+  --trv-title-margin: 2.5rem;
+  --trv-grid-gap: 2rem;
 }
 ```
+
+### Spacing & Alignment Variables
+
+| CSS Variable | Controls | Default |
+|---|---|---|
+| `--trv-text-align` | Title, subtitle, CTA alignment | `left` |
+| `--trv-section-padding` | Outer padding of widget content | `0` |
+| `--trv-title-margin` | Space below title/subtitle | `1.5rem` |
+| `--trv-grid-gap` | Gap between experience cards | `1.25rem` |
+| `--trv-cta-margin` | Space above "See all" button | `1.75rem` |
+| `--trv-grid-columns` | Minimum card width for auto-grid | `280px` |
+
+These can be configured via the **Dashboard > Widget Style** page or overridden with CSS on the host site.
 
 ### Font Loading
 

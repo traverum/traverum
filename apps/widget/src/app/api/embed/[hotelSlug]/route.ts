@@ -144,6 +144,12 @@ export async function GET(
     bodyFontFamily: hotel.body_font_family || 'Inter, system-ui, sans-serif',
     headingFontWeight: hotel.heading_font_weight || '200',
     fontSizeBase: hotel.font_size_base || '16',
+    textAlign: hotel.widget_text_align || 'left',
+    sectionPadding: hotel.widget_section_padding || '0',
+    titleMargin: hotel.widget_title_margin || '1.5rem',
+    gridGap: hotel.widget_grid_gap || '1.25rem',
+    ctaMargin: hotel.widget_cta_margin || '1.75rem',
+    gridMinWidth: hotel.widget_grid_min_width || '280px',
   }
 
   // Build widget config

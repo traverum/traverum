@@ -16,6 +16,7 @@ import {
   ChevronLeftIcon,
   MapPinIcon,
   CodeBracketIcon,
+  PaintBrushIcon,
 } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -245,6 +246,21 @@ export function Sidebar({ children }: SidebarProps) {
                 >
                   <MapPinIcon className="h-4 w-4 flex-shrink-0" />
                   <span>Location Settings</span>
+                </NavLink>
+                <NavLink
+                  to="/hotel/customize"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                      'hover:bg-accent',
+                      isActive
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <PaintBrushIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>Widget Style</span>
                 </NavLink>
                 <NavLink
                   to="/hotel/embed"

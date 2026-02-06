@@ -17,6 +17,16 @@
   - **`widget_subtitle`**: Supporting text. You can use `{{hotel_name}}` which will be replaced with `display_name`
     - Example: `"Curated by the concierge team at {{hotel_name}}"`.
 
+- **3a. Match hotel website spacing** (for native look)
+  - Inspect the hotel's website section where the widget will be placed.
+  - **`widget_text_align`**: `left`, `center`, or `right` — match the hotel's heading alignment.
+  - **`widget_section_padding`**: CSS padding (e.g. `3rem 0`, `80px 0`) — match the hotel's section padding.
+  - **`widget_title_margin`**: Space below title (e.g. `2rem`) — match spacing between headings and content.
+  - **`widget_grid_gap`**: Gap between cards (e.g. `1.5rem`) — match the hotel's content grid gap.
+  - **`widget_cta_margin`**: Space above CTA button (e.g. `2rem`).
+  - **`widget_grid_min_width`**: Minimum card width (e.g. `280px`, `320px`) — controls column count.
+  - All configurable via **Dashboard > Widget Style** or CSS overrides.
+
 - **4. Test embeds**
   - **Full-page**: Visit `/{hotelSlug}?embed=full` and verify:
     - Colors, card radius, and fonts match the brand.

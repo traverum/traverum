@@ -196,6 +196,21 @@ export default function EmbedSetup() {
 
               <CopyBlock code={embedCode} label="HTML snippet" />
 
+              {/* WordPress alternative */}
+              <details className="mt-2">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-ui">
+                  WordPress alternative (if custom element is stripped)
+                </summary>
+                <div className="mt-2">
+                  <CopyBlock
+                    code={`<!-- WordPress-friendly version (if custom element is stripped) -->
+<div data-traverum-hotel="${hotelSlug}" data-max="3"></div>
+<script src="${baseUrl}/embed.js" async></script>`}
+                    label="WordPress fallback"
+                  />
+                </div>
+              </details>
+
               {/* CMS hints - Visual badges */}
               <div className="flex flex-wrap gap-2">
                 <div className="px-2 py-1 rounded-sm bg-muted/50 border border-border">

@@ -23,6 +23,7 @@ import ExperienceSelection from "./pages/hotel/ExperienceSelection";
 import HotelDashboard from "./pages/hotel/Dashboard";
 import LocationSettings from "./pages/hotel/LocationSettings";
 import EmbedSetup from "./pages/hotel/EmbedSetup";
+import WidgetCustomization from "./pages/hotel/WidgetCustomization";
 import AddBusinessFlow from "./pages/onboarding/AddBusinessFlow";
 import EmailVerification from "./pages/EmailVerification";
 import Analytics from "./pages/Analytics";
@@ -165,6 +166,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <EmbedSetup />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/hotel/customize" 
+                element={
+                  <ProtectedRoute>
+                    <WidgetCustomization />
                   </ProtectedRoute>
                 } 
               />

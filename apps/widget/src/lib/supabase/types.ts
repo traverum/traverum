@@ -283,6 +283,12 @@ export type Database = {
           widget_title_enabled: boolean | null
           widget_title: string | null
           widget_subtitle: string | null
+          widget_text_align: string | null
+          widget_section_padding: string | null
+          widget_title_margin: string | null
+          widget_grid_gap: string | null
+          widget_cta_margin: string | null
+          widget_grid_min_width: string | null
           slug: string
           updated_at: string | null
         }
@@ -306,6 +312,12 @@ export type Database = {
           widget_title_enabled?: boolean | null
           widget_title?: string | null
           widget_subtitle?: string | null
+          widget_text_align?: string | null
+          widget_section_padding?: string | null
+          widget_title_margin?: string | null
+          widget_grid_gap?: string | null
+          widget_cta_margin?: string | null
+          widget_grid_min_width?: string | null
           slug: string
           updated_at?: string | null
         }
@@ -329,6 +341,12 @@ export type Database = {
           widget_title_enabled?: boolean | null
           widget_title?: string | null
           widget_subtitle?: string | null
+          widget_text_align?: string | null
+          widget_section_padding?: string | null
+          widget_title_margin?: string | null
+          widget_grid_gap?: string | null
+          widget_cta_margin?: string | null
+          widget_grid_min_width?: string | null
           slug?: string
           updated_at?: string | null
         }

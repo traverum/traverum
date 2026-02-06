@@ -287,6 +287,12 @@ export type Database = {
           widget_subtitle: string | null
           widget_title: string | null
           widget_title_enabled: boolean | null
+          widget_text_align: string | null
+          widget_section_padding: string | null
+          widget_title_margin: string | null
+          widget_grid_gap: string | null
+          widget_cta_margin: string | null
+          widget_grid_min_width: string | null
         }
         Insert: {
           accent_color?: string | null
@@ -310,6 +316,12 @@ export type Database = {
           widget_subtitle?: string | null
           widget_title?: string | null
           widget_title_enabled?: boolean | null
+          widget_text_align?: string | null
+          widget_section_padding?: string | null
+          widget_title_margin?: string | null
+          widget_grid_gap?: string | null
+          widget_cta_margin?: string | null
+          widget_grid_min_width?: string | null
         }
         Update: {
           accent_color?: string | null
@@ -333,6 +345,12 @@ export type Database = {
           widget_subtitle?: string | null
           widget_title?: string | null
           widget_title_enabled?: boolean | null
+          widget_text_align?: string | null
+          widget_section_padding?: string | null
+          widget_title_margin?: string | null
+          widget_grid_gap?: string | null
+          widget_cta_margin?: string | null
+          widget_grid_min_width?: string | null
         }
         Relationships: [
           {

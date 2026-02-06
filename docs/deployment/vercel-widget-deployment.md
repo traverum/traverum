@@ -115,23 +115,22 @@ After first deployment, update `NEXT_PUBLIC_APP_URL` in Vercel:
 
 ### 4. Configure Cron Jobs
 
-The widget includes cron jobs configured in `vercel.json`:
+The widget includes several cron jobs. **Note**: Vercel Hobby plans only support daily cron jobs. Hourly jobs must use external services.
+
+#### Daily Cron Jobs (Configured in vercel.json)
+
+These run automatically on Vercel (including Hobby plan):
 - **Auto-complete** (`/api/cron/auto-complete`): Daily at 2 AM - Completes bookings 7+ days after experience
-- **Expire Unpaid** (`/api/cron/expire-unpaid`): Hourly - Expires unpaid reservations
-- **Expire Pending** (`/api/cron/expire-pending`): Hourly - Expires pending bookings
-- **Expire Reservations** (`/api/cron/expire-reservations`): Hourly - Expires old reservations
 - **Completion Check** (`/api/cron/completion-check`): Daily at 9 AM - Sends completion check emails
 
-#### Option A: Vercel Cron (Pro/Enterprise Plans)
+#### Hourly Cron Jobs (Require External Service)
 
-Cron jobs are automatically configured in `vercel.json`. For Vercel Pro/Enterprise:
-1. Cron jobs will run automatically
-2. No additional configuration needed
-3. Monitor in Vercel Dashboard > Cron Jobs
+These must be set up using external cron services (Vercel Hobby doesn't support hourly):
+- **Expire Unpaid** (`/api/cron/expire-unpaid`): Hourly - Expires unpaid reservations
+- **Expire Pending** (`/api/cron/expire-pending`): Hourly - Expires pending bookings  
+- **Expire Reservations** (`/api/cron/expire-reservations`): Hourly - Expires old reservations
 
-#### Option B: External Cron Services (Free Alternative)
-
-If you don't have Vercel Pro, use external cron services:
+**Recommended External Services:**
 - [cron-job.org](https://cron-job.org) (free)
 - [EasyCron](https://www.easycron.com)
 - [Cronitor](https://cronitor.io)
@@ -140,13 +139,15 @@ If you don't have Vercel Pro, use external cron services:
 - **URL**: `https://your-domain.com/api/cron/[job-name]`
 - **Method**: POST
 - **Headers**: `Authorization: Bearer <CRON_SECRET>` (if CRON_SECRET is set)
-- **Schedule**: Match the schedules in `vercel.json`
+- **Schedule**: `0 * * * *` (every hour at minute 0)
 
-**Example cron-job.org setup:**
-- URL: `https://book.traverum.com/api/cron/auto-complete`
-- Schedule: `0 2 * * *` (daily at 2 AM)
+**Example cron-job.org setup for hourly jobs:**
+- URL: `https://book.traverum.com/api/cron/expire-unpaid`
+- Schedule: `0 * * * *` (hourly)
 - Method: POST
-- Headers: `Authorization: Bearer your-cron-secret`
+- Headers: `Authorization: Bearer your-cron-secret` (if CRON_SECRET is set)
+
+**Alternative**: Upgrade to Vercel Pro to use hourly cron jobs natively.
 
 ## Build Configuration
 
