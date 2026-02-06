@@ -117,7 +117,7 @@ function Calendar({ selected, onSelect, disabled, className, datesWithSessions =
   }
 
   // Custom day component with dot indicator
-  const CustomDay = React.useCallback((props: PickersDayProps<Dayjs>) => {
+  const CustomDay = React.useCallback((props: PickersDayProps) => {
     const { day, ...other } = props
     const dateKey = day.format('YYYY-MM-DD')
     const hasSessions = datesWithSessions.includes(dateKey)
