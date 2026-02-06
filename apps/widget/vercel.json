@@ -1,4 +1,7 @@
 {
+  "installCommand": "cd ../.. && pnpm install",
+  "buildCommand": "cd ../.. && pnpm --filter @traverum/widget build",
+  "framework": "nextjs",
   "crons": [
     {
       "path": "/api/cron/auto-complete",
