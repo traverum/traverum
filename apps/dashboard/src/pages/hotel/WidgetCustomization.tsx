@@ -26,7 +26,6 @@ import {
   FileText,
   AlignLeft,
   AlignCenter,
-  AlignRight,
   Space,
 } from 'lucide-react';
 
@@ -189,9 +188,8 @@ function AlignmentSelector({
   onChange: (v: string) => void;
 }) {
   const options = [
-    { value: 'left', icon: AlignLeft, label: 'Left' },
-    { value: 'center', icon: AlignCenter, label: 'Center' },
-    { value: 'right', icon: AlignRight, label: 'Right' },
+    { value: 'left', icon: AlignLeft, label: 'Left aligned' },
+    { value: 'center', icon: AlignCenter, label: 'Centered' },
   ];
 
   return (
@@ -279,7 +277,13 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
       )}
 
       {/* Mock cards */}
-      <div className="grid grid-cols-2" style={{ gap: '0.5rem' }}>
+      <div
+        style={
+          align === 'center'
+            ? { display: 'flex', flexWrap: 'wrap' as const, justifyContent: 'center', gap: '0.5rem' }
+            : { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }
+        }
+      >
         {[
           { title: 'Sunset Boat Tour', duration: '2h', price: '45' },
           { title: 'Wine Tasting', duration: '1h 30min', price: '35' },
@@ -291,6 +295,7 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
               border: '1px solid rgba(0,0,0,0.08)',
               overflow: 'hidden',
               backgroundColor: theme.background_color,
+              ...(align === 'center' ? { width: '45%', flexShrink: 0 } : {}),
             }}
           >
             {/* Image placeholder */}
@@ -836,9 +841,9 @@ export default function WidgetCustomization() {
                   </Tooltip>
                 </div>
 
-                {/* Text Alignment */}
+                {/* Widget Alignment */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Text Alignment</Label>
+                  <Label className="text-xs">Widget Alignment</Label>
                   <AlignmentSelector
                     value={theme.widget_text_align}
                     onChange={(v) => updateField('widget_text_align', v)}

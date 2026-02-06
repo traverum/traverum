@@ -240,11 +240,23 @@
         '}\n' +
 
         /* ── Grid ── */
-        '.trv-grid {\n' +
-        '  display: grid;\n' +
-        '  grid-template-columns: repeat(auto-fill, minmax(var(--_grid-min), 1fr));\n' +
-        '  gap: var(--_grid-gap);\n' +
-        '}\n' +
+        (textAlign === 'center'
+          ? '.trv-grid {\n' +
+            '  display: flex;\n' +
+            '  flex-wrap: wrap;\n' +
+            '  justify-content: center;\n' +
+            '  gap: var(--_grid-gap);\n' +
+            '}\n' +
+            '.trv-grid > * {\n' +
+            '  width: var(--_grid-min);\n' +
+            '  max-width: 100%;\n' +
+            '}\n'
+          : '.trv-grid {\n' +
+            '  display: grid;\n' +
+            '  grid-template-columns: repeat(auto-fill, minmax(var(--_grid-min), 1fr));\n' +
+            '  gap: var(--_grid-gap);\n' +
+            '}\n'
+        ) +
 
         /* ── Card ── */
         '.trv-card {\n' +
