@@ -21,11 +21,17 @@
   - **Full-page**: Visit `/{hotelSlug}?embed=full` and verify:
     - Colors, card radius, and fonts match the brand.
     - Header title/subtitle render as configured (or are hidden if disabled).
-  - **Section embed**: Visit `/{hotelSlug}?embed=section` and verify:
-    - Styling matches full-page.
-    - Title block is hidden (section mode only shows experiences list).
+  - **Section embed (Shadow DOM widget)**: Use the embed snippet from `/dashboard/embed` on a test page and verify:
+    - Experience cards render with correct theme.
+    - Title/subtitle display as configured.
+    - Card clicks open full booking page in a new tab.
+  - **API**: Check `GET /api/embed/{hotelSlug}` returns correct theme + experiences JSON.
 
 - **5. Share with hotel**
-  - For WordPress / CMS: provide the updated embed snippet using `public/embed.js` and the full-page URL (`/{hotelSlug}?embed=full`).
+  - Direct the hotel to their Traverum dashboard → **Embed Setup** page to get their embed snippet.
+  - For WordPress: paste into a **Custom HTML** block.
+  - For other CMS: paste into any HTML/code embed block.
+  - Also share the full-page booking URL (`/{hotelSlug}`) for QR codes and emails.
   - Confirm final visuals with the hotel before going live.
+  - See `docs/apps/widget/widget-embed-architecture.md` for full technical details.
 

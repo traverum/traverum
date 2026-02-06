@@ -10,10 +10,13 @@ import { EmptyCanvas } from '@/components/EmptyCanvas';
  */
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { capabilities, isLoading, activePartner, userPartners } = useActivePartner();
+  const { capabilities, isLoading, activePartner, userPartners, activePartnerId } = useActivePartner();
 
   useEffect(() => {
-    if (isLoading) return;
+    // Always wait for loading to complete - this includes capabilities loading
+    if (isLoading) {
+      return;
+    }
 
     // If user has no organizations, show empty canvas (handled in render)
     if (userPartners.length === 0) {
@@ -21,22 +24,23 @@ export default function Dashboard() {
     }
 
     // If no active partner selected, don't redirect yet
-    if (!activePartner) {
+    if (!activePartner || !activePartnerId) {
       return;
     }
 
+    // At this point, isLoading is false, so capabilities should be loaded
     // Redirect based on capabilities
     if (capabilities.isSupplier) {
       // Suppliers (including hybrid) go to supplier dashboard
       navigate('/supplier/dashboard', { replace: true });
     } else if (capabilities.isHotel) {
-      // Hotel-only goes to experience selection
-      navigate('/hotel/selection', { replace: true });
+      // Hotel-only goes to hotel dashboard
+      navigate('/hotel/dashboard', { replace: true });
     } else {
       // No capabilities yet - default to supplier (they can create experiences)
       navigate('/supplier/dashboard', { replace: true });
     }
-  }, [capabilities, isLoading, activePartner, userPartners.length, navigate]);
+  }, [capabilities, isLoading, activePartner, activePartnerId, userPartners.length, navigate]);
 
   // Show loading while determining where to go
   if (isLoading) {

@@ -178,6 +178,9 @@ When user has no organizations:
 
 ## Phase 4: Account Setup Flow (Add Business)
 
+### Overview
+Users can add new organizations (businesses) and, for organizations with hotel capabilities, add multiple hotel properties to the same organization.
+
 ### New Components Required
 
 **Route:** `/onboarding/add-business`
@@ -254,7 +257,7 @@ When user has no organizations:
 
 **Step 3: Organization Creation & Redirect**
 
-**File:** `apps/dashboard/src/hooks/useCreateOrganization.ts` (new hook)
+**File:** `apps/dashboard/src/hooks/useCreateOrganization.ts`
 
 **Functionality:**
 - Create organization record in database
@@ -287,6 +290,117 @@ async function createOrganization(data: {
   // 4. Set as active partner
   // 5. Return organization ID
 }
+```
+
+---
+
+## Phase 4.5: Hotel Property Management
+
+### Overview
+Organizations with hotel capabilities can manage multiple hotel properties (hotel_configs) within the same organization. This allows hotels to manage multiple properties under one business entity.
+
+### New Components Required
+
+**Component:** `apps/dashboard/src/components/AddHotelProperty.tsx`
+
+**Design:**
+- Modal dialog (same styling as BusinessDetails)
+- Warm white background `#FEFCF9`
+- Borderless inputs (32px height, 3px radius)
+- Minimal labels, clear field names
+
+**Fields:**
+- Hotel Name* (required)
+- Hotel Slug* (required, auto-generated from name, editable)
+  - Used in widget URL: `book.traverum.com/your-slug`
+- Display Name* (required, auto-filled from hotel name, editable)
+  - How it appears in the widget
+
+**Implementation:**
+- Auto-generate slug from hotel name (lowercase, alphanumeric + hyphens)
+- Auto-fill display name from hotel name
+- Validate slug uniqueness (must be unique across all hotel_configs)
+- Form validation (required fields marked with *)
+- Success toast notification
+- Reset form and close modal on success
+
+**Hook:** `apps/dashboard/src/hooks/useCreateHotelProperty.ts`
+
+**Functionality:**
+- Create `hotel_config` record linked to active organization's `partner_id`
+- Validate slug uniqueness (check existing hotel_configs)
+- Set `is_active = true` by default
+- Invalidate queries to refresh data
+- Return error if slug already exists
+
+**Integration:**
+- Accessible from OrganizationDropdown when organization has hotel capabilities
+- Shows "Add hotel property" option in account dropdown
+- Modal opens from dropdown menu item
+
+**Database Operations:**
+```typescript
+// Pseudo-code structure
+async function createHotelProperty(data: {
+  hotelName: string;
+  slug: string;
+  displayName: string;
+}) {
+  // 1. Validate slug uniqueness
+  // 2. Create hotel_config with partner_id = activePartner.partner_id
+  // 3. Invalidate queries
+  // 4. Return success/error
+}
+```
+
+---
+
+---
+
+## Phase 4.6: Account Dropdown Improvements
+
+### Current State
+- OrganizationDropdown component in sidebar
+- Shows organization switcher, view switcher, add organization, sign out
+- Uses icons throughout
+- Some labels have explanatory subtitles
+
+### Required Changes
+
+**File:** `apps/dashboard/src/components/layout/OrganizationDropdown.tsx`
+
+**Design Updates:**
+1. **Remove Icons:** Remove all icons from menu items (keep only check icon for active organization)
+2. **Clear Titles:** 
+   - "Switch organization" → "Organizations"
+   - "Switch view" → "Views"
+   - "Experiences view" → "Experiences"
+   - "Hotel view" → "Hotels"
+3. **Remove Subtitles:** Remove any explanatory text that over-explains functionality
+4. **Add Hotel Property Option:** 
+   - Show "Add hotel property" option when organization has hotel capabilities
+   - Place before "Add organization" option
+   - Opens AddHotelProperty modal
+
+**Implementation:**
+- Remove icon imports (BuildingOfficeIcon, BriefcaseIcon, PlusIcon, ArrowRightOnRectangleIcon)
+- Keep only ChevronDownIcon (for trigger) and CheckIcon (for active state)
+- Simplify menu item structure (remove icon divs)
+- Add state for AddHotelProperty modal
+- Conditionally show "Add hotel property" based on `capabilities.isHotel`
+- Integrate AddHotelProperty component
+
+**Component Structure:**
+```
+OrganizationDropdown
+├── Organizations (if multiple)
+│   └── Organization items (name + badge + check if active)
+├── Views (if hybrid)
+│   ├── Experiences
+│   └── Hotels
+├── Add hotel property (if hotel capability)
+├── Add organization
+└── Sign out
 ```
 
 ---
@@ -413,6 +527,22 @@ async function createOrganization(data: {
 - [ ] Test hotel creation flow
 - [ ] Test hybrid creation flow
 
+### Phase 4.5: Hotel Property Management
+- [ ] Create AddHotelProperty component
+- [ ] Create useCreateHotelProperty hook
+- [ ] Implement hotel property creation logic
+- [ ] Add slug validation and uniqueness check
+- [ ] Integrate with OrganizationDropdown
+- [ ] Test adding hotel property to existing organization
+- [ ] Test multiple hotel properties per organization
+
+### Phase 4.6: Account Dropdown Improvements
+- [ ] Remove icons from OrganizationDropdown menu items
+- [ ] Update menu labels to be clearer and more concise
+- [ ] Remove explanatory subtitles
+- [ ] Add "Add hotel property" option
+- [ ] Test dropdown functionality
+
 ### Phase 5: Routing
 - [ ] Add onboarding routes to App.tsx
 - [ ] Update redirect logic
@@ -533,6 +663,18 @@ async function createOrganization(data: {
 - Business details form is intuitive
 - Organization creation succeeds
 - Redirect to appropriate dashboard
+
+✅ **Hotel Property Management:**
+- Users can add hotel properties to existing organizations
+- Multiple hotel properties per organization supported
+- Slug validation and uniqueness enforced
+- Clear, minimal UI for adding properties
+
+✅ **Account Dropdown:**
+- Clean, icon-free interface
+- Clear, concise labels
+- No over-explaining subtitles
+- Hotel property management accessible
 
 ✅ **Design:**
 - All components match design system

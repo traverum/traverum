@@ -20,6 +20,9 @@ import PendingRequests from "./pages/supplier/PendingRequests";
 import SessionDetail from "./pages/supplier/SessionDetail";
 import StripeConnect from "./pages/supplier/StripeConnect";
 import ExperienceSelection from "./pages/hotel/ExperienceSelection";
+import HotelDashboard from "./pages/hotel/Dashboard";
+import LocationSettings from "./pages/hotel/LocationSettings";
+import EmbedSetup from "./pages/hotel/EmbedSetup";
 import AddBusinessFlow from "./pages/onboarding/AddBusinessFlow";
 import EmailVerification from "./pages/EmailVerification";
 import Analytics from "./pages/Analytics";
@@ -134,10 +137,34 @@ const App = () => (
               
               {/* Hotel Routes */}
               <Route 
+                path="/hotel/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <HotelDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
                 path="/hotel/selection" 
                 element={
                   <ProtectedRoute>
                     <ExperienceSelection />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/hotel/location" 
+                element={
+                  <ProtectedRoute>
+                    <LocationSettings />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/hotel/embed" 
+                element={
+                  <ProtectedRoute>
+                    <EmbedSetup />
                   </ProtectedRoute>
                 } 
               />

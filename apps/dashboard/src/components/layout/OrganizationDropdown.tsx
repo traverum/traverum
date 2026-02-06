@@ -1,10 +1,6 @@
 import {
   ChevronDownIcon,
-  BuildingOfficeIcon,
-  BriefcaseIcon,
   CheckIcon,
-  PlusIcon,
-  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import {
   DropdownMenu,
@@ -19,6 +15,8 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { AddHotelProperty } from '@/components/AddHotelProperty';
+import { useState } from 'react';
 
 export function OrganizationDropdown() {
   const navigate = useNavigate();
@@ -30,6 +28,7 @@ export function OrganizationDropdown() {
     hasMultiplePartners,
     capabilities,
   } = useActivePartner();
+  const [showAddHotelProperty, setShowAddHotelProperty] = useState(false);
 
   if (!activePartner) {
     return null;
@@ -40,23 +39,41 @@ export function OrganizationDropdown() {
     navigate('/auth');
   };
 
-  const handleAddOrganization = () => {
-    navigate('/onboarding/add-business');
+  const handleAddHotelProperty = () => {
+    setShowAddHotelProperty(true);
+  };
+
+  // Get capabilities for a specific partner (for non-active partners in list)
+  const getPartnerCapabilities = (partnerId: string) => {
+    // For active partner, use the already-loaded capabilities
+    if (partnerId === activePartner.partner_id) {
+      return capabilities;
+    }
+    // For other partners, we'd need to fetch - but for now use partner_type as fallback
+    const partner = userPartners.find(up => up.partner_id === partnerId);
+    if (!partner) return { isSupplier: false, isHotel: false };
+    
+    // Use partner_type as indicator (capabilities will be recalculated when switched to)
+    const type = partner.partner.partner_type;
+    return {
+      isSupplier: type === 'supplier',
+      isHotel: type === 'hotel',
+    };
   };
 
   // Determine badge text based on capabilities
   const getBadgeText = (partnerId: string) => {
-    const partner = userPartners.find(up => up.partner_id === partnerId);
-    if (!partner) return '';
-    
-    const type = partner.partner.partner_type;
-    if (type === 'hotel') return 'Hotel';
+    const partnerCaps = getPartnerCapabilities(partnerId);
+    if (partnerCaps.isSupplier && partnerCaps.isHotel) return 'Both';
+    if (partnerCaps.isHotel) return 'Hotel';
+    if (partnerCaps.isSupplier) return 'Experiences';
     return '';
   };
 
   const getActivePartnerBadge = () => {
     if (capabilities.isSupplier && capabilities.isHotel) return 'Both';
     if (capabilities.isHotel) return 'Hotel';
+    if (capabilities.isSupplier) return 'Experiences';
     return '';
   };
 
@@ -91,31 +108,34 @@ export function OrganizationDropdown() {
         {hasMultiplePartners && (
           <>
             <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1.5">
-              Switch organization
+              Organizations
             </DropdownMenuLabel>
             {userPartners.map((up) => {
               const isActive = up.partner_id === activePartner.partner_id;
               const badgeText = isActive ? activeBadge : getBadgeText(up.partner_id);
-              const Icon = up.partner.partner_type === 'hotel' ? BuildingOfficeIcon : BriefcaseIcon;
+              
+              const handleSwitch = () => {
+                setActivePartnerId(up.partner_id);
+                navigate('/dashboard', { replace: true });
+              };
               
               return (
                 <DropdownMenuItem
                   key={up.id}
-                  onClick={() => setActivePartnerId(up.partner_id)}
+                  onClick={handleSwitch}
                   className={cn(
                     'flex items-center justify-between cursor-pointer px-2 py-1.5',
                     isActive && 'bg-accent'
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                     <span className={cn('truncate', isActive && 'font-medium')}>
                       {up.partner.name}
                     </span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {badgeText && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
                         {badgeText}
                       </span>
                     )}
@@ -132,46 +152,46 @@ export function OrganizationDropdown() {
         {capabilities.isSupplier && capabilities.isHotel && (
           <>
             <DropdownMenuLabel className="text-xs text-muted-foreground px-2 py-1.5">
-              Switch view
+              Views
             </DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => navigate('/supplier/dashboard')}
-              className="flex items-center gap-2 cursor-pointer px-2 py-1.5"
+              className="cursor-pointer px-2 py-1.5"
             >
-              <BriefcaseIcon className="h-4 w-4 text-muted-foreground" />
-              <span>Experiences view</span>
+              Experiences
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => navigate('/hotel/selection')}
-              className="flex items-center gap-2 cursor-pointer px-2 py-1.5"
+              onClick={() => navigate('/hotel/dashboard')}
+              className="cursor-pointer px-2 py-1.5"
             >
-              <BuildingOfficeIcon className="h-4 w-4 text-muted-foreground" />
-              <span>Hotel view</span>
+              Hotels
             </DropdownMenuItem>
             <DropdownMenuSeparator />
           </>
         )}
 
-        {/* Add Organization */}
-        <DropdownMenuItem
-          onClick={handleAddOrganization}
-          className="flex items-center gap-2 cursor-pointer px-2 py-1.5"
-        >
-          <PlusIcon className="h-4 w-4 text-muted-foreground" />
-          <span>Add organization</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
+        {/* Add Hotel Property (if organization has hotel capabilities) */}
+        {capabilities.isHotel && (
+          <>
+            <DropdownMenuItem
+              onClick={handleAddHotelProperty}
+              className="cursor-pointer px-2 py-1.5"
+            >
+              Add hotel property
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
 
         {/* Logout */}
         <DropdownMenuItem
           onClick={handleSignOut}
-          className="flex items-center gap-2 cursor-pointer text-destructive focus:text-destructive px-2 py-1.5"
+          className="cursor-pointer text-destructive focus:text-destructive px-2 py-1.5"
         >
-          <ArrowRightOnRectangleIcon className="h-4 w-4" />
-          <span>Sign out</span>
+          Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <AddHotelProperty open={showAddHotelProperty} onOpenChange={setShowAddHotelProperty} />
     </DropdownMenu>
   );
 }

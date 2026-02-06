@@ -9,11 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { X, ChevronDown, Users, Euro, Repeat } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateRecurringSessions, type Experience } from '@/hooks/useExperienceSessions';
@@ -207,13 +202,17 @@ export function SessionCreatePopup({
     onClose();
   };
 
+  // Input styling following design system - borderless with beige tint
+  const inputClass = "h-8 rounded-sm bg-[rgba(242,241,238,0.6)] border-0 focus-visible:ring-1 focus-visible:ring-primary/30";
+  const selectTriggerClass = "h-9 rounded-sm bg-[rgba(242,241,238,0.6)] border-0 focus:ring-1 focus:ring-primary/30";
+
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
       
       <div
         ref={popupRef}
-        className="fixed z-50 w-72 bg-background border border-border/50 rounded-2xl shadow-2xl overflow-hidden"
+        className="fixed z-50 w-72 bg-background border border-border rounded-lg shadow-lg"
         style={{
           left: position?.x || '50%',
           top: position?.y || '50%',
@@ -222,22 +221,26 @@ export function SessionCreatePopup({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2.5 bg-muted/30 border-b border-border/30">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
           <span className="font-medium text-sm">New Session</span>
-          <Button variant="ghost" size="sm" onClick={onClose} className="h-6 w-6 p-0 rounded-full">
+          <button 
+            type="button"
+            onClick={onClose} 
+            className="h-6 w-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-ui"
+          >
             <X className="w-3.5 h-3.5" />
-          </Button>
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-3 space-y-3">
           {/* Experience */}
           <Select value={experienceId} onValueChange={setExperienceId} required>
-            <SelectTrigger className="h-9 rounded-lg bg-muted/30 border-border/40">
+            <SelectTrigger className={selectTriggerClass}>
               <SelectValue placeholder="Select experience" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl">
+            <SelectContent className="rounded-sm">
               {experiences.map((exp) => (
-                <SelectItem key={exp.id} value={exp.id} className="rounded-lg">
+                <SelectItem key={exp.id} value={exp.id} className="rounded-sm text-sm">
                   {exp.title}
                 </SelectItem>
               ))}
@@ -249,7 +252,7 @@ export function SessionCreatePopup({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="h-9 rounded-lg bg-muted/30 border-border/40"
+            className={cn(inputClass, "h-9")}
             required
           />
 
@@ -259,15 +262,15 @@ export function SessionCreatePopup({
               type="time"
               value={startTime}
               onChange={(e) => handleStartTimeChange(e.target.value)}
-              className="flex-1 h-9 rounded-lg bg-muted/30 border-border/40 text-center"
+              className={cn(inputClass, "flex-1 h-9 text-center")}
               required
             />
-            <span className="text-muted-foreground/60 text-sm">→</span>
+            <span className="text-muted-foreground text-sm">→</span>
             <Input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="flex-1 h-9 rounded-lg bg-muted/30 border-border/40 text-center"
+              className={cn(inputClass, "flex-1 h-9 text-center")}
               required
             />
           </div>
@@ -277,87 +280,108 @@ export function SessionCreatePopup({
             type="button"
             onClick={() => setIsRecurring(!isRecurring)}
             className={cn(
-              "flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition-colors",
-              isRecurring ? "bg-primary/10 text-primary" : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+              "flex items-center gap-2 w-full px-3 py-2 rounded-sm text-sm transition-ui",
+              isRecurring 
+                ? "bg-primary/10 text-primary" 
+                : "bg-[rgba(242,241,238,0.6)] text-muted-foreground hover:bg-[rgba(242,241,238,0.8)]"
             )}
           >
             <Repeat className="w-3.5 h-3.5" />
             <span>{isRecurring ? 'Repeating' : 'Repeat?'}</span>
           </button>
 
-          {/* Recurring options */}
-          {isRecurring && (
-            <div className="space-y-2 pl-2 border-l-2 border-primary/20">
-              <div className="flex gap-2">
-                <Select value={frequency} onValueChange={(v) => setFrequency(v as 'daily' | 'weekly')}>
-                  <SelectTrigger className="h-8 flex-1 text-xs rounded-md bg-muted/30 border-border/40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-lg">
-                    <SelectItem value="daily" className="text-xs">Daily</SelectItem>
-                    <SelectItem value="weekly" className="text-xs">Weekly</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="date"
-                  value={repeatEndDate}
-                  onChange={(e) => setRepeatEndDate(e.target.value)}
-                  min={date}
-                  className="flex-1 h-8 text-xs rounded-md bg-muted/30 border-border/40"
-                />
-              </div>
-              <div className="text-xs text-primary font-medium">
-                {sessionCount} sessions
+          {/* Recurring options - animated */}
+          <div 
+            className="grid transition-all duration-150 ease-out"
+            style={{ 
+              gridTemplateRows: isRecurring ? '1fr' : '0fr',
+              opacity: isRecurring ? 1 : 0,
+            }}
+          >
+            <div className="overflow-hidden">
+              <div className="space-y-2 pl-2 border-l-2 border-primary/20 pb-1">
+                <div className="flex gap-2">
+                  <Select value={frequency} onValueChange={(v) => setFrequency(v as 'daily' | 'weekly')}>
+                    <SelectTrigger className={cn(selectTriggerClass, "h-8 flex-1 text-xs")}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-sm">
+                      <SelectItem value="daily" className="text-xs rounded-sm">Daily</SelectItem>
+                      <SelectItem value="weekly" className="text-xs rounded-sm">Weekly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input
+                    type="date"
+                    value={repeatEndDate}
+                    onChange={(e) => setRepeatEndDate(e.target.value)}
+                    min={date}
+                    className={cn(inputClass, "flex-1 text-xs")}
+                  />
+                </div>
+                <div className="text-xs text-primary font-medium">
+                  {sessionCount} sessions
+                </div>
               </div>
             </div>
-          )}
+          </div>
 
           {/* Advanced toggle */}
-          <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
-            <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ChevronDown className={cn("w-3 h-3 transition-transform", showAdvanced && "rotate-180")} />
-                More options
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-2 space-y-2">
-              {/* Spots */}
-              <div className="flex items-center gap-2">
-                <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                <Input
-                  type="number"
-                  min={1}
-                  value={spots}
-                  onChange={(e) => setSpots(parseInt(e.target.value) || 1)}
-                  className="h-8 w-20 text-xs rounded-md bg-muted/30 border-border/40"
-                />
-                <span className="text-xs text-muted-foreground">spots</span>
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronDown className={cn("w-3 h-3 transition-transform duration-150", showAdvanced && "rotate-180")} />
+              More options
+            </button>
+            
+            {/* Advanced content - animated */}
+            <div 
+              className="grid transition-all duration-150 ease-out"
+              style={{ 
+                gridTemplateRows: showAdvanced ? '1fr' : '0fr',
+                opacity: showAdvanced ? 1 : 0,
+              }}
+            >
+              <div className="overflow-hidden">
+                <div className="pt-2 space-y-2">
+                  {/* Spots */}
+                  <div className="flex items-center gap-2">
+                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      min={1}
+                      value={spots}
+                      onChange={(e) => setSpots(parseInt(e.target.value) || 1)}
+                      className={cn(inputClass, "w-20 text-xs")}
+                    />
+                    <span className="text-xs text-muted-foreground">spots</span>
+                  </div>
+                  
+                  {/* Price override */}
+                  <div className="flex items-center gap-2">
+                    <Euro className="w-3.5 h-3.5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={customPrice}
+                      onChange={(e) => setCustomPrice(e.target.value)}
+                      placeholder={selectedExperience ? ((selectedExperience.price_cents || 0) / 100).toFixed(0) : '—'}
+                      className={cn(inputClass, "w-20 text-xs")}
+                    />
+                    <span className="text-xs text-muted-foreground">per person</span>
+                  </div>
+                </div>
               </div>
-              
-              {/* Price override */}
-              <div className="flex items-center gap-2">
-                <Euro className="w-3.5 h-3.5 text-muted-foreground" />
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={customPrice}
-                  onChange={(e) => setCustomPrice(e.target.value)}
-                  placeholder={selectedExperience ? ((selectedExperience.price_cents || 0) / 100).toFixed(0) : '—'}
-                  className="h-8 w-20 text-xs rounded-md bg-muted/30 border-border/40"
-                />
-                <span className="text-xs text-muted-foreground">per person</span>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          </div>
 
           {/* Submit */}
           <Button
             type="submit"
-            className="w-full h-9 rounded-xl font-medium"
+            className="w-full h-8 rounded-sm font-medium"
             disabled={!experienceId}
           >
             {isRecurring ? `Create ${sessionCount}` : 'Create'}

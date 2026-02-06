@@ -14,6 +14,8 @@ import {
   ChartBarIcon,
   Bars3Icon,
   ChevronLeftIcon,
+  MapPinIcon,
+  CodeBracketIcon,
 } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -103,12 +105,12 @@ export function Sidebar({ children }: SidebarProps) {
           <div className="flex-1 space-y-2">
             {/* Home */}
             <NavLink
-              to="/dashboard"
+              to={capabilities.isHotel ? '/hotel/dashboard' : '/supplier/dashboard'}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
                   'hover:bg-accent',
-                  isActive || location.pathname === '/supplier/dashboard'
+                  isActive || location.pathname === '/supplier/dashboard' || location.pathname === '/hotel/dashboard'
                     ? 'bg-accent text-foreground'
                     : 'text-muted-foreground hover:text-foreground'
                 )
@@ -213,21 +215,53 @@ export function Sidebar({ children }: SidebarProps) {
 
             {/* Hotel navigation */}
             {capabilities.isHotel && (
-              <NavLink
-                to="/hotel/selection"
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                    'hover:bg-accent',
-                    isActive
-                      ? 'bg-accent text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )
-                }
-              >
-                <BuildingOfficeIcon className="h-4 w-4 flex-shrink-0" />
-                <span>Hotels</span>
-              </NavLink>
+              <>
+                <NavLink
+                  to="/hotel/selection"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                      'hover:bg-accent',
+                      isActive
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <BuildingOfficeIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>Experience Selection</span>
+                </NavLink>
+                <NavLink
+                  to="/hotel/location"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                      'hover:bg-accent',
+                      isActive
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <MapPinIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>Location Settings</span>
+                </NavLink>
+                <NavLink
+                  to="/hotel/embed"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                      'hover:bg-accent',
+                      isActive
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <CodeBracketIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>Embed Widget</span>
+                </NavLink>
+              </>
             )}
           </div>
 

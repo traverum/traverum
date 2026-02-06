@@ -31,19 +31,11 @@ const Index = () => {
         <p className="text-lg text-secondary mb-12">
           Transform your hotel into a destination hub
         </p>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex justify-center">
           <Button 
             size="default"
             className="h-7 px-3 transition-ui"
-            onClick={() => navigate('/auth?mode=signup')}
-          >
-            Get Started
-          </Button>
-          <Button 
-            size="default"
-            variant="outline"
-            className="h-7 px-3 transition-ui"
-            onClick={() => navigate('/auth?mode=login')}
+            onClick={() => navigate('/auth')}
           >
             Log In
           </Button>

@@ -121,11 +121,12 @@ export function usePartnerCapabilities(partnerId: string | null) {
         .eq('partner_id', partnerId);
 
       // Check for hotel_config (hotel capability)
+      // Use .maybeSingle() to avoid errors when no hotel_config exists
       const { data: hotelConfig } = await supabase
         .from('hotel_configs')
         .select('id')
         .eq('partner_id', partnerId)
-        .single();
+        .maybeSingle();
 
       // Also check partner_type for backwards compatibility
       const { data: partner } = await supabase

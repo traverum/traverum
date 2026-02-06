@@ -89,6 +89,7 @@ export default function ExperienceDashboard() {
   const [locationAddress, setLocationAddress] = useState('');
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
+  const [meetingPoint, setMeetingPoint] = useState('');
   const [minParticipants, setMinParticipants] = useState('1');
   const [maxParticipants, setMaxParticipants] = useState('');
   
@@ -153,6 +154,9 @@ export default function ExperienceDashboard() {
         }
       }
       
+      // Meeting point
+      setMeetingPoint(experience.meeting_point || '');
+      
       setMinParticipants(((experience as any).min_participants || 1).toString());
       setMaxParticipants(experience.max_participants.toString());
       
@@ -213,6 +217,7 @@ export default function ExperienceDashboard() {
   const debouncedLocationAddress = useDebounce(locationAddress, 2000);
   const debouncedLocationLat = useDebounce(locationLat, 2000);
   const debouncedLocationLng = useDebounce(locationLng, 2000);
+  const debouncedMeetingPoint = useDebounce(meetingPoint, 2000);
   const debouncedDuration = useDebounce(durationMinutes, 2000);
   const debouncedMinParticipants = useDebounce(minParticipants, 2000);
   const debouncedMaxParticipants = useDebounce(maxParticipants, 2000);
@@ -266,6 +271,7 @@ export default function ExperienceDashboard() {
           tags: debouncedCategory ? [debouncedCategory] : [], // Store category as single-element array
           duration_minutes: durationValue,
           ...locationData,
+          meeting_point: debouncedMeetingPoint.trim() || null,
           max_participants: maxP,
           min_participants: minP,
           // Only update price_cents if it's greater than 0 (database constraint requires price_cents > 0)
@@ -325,7 +331,7 @@ export default function ExperienceDashboard() {
     autoSave();
   }, [
     experienceId,
-    debouncedTitle, debouncedCategory, debouncedDescription, debouncedLocationAddress, debouncedLocationLat, debouncedLocationLng, debouncedDuration,
+    debouncedTitle, debouncedCategory, debouncedDescription, debouncedLocationAddress, debouncedLocationLat, debouncedLocationLng, debouncedMeetingPoint, debouncedDuration,
     debouncedMinParticipants, debouncedMaxParticipants, debouncedPricingType,
     debouncedBasePrice, debouncedIncludedParticipants, debouncedExtraPersonPrice,
     debouncedMinDays, debouncedMaxDays,
@@ -727,6 +733,20 @@ export default function ExperienceDashboard() {
                   label="Experience Location"
                   required
                 />
+
+                <div className="space-y-2">
+                  <Label htmlFor="meetingPoint" className="text-sm">Meeting Point</Label>
+                  <Input
+                    id="meetingPoint"
+                    value={meetingPoint}
+                    onChange={(e) => setMeetingPoint(e.target.value)}
+                    placeholder="e.g., Meet at the main entrance, look for the blue flag"
+                    className="h-8"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Optional: Free-form description of where to meet (e.g., specific entrance, landmark, or instructions)
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   {pricingType !== 'per_day' && (

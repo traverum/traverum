@@ -43,34 +43,43 @@ export function ActivePartnerProvider({ children }: { children: ReactNode }) {
 
   // Initialize active partner when user partners load
   useEffect(() => {
-    if (!partnersLoading && userPartners.length > 0 && !activePartnerId) {
+    if (!partnersLoading && userPartners.length > 0) {
       const initialId = getInitialPartnerId();
       // Validate that the stored ID is still accessible
       const validPartner = userPartners.find(up => up.partner_id === initialId);
-      if (validPartner) {
+      if (validPartner && initialId !== activePartnerId) {
         setActivePartnerIdState(initialId);
-      } else {
-        // Fall back to default
-        setActivePartnerIdState(defaultPartner?.partner_id || null);
+        // Update URL to match
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('partner', initialId);
+        setSearchParams(newParams, { replace: true });
+      } else if (!validPartner && defaultPartner && !activePartnerId) {
+        // Fall back to default if stored ID is invalid
+        setActivePartnerIdState(defaultPartner.partner_id);
+        // Update URL to match
+        const newParams = new URLSearchParams(searchParams);
+        newParams.set('partner', defaultPartner.partner_id);
+        setSearchParams(newParams, { replace: true });
       }
+    } else if (!partnersLoading && userPartners.length === 0 && activePartnerId) {
+      // Clear active partner if no partners available
+      setActivePartnerIdState(null);
+      localStorage.removeItem(STORAGE_KEY);
     }
-  }, [partnersLoading, userPartners, defaultPartner, activePartnerId]);
+  }, [partnersLoading, userPartners, defaultPartner]);
 
   // Get capabilities for the active partner
-  const { data: capabilities, isLoading: capabilitiesLoading } = usePartnerCapabilities(activePartnerId);
+  const { data: capabilities, isLoading: capabilitiesLoading, isFetching: capabilitiesFetching } = usePartnerCapabilities(activePartnerId);
 
   // Set active partner and persist
   const setActivePartnerId = (id: string) => {
     setActivePartnerIdState(id);
     localStorage.setItem(STORAGE_KEY, id);
     
-    // Update URL if different
-    const currentUrlPartner = searchParams.get('partner');
-    if (currentUrlPartner && currentUrlPartner !== id) {
-      const newParams = new URLSearchParams(searchParams);
-      newParams.set('partner', id);
-      setSearchParams(newParams, { replace: true });
-    }
+    // Always update URL parameter
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('partner', id);
+    setSearchParams(newParams, { replace: true });
   };
 
   // Find the active partner object
@@ -86,7 +95,7 @@ export function ActivePartnerProvider({ children }: { children: ReactNode }) {
       experienceCount: 0,
       hasHotelConfig: false,
     },
-    isLoading: partnersLoading || capabilitiesLoading,
+    isLoading: partnersLoading || capabilitiesLoading || capabilitiesFetching,
     userPartners,
     hasMultiplePartners,
   };

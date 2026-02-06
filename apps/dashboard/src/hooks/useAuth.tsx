@@ -51,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  // NOTE: Signup is disabled for MVP - account creation is handled manually
+  // This function is kept for potential future use or backend/admin access
   const signUp = async (email: string, password: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
