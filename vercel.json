@@ -1,8 +1,9 @@
 {
-  "buildCommand": "next build",
-  "devCommand": "next dev",
+  "buildCommand": "pnpm --filter @traverum/widget build",
+  "devCommand": "pnpm --filter @traverum/widget dev",
   "installCommand": "pnpm install",
   "framework": "nextjs",
+  "rootDirectory": "apps/widget",
   "crons": [
     {
       "path": "/api/cron/auto-complete",
