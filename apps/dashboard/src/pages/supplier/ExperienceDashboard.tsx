@@ -66,12 +66,25 @@ function slugify(text: string): string {
     .trim();
 }
 
+// Wrapper that forces full remount when switching between experiences.
+// This ensures all useState, useRef, and useDebounce hooks reset cleanly — 
+// no stale data leaks, no flicker, no race conditions.
 export default function ExperienceDashboard() {
+  const { id } = useParams<{ id: string }>();
+  return <ExperienceDashboardInner key={id} />;
+}
+
+function ExperienceDashboardInner() {
   const { id: experienceId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { partner, experiences, refetchExperiences } = useSupplierData();
   const { availability, saveAvailability } = useExperienceAvailability(experienceId || null);
+
+  // Resolve experience early so we can seed initial state from React Query cache.
+  // When navigating from the sidebar the data is already cached → no flash.
+  const experience = experiences.find(e => e.id === experienceId);
+  const exp: any = experience; // shorthand for accessing fields that aren't in the strict type
 
   const [activeTab, setActiveTab] = useState('basic');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -79,26 +92,31 @@ export default function ExperienceDashboard() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const hasInitialized = useRef(false);
 
-  // Form state
-  const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
+  // Form state — seeded from cached experience so the first render already shows correct data
+  const [title, setTitle] = useState(() => experience?.title || '');
+  const [category, setCategory] = useState<string | null>(() => {
+    const tags = exp?.tags || [];
+    return tags.length > 0 ? tags[0] : null;
+  });
+  const [description, setDescription] = useState(() => experience?.description || '');
   const [images, setImages] = useState<MediaItem[]>([]);
-  const [durationMinutes, setDurationMinutes] = useState('');
-  const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
-  const [locationAddress, setLocationAddress] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState(() => experience?.duration_minutes?.toString() || '');
+  const [availableLanguages, setAvailableLanguages] = useState<string[]>(() => exp?.available_languages || []);
+  const [locationAddress, setLocationAddress] = useState(() => exp?.location_address || '');
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
-  const [meetingPoint, setMeetingPoint] = useState('');
-  const [minParticipants, setMinParticipants] = useState('1');
-  const [maxParticipants, setMaxParticipants] = useState('');
+  const [meetingPoint, setMeetingPoint] = useState(() => experience?.meeting_point || '');
+  const [minParticipants, setMinParticipants] = useState(() => (exp?.min_participants || 1).toString());
+  const [maxParticipants, setMaxParticipants] = useState(() => experience?.max_participants?.toString() || '');
   
-  const [pricingType, setPricingType] = useState<PricingType>('per_person');
-  const [basePriceCents, setBasePriceCents] = useState('');
-  const [includedParticipants, setIncludedParticipants] = useState('');
-  const [extraPersonCents, setExtraPersonCents] = useState('');
-  const [minDays, setMinDays] = useState('1');
-  const [maxDays, setMaxDays] = useState('');
+  const [pricingType, setPricingType] = useState<PricingType>(() => exp?.pricing_type || 'per_person');
+  const [basePriceCents, setBasePriceCents] = useState(() => ((exp?.base_price_cents / 100) || 0).toString());
+  const [includedParticipants, setIncludedParticipants] = useState(() => (exp?.included_participants || 0).toString());
+  const [extraPersonCents, setExtraPersonCents] = useState(() =>
+    ((exp?.extra_person_cents / 100) || (experience?.price_cents ? experience.price_cents / 100 : 0)).toString()
+  );
+  const [minDays, setMinDays] = useState(() => (exp?.min_days || 1).toString());
+  const [maxDays, setMaxDays] = useState(() => (exp?.max_days || '').toString());
   
   const [weekdays, setWeekdays] = useState<number[]>(DEFAULT_WEEKDAYS);
   const [startTime, setStartTime] = useState(DEFAULT_START_TIME);
@@ -106,11 +124,81 @@ export default function ExperienceDashboard() {
   const [validFrom, setValidFrom] = useState<string | null>(null);
   const [validUntil, setValidUntil] = useState<string | null>(null);
   
-  const [cancellationPolicy, setCancellationPolicy] = useState<CancellationPolicy>('moderate');
-  const [forceMajeureRefund, setForceMajeureRefund] = useState(true);
-  const [allowsRequests, setAllowsRequests] = useState(true);
+  const [cancellationPolicy, setCancellationPolicy] = useState<CancellationPolicy>(() => exp?.cancellation_policy || 'moderate');
+  const [forceMajeureRefund, setForceMajeureRefund] = useState(() => exp?.force_majeure_refund ?? true);
+  const [allowsRequests, setAllowsRequests] = useState(() => experience?.allows_requests ?? true);
 
-  const experience = experiences.find(e => e.id === experienceId);
+  // Ref to track latest form values for flush-on-unmount (avoids stale closures)
+  const formValuesRef = useRef<any>(null);
+  const refetchRef = useRef(refetchExperiences);
+  refetchRef.current = refetchExperiences;
+
+  // Keep form values ref in sync on every render (cheap, no side effects)
+  useEffect(() => {
+    if (!hasInitialized.current) return;
+    formValuesRef.current = {
+      title, category, description, durationMinutes, locationAddress, locationLat, locationLng,
+      meetingPoint, minParticipants, maxParticipants, pricingType, basePriceCents,
+      includedParticipants, extraPersonCents, minDays, maxDays,
+      cancellationPolicy, forceMajeureRefund, allowsRequests, availableLanguages,
+    };
+  });
+
+  // Flush pending changes on unmount — ensures no edits are lost when switching experiences
+  useEffect(() => {
+    return () => {
+      const vals = formValuesRef.current;
+      if (!vals || !experienceId) return;
+
+      const durationValue = parseInt(vals.durationMinutes) || 60;
+      const maxP = parseInt(vals.maxParticipants) || 10;
+      const minP = parseInt(vals.minParticipants) || 1;
+      const baseP = Math.round((parseFloat(vals.basePriceCents) || 0) * 100);
+      const extraP = Math.round((parseFloat(vals.extraPersonCents) || 0) * 100);
+      const inclP = parseInt(vals.includedParticipants) || 0;
+      const legacyPriceCents = vals.pricingType === 'per_person' || vals.pricingType === 'per_day' ? extraP : baseP;
+
+      let locationData: any = {};
+      if (vals.locationAddress?.trim() && vals.locationLat !== null && vals.locationLng !== null) {
+        locationData.location_address = vals.locationAddress.trim();
+        locationData.location = `POINT(${vals.locationLng} ${vals.locationLat})`;
+      }
+
+      const experienceData: any = {
+        title: vals.title?.trim() || 'New Experience',
+        slug: slugify(vals.title || 'new-experience') + `-${experienceId.slice(0, 8)}`,
+        description: vals.description?.trim() || '',
+        tags: vals.category ? [vals.category] : [],
+        duration_minutes: durationValue,
+        ...locationData,
+        meeting_point: vals.meetingPoint?.trim() || null,
+        max_participants: maxP,
+        min_participants: minP,
+        ...(legacyPriceCents > 0 ? { price_cents: legacyPriceCents } : {}),
+        pricing_type: vals.pricingType,
+        base_price_cents: vals.pricingType === 'flat_rate' || vals.pricingType === 'base_plus_extra' ? baseP : 0,
+        included_participants: vals.pricingType === 'base_plus_extra' ? inclP : (vals.pricingType === 'flat_rate' ? maxP : 0),
+        extra_person_cents: vals.pricingType === 'per_person' || vals.pricingType === 'base_plus_extra' || vals.pricingType === 'per_day' ? extraP : 0,
+        cancellation_policy: vals.cancellationPolicy,
+        force_majeure_refund: vals.forceMajeureRefund,
+        allows_requests: vals.allowsRequests,
+        available_languages: vals.availableLanguages,
+      };
+
+      if (vals.pricingType === 'per_day') {
+        experienceData.min_days = parseInt(vals.minDays) || 1;
+        experienceData.max_days = vals.maxDays?.trim() ? parseInt(vals.maxDays) : null;
+      }
+
+      // Fire-and-forget: save to DB then refresh sidebar
+      supabase
+        .from('experiences')
+        .update(experienceData)
+        .eq('id', experienceId)
+        .then(() => refetchRef.current());
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps — with key-based remount, experienceId is stable for the component's lifetime
 
   // Load existing experience data
   useEffect(() => {
@@ -266,7 +354,7 @@ export default function ExperienceDashboard() {
 
         const experienceData: any = {
           title: debouncedTitle.trim() || 'New Experience',
-          slug: slugify(debouncedTitle || 'new-experience'),
+          slug: slugify(debouncedTitle || 'new-experience') + `-${experienceId?.slice(0, 8)}`,
           description: debouncedDescription.trim(),
           tags: debouncedCategory ? [debouncedCategory] : [], // Store category as single-element array
           duration_minutes: durationValue,
@@ -740,11 +828,10 @@ export default function ExperienceDashboard() {
                     id="meetingPoint"
                     value={meetingPoint}
                     onChange={(e) => setMeetingPoint(e.target.value)}
-                    placeholder="e.g., Meet at the main entrance, look for the blue flag"
                     className="h-8"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optional: Free-form description of where to meet (e.g., specific entrance, landmark, or instructions)
+                    Optional: Free-form description of where to meet
                   </p>
                 </div>
 

@@ -61,16 +61,20 @@ For the MVP phase, signup/registration functionality has been disabled. Account 
 - "Add organization" menu item
 - `handleAddOrganization` function
 - Navigation to `/onboarding/add-business`
+- "Add hotel property" menu item
+- `handleAddHotelProperty` function
+- `AddHotelProperty` component import and usage
+- `showAddHotelProperty` state
 
 **Kept:**
 - Organization switcher (if multiple organizations exist)
 - View switcher (for hybrid organizations)
-- Add hotel property option (if hotel capability)
 - Sign out option
 
 **Current State:**
 - Users cannot add new organizations via UI
-- Organization creation must be done manually
+- Users cannot add new hotel properties via UI
+- Organization and hotel property creation must be done manually
 
 ---
 
@@ -164,7 +168,51 @@ For the MVP phase, signup/registration functionality has been disabled. Account 
 - Current simplified version: `apps/dashboard/src/components/layout/OrganizationDropdown.tsx` (no Add organization option)
 - Original included "Add organization" menu item that navigated to `/onboarding/add-business`
 
-### Step 4: Remove MVP Comments
+### Step 4: Restore Add Hotel Property
+
+1. **Add back imports:**
+   ```tsx
+   import { AddHotelProperty } from '@/components/AddHotelProperty';
+   import { useState } from 'react';
+   ```
+
+2. **Add back state:**
+   ```tsx
+   const [showAddHotelProperty, setShowAddHotelProperty] = useState(false);
+   ```
+
+3. **Add back handler:**
+   ```tsx
+   const handleAddHotelProperty = () => {
+     setShowAddHotelProperty(true);
+   };
+   ```
+
+4. **Add back menu item (inside hotel capability check):**
+   ```tsx
+   {capabilities.isHotel && (
+     <>
+       <DropdownMenuItem
+         onClick={handleAddHotelProperty}
+         className="cursor-pointer px-2 py-1.5"
+       >
+         Add hotel property
+       </DropdownMenuItem>
+       <DropdownMenuSeparator />
+     </>
+   )}
+   ```
+
+5. **Add back component usage:**
+   ```tsx
+   <AddHotelProperty open={showAddHotelProperty} onOpenChange={setShowAddHotelProperty} />
+   ```
+
+**Reference:** 
+- Current simplified version: `apps/dashboard/src/components/layout/OrganizationDropdown.tsx` (no Add hotel property option)
+- Original included "Add hotel property" menu item that opened the `AddHotelProperty` dialog
+
+### Step 5: Remove MVP Comments
 
 1. Remove comment from `useAuth.tsx` signUp function
 2. Update any documentation referencing MVP limitations
@@ -188,6 +236,7 @@ For the MVP phase, signup/registration functionality has been disabled. Account 
 - [ ] Terms acceptance checkbox works
 - [ ] "Get Started" button appears on landing page
 - [ ] "Add organization" button appears in dropdown
+- [ ] "Add hotel property" button appears in dropdown (for hotel organizations)
 - [ ] Email verification flow works
 - [ ] New users can create accounts
 - [ ] New users can create organizations
@@ -200,7 +249,9 @@ For the MVP phase, signup/registration functionality has been disabled. Account 
 - All signup-related code remains in the codebase but is not accessible via UI
 - The `/onboarding/add-business` route exists but has no UI access
 - Account creation during MVP is done manually through Supabase admin or backend
-- This simplification makes it easy to re-enable signup later when needed
+- Hotel property creation during MVP is done manually through Supabase admin or backend
+- The `AddHotelProperty` component remains in the codebase but is not accessible via UI
+- This simplification makes it easy to re-enable signup and hotel property creation later when needed
 
 ---
 

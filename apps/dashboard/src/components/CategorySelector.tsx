@@ -30,9 +30,6 @@ export function CategorySelector({ value, onChange, disabled }: CategorySelector
           ))}
         </SelectContent>
       </Select>
-      {!value && (
-        <p className="text-xs text-muted-foreground">Select a category to help travelers find your experience</p>
-      )}
     </div>
   );
 }

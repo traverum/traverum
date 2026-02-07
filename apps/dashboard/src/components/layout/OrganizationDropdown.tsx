@@ -15,8 +15,6 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { AddHotelProperty } from '@/components/AddHotelProperty';
-import { useState } from 'react';
 
 export function OrganizationDropdown() {
   const navigate = useNavigate();
@@ -28,7 +26,6 @@ export function OrganizationDropdown() {
     hasMultiplePartners,
     capabilities,
   } = useActivePartner();
-  const [showAddHotelProperty, setShowAddHotelProperty] = useState(false);
 
   if (!activePartner) {
     return null;
@@ -37,10 +34,6 @@ export function OrganizationDropdown() {
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
-  };
-
-  const handleAddHotelProperty = () => {
-    setShowAddHotelProperty(true);
   };
 
   // Get capabilities for a specific partner (for non-active partners in list)
@@ -170,19 +163,6 @@ export function OrganizationDropdown() {
           </>
         )}
 
-        {/* Add Hotel Property (if organization has hotel capabilities) */}
-        {capabilities.isHotel && (
-          <>
-            <DropdownMenuItem
-              onClick={handleAddHotelProperty}
-              className="cursor-pointer px-2 py-1.5"
-            >
-              Add hotel property
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        )}
-
         {/* Logout */}
         <DropdownMenuItem
           onClick={handleSignOut}
@@ -191,7 +171,6 @@ export function OrganizationDropdown() {
           Sign out
         </DropdownMenuItem>
       </DropdownMenuContent>
-      <AddHotelProperty open={showAddHotelProperty} onOpenChange={setShowAddHotelProperty} />
     </DropdownMenu>
   );
 }

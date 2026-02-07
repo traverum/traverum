@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { OrganizationDropdown } from './OrganizationDropdown';
@@ -17,6 +17,7 @@ import {
   MapPinIcon,
   CodeBracketIcon,
   PaintBrushIcon,
+  PlusIcon,
 } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,8 +33,39 @@ export function Sidebar({ children }: SidebarProps) {
   const { isOpen, toggle, open } = useSidebar();
   
   // Get data for supplier
-  const { experiences } = capabilities.isSupplier ? useSupplierData() : { experiences: [] };
+  const { experiences, refetchExperiences } = capabilities.isSupplier ? useSupplierData() : { experiences: [], refetchExperiences: async () => {} };
   const { requests: pendingRequests } = usePendingRequests();
+  const [creatingExperience, setCreatingExperience] = useState(false);
+
+  const handleAddExperience = async () => {
+    if (creatingExperience || !activePartnerId) return;
+    setCreatingExperience(true);
+    try {
+      const { data, error } = await supabase
+        .from('experiences')
+        .insert({
+          partner_id: activePartnerId,
+          title: 'New Experience',
+          slug: 'new-experience-' + Date.now(),
+          description: '',
+          duration_minutes: 60,
+          max_participants: 10,
+          price_cents: 1,
+          currency: 'EUR',
+          experience_status: 'draft',
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      await refetchExperiences();
+      navigate(`/supplier/experiences/${data.id}`);
+    } catch (error) {
+      console.error('Failed to create experience:', error);
+    } finally {
+      setCreatingExperience(false);
+    }
+  };
   
   // Get upcoming sessions count
   const { data: upcomingSessionsCount = 0 } = useQuery({
@@ -211,6 +243,18 @@ export function Sidebar({ children }: SidebarProps) {
                     })}
                   </div>
                 )}
+                <button
+                  onClick={handleAddExperience}
+                  disabled={creatingExperience}
+                  className={cn(
+                    'w-full flex items-center gap-2 h-7 px-2 rounded-md text-xs transition-colors text-left mt-1',
+                    'text-muted-foreground hover:text-foreground hover:bg-accent',
+                    creatingExperience && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  <PlusIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{creatingExperience ? 'Adding...' : 'Add'}</span>
+                </button>
               </>
             )}
 
