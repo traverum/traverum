@@ -233,8 +233,10 @@ export default function ExperienceSelection() {
       }
 
       // Get current distributions for this hotel property
-      const { data: distributions, error: distError } = await supabase
-        .from('distributions')
+      // hotel_config_id added via migration, not yet in generated types
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: distributions, error: distError } = await (supabase
+        .from('distributions') as any)
         .select('id, experience_id, is_active')
         .eq('hotel_config_id', activeHotelConfigId);
 
@@ -285,9 +287,11 @@ export default function ExperienceSelection() {
         if (error) throw error;
       } else {
         // Create new distribution with default commissions
+        // hotel_config_id added via migration, not yet in generated types
         if (!activeHotelConfigId) throw new Error('No hotel property selected');
-        const { error } = await supabase
-          .from('distributions')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase
+          .from('distributions') as any)
           .insert({
             hotel_id: partnerId,
             hotel_config_id: activeHotelConfigId,

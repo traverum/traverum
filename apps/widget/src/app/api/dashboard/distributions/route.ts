@@ -4,7 +4,6 @@ import type { Database } from '@/lib/supabase/types'
 
 export const dynamic = 'force-dynamic'
 
-type DistributionInsert = Database['public']['Tables']['distributions']['Insert']
 type DistributionUpdate = Database['public']['Tables']['distributions']['Update']
 
 // Default commission splits (in percentage)
@@ -60,7 +59,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if distribution exists
-    const { data: existingDist } = await adminClient
+    // hotel_config_id is added via migration but not yet in generated types
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingDist } = await (adminClient as any)
       .from('distributions')
       .select('id')
       .eq('hotel_config_id', hotel_config_id)
@@ -84,7 +85,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, action: 'updated' })
     } else if (is_active) {
       // Create new distribution (only when activating)
-      const newDistribution: DistributionInsert = {
+      // hotel_config_id is added via migration but not yet in generated types
+      const newDistribution = {
         hotel_id: partner_id,
         hotel_config_id,
         experience_id,

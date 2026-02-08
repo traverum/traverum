@@ -72,8 +72,9 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
   const hotel = hotelData as any
 
   // Fetch distributions for this hotel with experiences
-  const { data: distributionsData, error: distError } = await supabase
-    .from('distributions')
+  // hotel_config_id added via migration, not yet in generated types
+  const { data: distributionsData, error: distError } = await (supabase
+    .from('distributions') as any)
     .select(`
       *,
       experience:experiences!distributions_experience_fk (
@@ -161,8 +162,9 @@ export async function getExperienceForHotel(
   const hotel = hotelData as any
 
   // Get all distributions for this hotel and find the one with matching experience slug
-  const { data: allDistData } = await supabase
-    .from('distributions')
+  // hotel_config_id added via migration, not yet in generated types
+  const { data: allDistData } = await (supabase
+    .from('distributions') as any)
     .select(`
       *,
       experience:experiences!distributions_experience_fk (
