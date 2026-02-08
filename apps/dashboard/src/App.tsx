@@ -2,9 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ActivePartnerProvider } from "@/hooks/useActivePartner";
+import { ActiveHotelConfigProvider } from "@/hooks/useActiveHotelConfig";
 import { SidebarProvider } from "@/contexts/SidebarContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -16,8 +17,12 @@ import ExperienceDashboard from "./pages/supplier/ExperienceDashboard";
 import ExperienceFormRedirect from "./pages/supplier/ExperienceFormRedirect";
 import ExperienceSessions from "./pages/supplier/ExperienceSessions";
 import SupplierSessions from "./pages/supplier/SupplierSessions";
-import PendingRequests from "./pages/supplier/PendingRequests";
-import SessionDetail from "./pages/supplier/SessionDetail";
+import BookingManagement from "./pages/supplier/BookingManagement";
+// SessionDetail redirect - old route now points to BookingManagement
+function SessionDetailRedirect() {
+  const { sessionId } = useParams();
+  return <Navigate to={`/supplier/bookings?tab=upcoming&session=${sessionId}`} replace />;
+}
 import StripeConnect from "./pages/supplier/StripeConnect";
 import ExperienceSelection from "./pages/hotel/ExperienceSelection";
 import HotelDashboard from "./pages/hotel/Dashboard";
@@ -39,6 +44,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ActivePartnerProvider>
+            <ActiveHotelConfigProvider>
             <SidebarProvider>
               <Routes>
               <Route path="/" element={<Index />} />
@@ -112,18 +118,24 @@ const App = () => (
                 } 
               />
               <Route 
-                path="/supplier/requests" 
+                path="/supplier/bookings" 
                 element={
                   <ProtectedRoute>
-                    <PendingRequests />
+                    <BookingManagement />
                   </ProtectedRoute>
                 } 
               />
+              {/* Redirect old route */}
+              <Route 
+                path="/supplier/requests" 
+                element={<Navigate to="/supplier/bookings" replace />} 
+              />
+              {/* Redirect old session detail to new booking management page */}
               <Route 
                 path="/supplier/sessions/:sessionId" 
                 element={
                   <ProtectedRoute>
-                    <SessionDetail />
+                    <SessionDetailRedirect />
                   </ProtectedRoute>
                 } 
               />
@@ -211,6 +223,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
               </Routes>
             </SidebarProvider>
+            </ActiveHotelConfigProvider>
           </ActivePartnerProvider>
         </BrowserRouter>
       </TooltipProvider>

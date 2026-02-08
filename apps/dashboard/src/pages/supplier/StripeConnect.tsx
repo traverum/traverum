@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSupplierData } from '@/hooks/useSupplierData';
+import { useActivePartner } from '@/hooks/useActivePartner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +10,7 @@ import { toast } from 'sonner';
 export default function StripeConnect() {
   const navigate = useNavigate();
   const { partner, hasStripe } = useSupplierData();
+  const { activePartnerId } = useActivePartner();
   const [loading, setLoading] = useState(false);
 
   const handleConnectStripe = async () => {
@@ -23,8 +25,13 @@ export default function StripeConnect() {
         return;
       }
 
+      if (!activePartnerId) {
+        toast.error('No organization selected');
+        return;
+      }
+
       const response = await supabase.functions.invoke('create-connect-account', {
-        body: { origin: window.location.origin },
+        body: { origin: window.location.origin, partner_id: activePartnerId },
       });
 
       if (response.error) {

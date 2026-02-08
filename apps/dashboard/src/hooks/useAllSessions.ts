@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useActivePartner } from '@/hooks/useActivePartner';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 export interface SessionWithExperience {
@@ -27,28 +27,21 @@ interface UseAllSessionsOptions {
 }
 
 export function useAllSessions({ currentMonth, experienceId }: UseAllSessionsOptions) {
-  const { user } = useAuth();
+  const { activePartnerId } = useActivePartner();
 
   const monthStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
   const monthEnd = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
 
   const { data: sessions = [], isLoading, refetch } = useQuery({
-    queryKey: ['all-sessions', user?.id, monthStart, monthEnd, experienceId],
+    queryKey: ['all-sessions', activePartnerId, monthStart, monthEnd, experienceId],
     queryFn: async () => {
-      // First get the user's partner_id
-      const { data: userData } = await supabase
-        .from('users')
-        .select('partner_id')
-        .eq('auth_id', user!.id)
-        .single();
-
-      if (!userData?.partner_id) return [];
+      if (!activePartnerId) return [];
 
       // Get all experiences for this partner
       const { data: experiences } = await supabase
         .from('experiences')
         .select('id, title, price_cents, duration_minutes')
-        .eq('partner_id', userData.partner_id);
+        .eq('partner_id', activePartnerId);
 
       if (!experiences || experiences.length === 0) return [];
 
@@ -77,7 +70,7 @@ export function useAllSessions({ currentMonth, experienceId }: UseAllSessionsOpt
         experience: experienceMap.get(session.experience_id)!,
       })) as SessionWithExperience[];
     },
-    enabled: !!user,
+    enabled: !!activePartnerId,
   });
 
   // Group sessions by date

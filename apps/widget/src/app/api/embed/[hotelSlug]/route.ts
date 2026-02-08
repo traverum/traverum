@@ -56,7 +56,7 @@ export async function GET(
         tags
       )
     `)
-    .eq('hotel_id', hotel.partner_id)
+    .eq('hotel_config_id', hotel.id)
     .eq('is_active', true)
 
   if (distError) {

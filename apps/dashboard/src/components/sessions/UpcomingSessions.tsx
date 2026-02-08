@@ -81,7 +81,7 @@ export function UpcomingSessions({
                 className={`flex-shrink-0 w-44 cursor-pointer transition-all hover:shadow-md hover:border-primary/50 ${
                   isCancelled ? 'opacity-60' : ''
                 }`}
-                onClick={() => navigate(`/supplier/sessions/${session.id}`)}
+                onClick={() => navigate(`/supplier/bookings?session=${session.id}`)}
               >
                 <CardContent className="p-4">
                   <div className="space-y-2">

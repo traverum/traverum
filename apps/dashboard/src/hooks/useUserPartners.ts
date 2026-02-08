@@ -121,12 +121,11 @@ export function usePartnerCapabilities(partnerId: string | null) {
         .eq('partner_id', partnerId);
 
       // Check for hotel_config (hotel capability)
-      // Use .maybeSingle() to avoid errors when no hotel_config exists
-      const { data: hotelConfig } = await supabase
+      // Use count instead of maybeSingle — multiple hotel_configs are now possible
+      const { count: hotelConfigCount } = await supabase
         .from('hotel_configs')
-        .select('id')
-        .eq('partner_id', partnerId)
-        .maybeSingle();
+        .select('*', { count: 'exact', head: true })
+        .eq('partner_id', partnerId);
 
       // Also check partner_type for backwards compatibility
       const { data: partner } = await supabase
@@ -136,7 +135,7 @@ export function usePartnerCapabilities(partnerId: string | null) {
         .single();
 
       const hasExperiences = (experienceCount || 0) > 0;
-      const hasHotelConfig = !!hotelConfig;
+      const hasHotelConfig = (hotelConfigCount || 0) > 0;
       
       // A partner is a supplier if they have experiences OR partner_type is 'supplier'
       const isSupplier = hasExperiences || partner?.partner_type === 'supplier';

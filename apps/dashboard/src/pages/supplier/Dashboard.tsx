@@ -4,8 +4,10 @@ import { useSupplierData } from '@/hooks/useSupplierData';
 import { usePendingRequests } from '@/hooks/usePendingRequests';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, parseISO, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Compass, AlertCircle } from 'lucide-react';
 import { ClockIcon } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,8 +19,12 @@ export default function SupplierDashboard() {
   const {
     experiences,
     isLoading: supplierLoading,
+    hasStripe,
   } = useSupplierData();
   const { requests: pendingRequests, isLoading: requestsLoading } = usePendingRequests();
+  
+  // Check if Stripe onboarding is needed
+  const needsStripeOnboarding = !hasStripe;
 
   // Get all upcoming sessions
   const { data: upcomingSessions = [], isLoading: sessionsLoading } = useQuery({
@@ -103,6 +109,26 @@ export default function SupplierDashboard() {
             {getGreeting()}
           </h1>
         </div>
+
+        {/* Stripe Onboarding Alert */}
+        {needsStripeOnboarding && (
+          <Alert className="border-border bg-card">
+            <AlertCircle className="h-4 w-4 text-primary" />
+            <AlertTitle className="text-sm font-medium">Complete Payment Setup</AlertTitle>
+            <AlertDescription className="text-sm text-muted-foreground mt-1">
+              Connect your Stripe account to receive payments from bookings.
+            </AlertDescription>
+            <div className="mt-3">
+              <Button
+                size="sm"
+                onClick={() => navigate('/supplier/stripe-connect')}
+                className="h-7 px-3 text-sm"
+              >
+                Set Up Payments
+              </Button>
+            </div>
+          </Alert>
+        )}
 
         {/* Pending Requests Section - Always visible */}
         <div className="space-y-3">
@@ -206,7 +232,7 @@ export default function SupplierDashboard() {
                   <Card
                     key={session.id}
                     className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[200px]"
-                    onClick={() => navigate(`/supplier/sessions/${session.id}`)}
+                    onClick={() => navigate(`/supplier/bookings?session=${session.id}`)}
                   >
                     <CardContent className="p-3">
                       <h3 className="text-sm font-medium text-foreground">
@@ -272,7 +298,7 @@ export default function SupplierDashboard() {
                             />
                           ) : (
                             <div className="w-full h-full bg-muted flex items-center justify-center">
-                              <span className="text-2xl">✨</span>
+                              <Compass className="h-6 w-6 text-muted-foreground" />
                             </div>
                           )}
                           {/* Status Badge */}

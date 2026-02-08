@@ -6,6 +6,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar'
 import { PickersDay, PickersDayProps } from '@mui/x-date-pickers/PickersDay'
 import dayjs, { Dayjs } from 'dayjs'
+import 'dayjs/locale/en-gb' // UK locale starts week on Monday
 import { cn } from '@/lib/utils'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 
@@ -153,7 +154,7 @@ function Calendar({ selected, onSelect, disabled, className, datesWithSessions =
   return (
     <ThemeProvider theme={theme}>
       <div className={cn('w-full', className)}>
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="en-gb">
           <DateCalendar
             value={value}
             onChange={handleChange}

@@ -1,3 +1,5 @@
+Reviewed by Elias on 07-02-2026
+
 # Experience Dashboard
 
 ## What & Why
@@ -6,35 +8,25 @@
 
 **WHY:** Suppliers need to quickly edit experience details without navigating to separate pages. Autosave ensures changes are saved automatically.
 
-## Page Structure
+## Header
 
-**5 tabs:**
-- Basic
-- Pricing
-- Availability
-- Policies
-- Settings
-
-**Autosave indicator:** Top-right corner shows "Saving...", "Saved", or "Error" when changes are being saved.
-
----
+- **Status Selector** (dropdown in header, next to tabs)
+  - Active
+  - Draft
+  - Archived
 
 ## Tab 1: Basic
 
-- **Title** (required, min 3 chars)
-- **Category** (required, dropdown)
-  - Food & Drink
-  - Culture & History
-  - Nature & Outdoors
-  - Adventure & Sports
-  - Wellness & Relaxation
-  - Nightlife & Entertainment
-- **Description** (required, min 50 chars, shows character count)
-- **Images** (up to 10, drag to reorder, first image is cover)
-- **Duration** (required, dropdown: 30min to All day)
+- **Title**
+- **Category**
+- **Description**
+- **Images**
+- **Duration**
+- **Available Languages**
+- **Location**
 - **Meeting Point** (optional text input)
-- **Min Participants** (required, number)
-- **Max Participants** (required, number)
+- **Min Participants** (required for going live, number, hidden when pricing type is "Per day (Rental)")
+- **Max Participants** (required for going live, number)
 
 ---
 
@@ -44,6 +36,7 @@
   - Per person
   - Flat rate
   - Base + extras
+  - Per day (Rental)
 
 **When "Per person" selected:**
 - Price per person (EUR, required, min €1.00)
@@ -55,6 +48,11 @@
 - Base price (EUR, required, min €1.00)
 - Guests included (required, min 1)
 - Extra person price (EUR, optional)
+
+**When "Per day (Rental)" selected:**
+- Price per day (EUR, required, min €1.00)
+- Minimum rental period (days, required, min 1)
+- Maximum rental period (days, optional)
 
 ---
 
@@ -84,8 +82,4 @@
 
 ## Tab 5: Settings
 
-- **Status** (dropdown)
-  - Active
-  - Draft
-  - Archive
 - **Delete Experience** (button with confirmation dialog)

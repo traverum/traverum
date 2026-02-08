@@ -87,7 +87,7 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
         )
       )
     `)
-    .eq('hotel_id', hotel.partner_id)
+    .eq('hotel_config_id', hotel.id)
     .eq('is_active', true)
   
   if (distError || !distributionsData) {
@@ -151,7 +151,7 @@ export async function getExperienceForHotel(
   // First get the hotel
   const { data: hotelData } = await supabase
     .from('hotel_configs')
-    .select('partner_id')
+    .select('id, partner_id')
     .eq('slug', hotelSlug)
     .eq('is_active', true)
     .single()
@@ -176,7 +176,7 @@ export async function getExperienceForHotel(
         )
       )
     `)
-    .eq('hotel_id', hotel.partner_id)
+    .eq('hotel_config_id', hotel.id)
     .eq('is_active', true)
   
   if (!allDistData || allDistData.length === 0) return null

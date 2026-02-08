@@ -5,6 +5,7 @@ import { X } from 'lucide-react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { SessionPicker } from './SessionPicker'
 import type { ExperienceSession } from '@/lib/supabase/types'
+import type { AvailabilityRule } from '@/lib/availability'
 
 interface DatePickerDrawerProps {
   isOpen: boolean
@@ -19,6 +20,7 @@ interface DatePickerDrawerProps {
   onCustomTimeChange: (time: string) => void
   onConfirm: () => void
   participants: number
+  availabilityRules?: AvailabilityRule[]
 }
 
 export function DatePickerDrawer({
@@ -34,6 +36,7 @@ export function DatePickerDrawer({
   onCustomTimeChange,
   onConfirm,
   participants,
+  availabilityRules = [],
 }: DatePickerDrawerProps) {
   const shouldReduceMotion = useReducedMotion()
   const hasSelection = isCustomRequest 
@@ -118,6 +121,7 @@ export function DatePickerDrawer({
                 onCustomDateChange={onCustomDateChange}
                 onCustomTimeChange={onCustomTimeChange}
                 participants={participants}
+                availabilityRules={availabilityRules}
               />
             </div>
             

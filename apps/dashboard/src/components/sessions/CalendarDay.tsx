@@ -25,6 +25,7 @@ interface CalendarDayProps {
   onDayClick?: (date: Date) => void;
   showExperienceTitle?: boolean;
   availabilityRules?: AvailabilityRule[];
+  onSessionClick?: (sessionId: string, position: { x: number; y: number }) => void;
 }
 
 export function CalendarDay({ 
@@ -36,6 +37,7 @@ export function CalendarDay({
   onDayClick,
   showExperienceTitle = false,
   availabilityRules = [],
+  onSessionClick,
 }: CalendarDayProps) {
   const displayedSessions = sessions.slice(0, 3);
   const actualTotal = totalSessionCount ?? sessions.length;
@@ -87,6 +89,7 @@ export function CalendarDay({
             key={session.id}
             session={session}
             showExperienceTitle={showExperienceTitle}
+            onSessionClick={onSessionClick}
           />
         ))}
         {actualTotal > 3 && (

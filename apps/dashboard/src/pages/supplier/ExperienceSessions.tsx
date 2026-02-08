@@ -49,6 +49,7 @@ export default function ExperienceSessions() {
     isLoading,
     createSession,
     createSessions,
+    refetch,
   } = useExperienceSessions({
     experienceId: experienceId || '',
     currentMonth,
@@ -164,6 +165,7 @@ export default function ExperienceSessions() {
             onMonthChange={setCurrentMonth}
             onCreateSession={handleCreateSession}
             availabilityRules={availabilityRules}
+            onSessionUpdate={refetch}
           />
         )}
       </main>

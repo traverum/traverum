@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getHotelBySlug, getExperienceForHotel } from '@/lib/hotels'
 import { getAvailableSessions } from '@/lib/sessions'
+import { getExperienceAvailability } from '@/lib/availability.server'
 import { getEmbedMode, formatDuration, cn } from '@/lib/utils'
 import { Header } from '@/components/Header'
 import { ImageGallery } from '@/components/ImageGallery'
@@ -47,7 +48,10 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
     notFound()
   }
   
-  const sessions = await getAvailableSessions(experience.id)
+  const [sessions, availabilityRules] = await Promise.all([
+    getAvailableSessions(experience.id),
+    getExperienceAvailability(experience.id),
+  ])
   
   return (
     <div className={cn(
@@ -151,6 +155,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                 experience={experience}
                 sessions={sessions}
                 hotelSlug={hotelSlug}
+                availabilityRules={availabilityRules}
               />
             </div>
           </div>
@@ -162,6 +167,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
         experience={experience}
         sessions={sessions}
         hotelSlug={hotelSlug}
+        availabilityRules={availabilityRules}
       />
       
       {/* Embed mode resize script */}

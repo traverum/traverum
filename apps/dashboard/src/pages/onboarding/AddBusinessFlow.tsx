@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { BusinessTypeSelection } from './BusinessTypeSelection';
 import { BusinessDetails } from './BusinessDetails';
 
-type BusinessType = 'supplier' | 'hotel' | 'hybrid';
+type BusinessType = 'supplier' | 'hotel';
 
 export default function AddBusinessFlow() {
   const [showTypeSelection, setShowTypeSelection] = useState(true);

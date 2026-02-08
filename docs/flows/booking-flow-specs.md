@@ -1,206 +1,190 @@
-# Traverum Booking Flow Specification
+Updated by Elias on 07-02-2026
 
-> **Document Purpose**: Define exactly what the system should do. Cursor handles implementation.
-> **Last Updated**: January 2025 (Updated with refund vs no-refund distinction)
+# Booking Flow Specification
 
----
+## What & Why
 
-## System Overview
+**WHAT:** Two booking flows + a propose-new-time variant. Session-based (instant) and request-based (approval required).
 
-Traverum supports **two booking flows** depending on whether the guest picks an existing session or requests a custom date/time:
+**WHY:** Hotels sell experiences to guests via widget. Suppliers manage everything via email. No dashboard required for core flows.
 
-1. **Session-Based Booking**: Guest picks an available session → Pays immediately (no approval needed)
-2. **Request-Based Booking**: Guest requests a custom date/time → Supplier approves → Guest pays
-
-**Key principle**: Suppliers manage everything via email. No dashboard required.
+**Key principle:** Supplier never sees guest email until after payment. All communication mediated via Traverum email system with signed action tokens. Propose New Time is dashboard-only (Accept/Decline remain email one-click).
 
 ---
 
 ## Flow A: Session-Based Booking (Instant)
 
-When a guest **selects an existing session** with available spots, they can pay immediately without waiting for supplier approval.
+Guest picks existing session with available spots. No approval needed.
 
-### Phase 1: Guest Selects Session
+**Steps:**
+1. Guest selects experience + session + participants in widget
+2. Guest enters name, email, phone
+3. System deducts spots immediately
+4. System creates reservation with status `approved` (skips pending)
+5. System creates Stripe Checkout and takes the user to pay.
 
-1. Guest visits hotel's embedded widget
-2. Guest selects: experience, **existing session** (with date/time), number of participants
-3. Guest enters: first name, last name, email, phone number
-4. Guest clicks "Book Now"
-5. System **deducts spots** from the session immediately
-6. System creates reservation with status **`approved`** (skip pending)
-7. System creates Stripe Payment Link immediately
-8. System sets `payment_deadline` to 24 hours from now
-9. System sends email to guest: **"Complete your booking!"** with Pay Now button
-10. System sends email to supplier: **"New booking pending payment"** (notification only, no accept/decline)
+7. Email to supplier: "New booking pending payment" (FYI only)
 
-### Phase 2: Guest Pays
-
-Same as Request-Based Flow Phase 3 (below)
+Then continues to [Payment Phase](#payment-phase).
 
 ---
 
 ## Flow B: Request-Based Booking (Approval Required)
 
-When a guest **requests a custom date/time** (not an existing session), the supplier must approve before the guest can pay.
+Guest requests custom date/time. Supplier must respond.
 
 ### Phase 1: Guest Submits Request
 
-1. Guest visits hotel's embedded widget
-2. Guest selects: experience, **custom date/time** (via "Request Different Time")
-3. Guest enters: first name, last name, email, phone number
-4. Guest clicks "Send Request"
-5. System creates reservation with status **`pending`**
-6. System sets `response_deadline` to 48 hours from now
-7. System sends email to supplier: **"New booking request"** with Accept and Decline buttons
-8. System sends email to guest: **"Request received, awaiting confirmation"**
+1. Guest selects experience + custom date/time + participants
+2. Guest enters name, email, phone
+3. System creates reservation with status `pending`
+4. System sets `response_deadline` = now + 48h
+5. Email to supplier: "New booking request" with **Accept** and **Decline** buttons + **"Propose a different time"** link to dashboard
+6. Email to guest: "Request received, awaiting confirmation"
 
 ### Phase 2: Supplier Responds
 
-**If supplier clicks "Accept":**
-1. **Session is created for the requested date/time:**
-   - System checks if a session already exists for that date/time
-   - If session exists: Reuses it and deducts spots (spots_available -= participants)
-   - If no session exists: Creates a new session with:
-     - `session_date` = requested_date
-     - `start_time` = requested_time
-     - `spots_total` = experience.max_participants
-     - `spots_available` = max_participants - reservation.participants
-     - `session_status` = 'available'
-   - System links reservation to the session (sets `session_id`)
-   - **Business benefit**: The new session becomes visible in the widget, allowing other guests to book remaining spots
-2. System updates reservation status to `approved`
-3. System sets `payment_deadline` to 24 hours from now
-4. System creates Stripe Payment Link for the total amount
-5. System stores the payment link URL on the reservation
-6. System sends email to guest: "Booking approved!" with payment button/link
+**Accept:**
+- Create or reuse session for requested date/time (new session becomes visible in widget for other guests)
+- Link reservation to session (`session_id`)
+- Status → `approved`, set `payment_deadline` = now + 24h
+- Create Stripe Payment Link
+- Email to guest: "Booking approved!" with Pay Now button
 
-**If supplier clicks "Decline":**
-1. System updates reservation status to `declined`
-2. System sends email to guest: "Unfortunately this time is not available"
-3. Flow ends (guest can submit a new request with different time if they want)
+**Decline:**
+- Status → `declined`
+- Email to guest: "This time is not available"
 
-**If supplier does not respond within 48 hours:**
-1. Cron job detects `response_deadline` has passed
-2. System updates reservation status to `expired`
-3. System sends email to guest: "Request expired - provider did not respond"
+**Propose New Time** (see [Flow C](#flow-c-propose-new-time)):
+- Supplier picks 1-3 alternative time slots
+- Status → `proposed`
+- Email to guest with options to select or decline
 
-### Phase 3: Guest Pays (Both Flows)
+**No response within 48h:**
+- Cron sets status → `expired`
+- Email to guest: "Request expired - provider did not respond"
 
-**If guest completes payment:**
-1. Stripe sends webhook `payment_intent.succeeded` or `checkout.session.completed`
-2. System extracts `reservationId` from payment intent metadata (or looks up via payment link)
-3. System creates booking record with status `confirmed`:
-   - **Requires `session_id`**: All bookings must have a session (sessions are auto-created on accept for request-based bookings)
-   - Stores `stripe_payment_intent_id` and `stripe_charge_id` for later refund/transfer operations
-   - Calculates and stores the three-way split amounts:
-     - Supplier amount (80%)
-     - Hotel amount (12%)
-     - Platform amount (8%)
-4. System sends email to supplier: "Payment received! Booking confirmed" with guest details (email, phone)
-5. System sends email to guest: "Payment successful!" with:
-   - Booking confirmation details
-   - Experience information (date, time, meeting point)
-   - **Supplier contact information (email, phone)** - shared after payment confirmation to enable direct communication for organizing the experience
-   - Cancel link (only works if 7+ days before experience)
+---
 
-**If guest does not pay within 24 hours:**
-1. Cron job detects `payment_deadline` has passed and no booking exists
-2. System updates reservation status to `expired`
-3. System releases any held spots on the session
-4. System sends email to guest: "Payment window has closed"
-5. System sends email to supplier: "Guest did not complete payment"
+## Flow C: Propose New Time
 
-### Phase 4: Guest Cancellation (Optional)
+Supplier counter-proposes 1-3 alternative time slots instead of accepting or declining. Guest picks one or declines all. One round only -- if guest declines, reservation is declined.
 
-**If guest clicks cancel link 7 or more days before experience:**
-1. System verifies cancellation is allowed (7+ days before)
-2. System updates booking status to `cancelled`
-3. System initiates full refund via Stripe
-4. System sends email to guest: "Cancellation confirmed, refund processing"
-5. System sends email to supplier: "Guest has cancelled their booking"
-6. System releases the spots on the session
+**Dashboard-only action.** Proposing requires a form with date/time pickers which doesn't work in email. Supplier email includes a "Propose a different time" link to the dashboard.
 
-**If guest tries to cancel less than 7 days before:**
-1. Cancel link shows message: "Cancellation is no longer available for this booking"
-2. No action taken - guest is committed to pay
+### Supplier Proposes (Dashboard)
 
-**Note**: If supplier needs to cancel (weather, illness, etc.), they contact the guest directly using the guest's phone/email. They then use the post-experience confirmation to trigger the refund.
+1. Supplier clicks "Propose New Time" on pending request card in Booking Management page
+2. Inline form opens: 1-3 date/time slots (date picker + time picker)
+3. Dashboard updates Supabase directly (authenticated via Supabase auth, no token needed):
+   - Stores slots in `proposed_times` JSONB on reservation
+   - Status → `proposed`, `response_deadline` reset to now + 48h
+4. Dashboard triggers email to guest via server function
+5. Guest receives email listing all proposed slots with **Select** buttons + **"None of these work"** button
 
-### Phase 5: Post-Experience Settlement
+### Guest Responds
 
-**Day after the experience date:**
-1. Cron job identifies all confirmed bookings where session date was yesterday
-2. System sends email to supplier: "Did this experience happen?" with three options:
-   - **Yes, it happened** - Experience took place, proceed with payout
-   - **No, it did not happen - Refund required** - Experience cancelled (weather, supplier issue, etc.), guest needs refund
-   - **No, it did not happen - No refund** - Guest no-show or guest fault, no refund needed
+**Selects a slot:**
+- System reads `proposed_times[slot]` for the chosen date/time
+- Create or reuse session (same logic as Accept)
+- Status → `approved`, create payment link, set `payment_deadline` = now + 24h
+- Email to guest: Pay Now
+- Email to supplier: "Guest accepted your proposed time"
 
-**If supplier clicks "Yes, it happened":**
-1. System updates booking status to `completed`
-2. System creates Stripe transfer to supplier's connected account for their 80%:
-   - Retrieves charge ID from payment intent (if not stored)
-   - Uses `source_transaction` parameter (charge ID) for transfers, especially important in test mode
-   - This allows transfers even if platform balance is insufficient
-3. System stores `stripe_transfer_id` on booking record
-4. System records hotel commission (12%) in database for monthly batch payout
-5. System sends email to supplier: "Payment has been transferred to your account"
-6. Optionally: System sends email to hotel: "Your widget earned commission on a booking"
+**Declines all:**
+- Status → `declined`
+- Email to supplier: "Guest declined all proposed times"
 
-**If supplier clicks "No, it did not happen - Refund required":**
-1. System updates booking status to `cancelled`
-2. System sets `refund_reason` to indicate supplier-reported cancellation (weather, illness, etc.)
-3. System initiates full refund to guest via Stripe
-4. System sends email to guest: "Your booking has been refunded" with reason
-5. System sends email to supplier: "Refund processed - booking cancelled"
-6. No commission recorded for hotel
-7. No transfer to supplier
-8. System releases spots on the session (if applicable)
+**No response within 48h:**
+- Cron sets status → `expired` (same cron as pending requests, also checks `proposed` status)
 
-**If supplier clicks "No, it did not happen - No refund":**
-1. System updates booking status to `completed` (supplier still gets paid)
-2. System sets `refund_reason` to indicate no-show or guest fault
-3. System creates Stripe transfer to supplier's connected account for their 80% (same as "Yes, it happened")
-4. System records hotel commission (12%) in database for monthly batch payout
-5. System sends email to supplier: "Payment has been transferred to your account - No-show recorded"
-6. System sends email to guest: "Experience missed - No refund" (optional, can be disabled)
-7. **No refund is processed** - Guest does not receive money back
+---
 
-**If supplier does not respond within 7 days:**
-1. Cron job auto-marks booking as `completed`
-2. System proceeds with transfers as if supplier clicked "Yes, it happened"
-3. Rationale: Assume experience happened if no complaint from either party
+## Payment Phase
+
+Shared by all flows after reservation reaches `approved` status.
+
+**Guest pays:**
+1. Stripe webhook `checkout.session.completed`
+2. System creates booking with status `confirmed`
+3. Stores `stripe_payment_intent_id`, `stripe_charge_id`
+4. Calculates split: supplier 80%, hotel 12%, platform 8%
+5. Email to supplier: "Payment received!" with guest name, email, phone
+6. Email to guest: "Payment successful!" with booking details, supplier contact info, cancel link
+
+**Guest doesn't pay within 24h:**
+- Status → `expired`, spots released
+- Email to guest: "Payment window closed"
+- Email to supplier: "Guest did not pay"
+
+**Idempotency:** Check if booking already exists before creating (prevents webhook duplicates).
+
+---
+
+## Guest Cancellation
+
+**7+ days before experience:** Full refund, spots released, both parties emailed
+**Less than 7 days:** Cancel link shows "Cancellation no longer available"
+
+If supplier needs to cancel: contacts guest directly (has email after payment), then uses post-experience confirmation to trigger refund.
+
+---
+
+## Post-Experience Settlement
+
+**Day after experience** -- cron sends supplier email: "Did this experience happen?"
+
+**"Yes, it happened":**
+- Status → `completed`
+- Stripe transfer to supplier (80%) using `source_transaction` (charge ID)
+- Record hotel commission (12%)
+- Email supplier: "Payment transferred"
+
+**"No - Refund required"** (supplier fault: weather, illness):
+- Status → `cancelled`
+- Full refund to guest
+- No payout to supplier, no hotel commission
+- Release spots
+
+**"No - No refund"** (guest fault: no-show):
+- Status → `completed` (supplier still gets paid)
+- `refund_reason` = 'no-show'
+- Normal payout (transfer + hotel commission)
+- No refund to guest
+
+**No response within 7 days:**
+- Auto-complete, proceed with payout (assume it happened)
 
 ---
 
 ## Business Rules
 
-### Timing Rules
+### Timing
 
-| Rule | Value | Notes |
-|------|-------|-------|
-| Supplier response deadline | 48 hours | From request submission |
-| Guest payment deadline | 24 hours | From supplier acceptance |
-| Guest cancellation window | 7+ days before | Free cancellation allowed |
-| Completion check email | Day after experience | Sent morning after |
-| Auto-complete if no response | 7 days after experience | Assumes it happened |
+| Rule | Value |
+|------|-------|
+| Supplier response deadline | 48h from request |
+| Guest payment deadline | 24h from approval |
+| Guest cancellation window | 7+ days before experience |
+| Completion check email | Day after experience |
+| Auto-complete if no response | 7 days after experience |
+
+### Revenue Split
+
+| Party | % | Method |
+|-------|---|--------|
+| Supplier | 80% | Stripe Connect transfer after completion |
+| Hotel | 12% | DB record, monthly batch payout |
+| Platform | 8% | Remains in Traverum Stripe account |
 
 ### Cancellation Policy
 
 | Who | When | Result |
 |-----|------|--------|
 | Guest | 7+ days before | Full refund, spots released |
-| Guest | Less than 7 days | Cannot cancel, must pay |
-| Guest | No-show | No refund, supplier paid (reported via "No - No Refund" option) |
-| Supplier | Any time (weather, illness, etc.) | Reports "No - Refund required" → Full refund to guest, no payout to supplier |
-| Supplier | Guest no-show | Reports "No - No refund" → No refund to guest, supplier still paid |
-
-### Revenue Split
-
-| Party | Percentage | Payment Method |
-|-------|------------|----------------|
-| Supplier | 80% | Stripe Connect transfer after completion |
-| Hotel | 12% | Recorded in database, monthly batch payout |
-| Platform | 8% | Remains in Traverum Stripe account |
+| Guest | Less than 7 days | Cannot cancel |
+| Guest | No-show | No refund, supplier paid |
+| Supplier | Any time (weather, illness) | Full refund, no payout |
 
 ---
 
@@ -208,34 +192,39 @@ When a guest **requests a custom date/time** (not an existing session), the supp
 
 ### Reservation Statuses
 
-| Status | Meaning | How it gets here |
-|--------|---------|------------------|
-| `pending` | Waiting for supplier to respond | Created when guest submits request |
-| `approved` | Supplier accepted, waiting for payment | Supplier clicked Accept |
-| `declined` | Supplier rejected the request | Supplier clicked Decline |
-| `expired` | Timeout occurred | 48h passed (no response) or 24h passed (no payment) |
+| Status | Meaning |
+|--------|---------|
+| `pending` | Waiting for supplier response |
+| `proposed` | Supplier proposed new time(s), awaiting guest |
+| `approved` | Accepted, waiting for payment |
+| `declined` | Supplier or guest rejected |
+| `expired` | Timeout (48h no response, 24h no payment) |
 
 ### Booking Statuses
 
-| Status | Meaning | How it gets here |
-|--------|---------|------------------|
-| `confirmed` | Paid, experience upcoming | Payment succeeded |
-| `completed` | Done, funds transferred | Supplier confirmed or auto-completed |
-| `cancelled` | Cancelled, refunded | Guest cancelled or supplier reported no-experience |
+| Status | Meaning |
+|--------|---------|
+| `confirmed` | Paid, experience upcoming |
+| `completed` | Done, funds transferred |
+| `cancelled` | Cancelled and/or refunded |
 
 ### State Transitions
 
 ```
 RESERVATION (Session-Based):
-[created as approved] → expired (24h timeout, no payment)
-[created as approved] → [booking created] (payment succeeds)
+[created as approved] → expired (24h no payment)
+[created as approved] → [booking created] (payment)
 
 RESERVATION (Request-Based):
 pending → approved (supplier accepts)
 pending → declined (supplier declines)
+pending → proposed (supplier proposes new time)
 pending → expired (48h timeout)
-approved → expired (24h timeout, no payment)
-approved → [booking created] (payment succeeds)
+proposed → approved (guest selects a slot)
+proposed → declined (guest declines all slots)
+proposed → expired (48h timeout)
+approved → expired (24h no payment)
+approved → [booking created] (payment)
 
 BOOKING:
 confirmed → completed (supplier confirms or 7-day auto-complete)
@@ -244,258 +233,160 @@ confirmed → cancelled (guest cancels or supplier reports no-experience)
 
 ---
 
-## Emails to Implement
+## Email Templates
 
-### Session-Based Booking Emails
+### Session-Based
 
-| Template | Recipient | When | Must Include |
-|----------|-----------|------|--------------|
-| `guest_instant_booking` | Guest | Session booked | Experience name, date, time, **Pay Now button**, payment deadline |
-| `supplier_new_booking` | Supplier | Session booked | Guest details, date, time, participants, "Payment pending" note |
+| Template | To | When |
+|----------|----|------|
+| `guest_instant_booking` | Guest | Session booked -- Pay Now button, deadline |
+| `supplier_new_booking` | Supplier | Session booked -- guest details, "payment pending" |
 
-### Request-Based Booking Emails
+### Request-Based
 
-| Template | Recipient | When | Must Include |
-|----------|-----------|------|--------------|
-| `supplier_new_request` | Supplier | Request created | Guest name, date, time, participants, **Accept button**, **Decline button** |
-| `guest_request_received` | Guest | Request created | Experience name, date, time, "waiting for confirmation" message |
+| Template | To | When |
+|----------|----|------|
+| `supplier_new_request` | Supplier | Request created -- **Accept**, **Decline** buttons + **"Propose a different time"** dashboard link |
+| `guest_request_received` | Guest | Request created -- "waiting for confirmation" |
 
-### Decision Phase (Request-Based Only)
+### Propose New Time
 
-| Template | Recipient | When | Must Include |
-|----------|-----------|------|--------------|
-| `guest_booking_approved` | Guest | Supplier accepts | Experience details, date, time, meeting point, **Pay Now button** |
-| `guest_request_declined` | Guest | Supplier declines | Apology message, suggestion to try different time |
-| `guest_request_expired` | Guest | 48h timeout | "Provider did not respond" message |
+| Template | To | When |
+|----------|----|------|
+| `guest_time_proposed` | Guest | Supplier proposed 1-3 slots -- **Select** button per slot + **"None work"** |
+| `supplier_proposed_accepted` | Supplier | Guest selected a slot -- "Payment pending" |
+| `supplier_proposed_declined` | Supplier | Guest declined all slots |
+
+### Decision Phase
+
+| Template | To | When |
+|----------|----|------|
+| `guest_booking_approved` | Guest | Approved -- Pay Now button |
+| `guest_request_declined` | Guest | Declined -- "try different time" |
+| `guest_request_expired` | Guest | 48h timeout |
 
 ### Payment Phase
 
-| Template | Recipient | When | Must Include |
-|----------|-----------|------|--------------|
-| `supplier_booking_confirmed` | Supplier | Payment succeeds | Guest name, email, phone, date, time, participant count |
-| `guest_payment_confirmed` | Guest | Payment succeeds | Confirmation number, full details, **supplier contact info (email, phone)**, what to bring, **Cancel link** |
-| `guest_payment_expired` | Guest | 24h timeout | "Payment window closed" message |
-| `supplier_payment_not_completed` | Supplier | 24h timeout | "Guest did not pay" notification |
+| Template | To | When |
+|----------|----|------|
+| `supplier_booking_confirmed` | Supplier | Paid -- guest name, email, phone |
+| `guest_payment_confirmed` | Guest | Paid -- confirmation, supplier contact, cancel link |
+| `guest_payment_expired` | Guest | 24h timeout |
+| `supplier_payment_not_completed` | Supplier | 24h timeout |
 
-### Cancellation Phase
+### Cancellation
 
-| Template | Recipient | When | Must Include |
-|----------|-----------|------|--------------|
-| `guest_cancellation_confirmed` | Guest | Guest cancels | Confirmation of cancellation, refund info |
-| `supplier_guest_cancelled` | Supplier | Guest cancels | Which booking was cancelled, date/time that freed up |
+| Template | To | When |
+|----------|----|------|
+| `guest_cancellation_confirmed` | Guest | Cancelled -- refund info |
+| `supplier_guest_cancelled` | Supplier | Cancelled -- freed date/time |
 
-### Settlement Phase
+### Settlement
 
-| Template | Recipient | When | Must Include |
-|----------|-----------|------|--------------|
-| `supplier_completion_check` | Supplier | Day after experience | **Yes button**, **No - Refund button**, **No - No Refund button**, booking details for reference |
-| `supplier_payout_sent` | Supplier | Completion confirmed | Amount transferred, booking reference |
-| `supplier_payout_sent_no_show` | Supplier | No-show confirmed | Amount transferred, booking reference, "No-show recorded" note |
-| `guest_refund_processed` | Guest | Refund required reported | Refund amount, processing time, reason (weather, supplier cancellation, etc.) |
-| `guest_no_show_notification` | Guest | No-show reported (optional) | Experience missed notification, no refund message |
-| `hotel_commission_earned` | Hotel | Completion confirmed | Commission amount, which experience, "paid end of month" note (optional) |
+| Template | To | When |
+|----------|----|------|
+| `supplier_completion_check` | Supplier | Day after -- **Yes**, **No-Refund**, **No-NoRefund** buttons |
+| `supplier_payout_sent` | Supplier | Completed -- amount, reference |
+| `supplier_payout_sent_no_show` | Supplier | No-show -- amount, "no-show recorded" |
+| `guest_refund_processed` | Guest | Refund -- amount, reason |
+| `guest_no_show_notification` | Guest | No-show (optional) |
+| `hotel_commission_earned` | Hotel | Completed (optional) -- commission amount |
 
 ---
 
 ## Email Action Links
 
-All action links must be:
-- **Signed with a secret token** (prevent URL guessing)
-- **Expiring** (tokens should have reasonable TTL)
-- **One-click** (no login required)
-- **Idempotent** (clicking twice doesn't break anything)
+All links: signed HMAC token, expiring, one-click, idempotent.
 
-| Action | Link Format | Token Expiry |
-|--------|-------------|--------------|
-| Accept request | `/api/reservations/:id/accept?token=xxx` | 48 hours |
-| Decline request | `/api/reservations/:id/decline?token=xxx` | 48 hours |
-| Cancel booking | `/api/bookings/:id/cancel?token=xxx` | Until 7 days before experience |
-| Confirm completion | `/api/bookings/:id/complete?token=xxx` | 14 days |
-| Report no-experience (refund) | `/api/bookings/:id/no-experience-refund?token=xxx` | 14 days |
-| Report no-experience (no refund) | `/api/bookings/:id/no-experience-no-refund?token=xxx` | 14 days |
+| Action | Endpoint | Expiry |
+|--------|----------|--------|
+| Accept request | `GET /api/reservations/:id/accept?token=xxx` | 48h |
+| Decline request | `GET /api/reservations/:id/decline?token=xxx` | 48h |
+| Propose new time | Dashboard only (`/supplier/bookings?request=<id>`) | n/a |
+| Accept proposed slot | `GET /api/reservations/:id/accept-proposed?token=xxx&slot=N` | 48h |
+| Decline proposed slots | `GET /api/reservations/:id/decline-proposed?token=xxx` | 48h |
+| Cancel booking | `GET /api/bookings/:id/cancel?token=xxx` | Until 7 days before |
+| Confirm completion | `GET /api/bookings/:id/complete?token=xxx` | 14 days |
+| No-experience (refund) | `GET /api/bookings/:id/no-experience-refund?token=xxx` | 14 days |
+| No-experience (no refund) | `GET /api/bookings/:id/no-experience-no-refund?token=xxx` | 14 days |
+
+**Note on propose-time:** Supplier action is dashboard-only (no email token). Guest response uses signed tokens. `slot` param is an index into `proposed_times` JSONB array. Single token per proposal, slot not signed (guest can only choose among supplier-proposed times).
 
 ---
 
-## Cron Jobs to Implement
+## Cron Jobs
 
-| Job Name | Schedule | What it does |
-|----------|----------|--------------|
-| `expire-pending-reservations` | Every hour | Find `pending` reservations where `response_deadline < now`, set to `expired`, email guest |
-| `expire-unpaid-reservations` | Every 15 minutes | Find `approved` reservations where `payment_deadline < now` and no booking exists, set to `expired`, release spots, email both parties |
-| `send-completion-checks` | Daily at 10:00 | Find `confirmed` bookings where session date was yesterday, email supplier completion check |
-| `auto-complete-bookings` | Daily at 02:00 | Find `confirmed` bookings where session date was 7+ days ago and no completion response, auto-complete and trigger transfers |
+| Job | Schedule | What |
+|-----|----------|------|
+| `expire-pending-reservations` | Every hour | `pending` or `proposed` where `response_deadline < now` → `expired`, email guest |
+| `expire-unpaid-reservations` | Every 15 min | `approved` where `payment_deadline < now` and no booking → `expired`, release spots, email both |
+| `send-completion-checks` | Daily 10:00 | `confirmed` bookings where session was yesterday → email supplier |
+| `auto-complete-bookings` | Daily 02:00 | `confirmed` bookings 7+ days past session → auto-complete, trigger transfers |
 
 ---
 
 ## Stripe Operations
 
-### When Guest Picks Session (Session-Based Booking)
-- Deduct spots from session immediately
-- Create reservation with status `approved`
-- Create Payment Link with reservation metadata
-- Store payment link URL on reservation record
-- **No supplier approval needed**
+**Session-based booking:** Deduct spots → reservation `approved` → Payment Link → store URL
 
-### When Supplier Accepts (Request-Based Booking)
-- **Create or reuse session for requested date/time**:
-  - Check if session exists for that date/time
-  - If exists: Reuse and update spots_available
-  - If not: Create new session with full capacity, making it visible in widget
-  - Link reservation to session (sets `session_id`)
-- Create Payment Link with reservation metadata
-- Store payment link URL on reservation record
+**Request accepted:** Create/reuse session → reservation `approved` → Payment Link → store URL
 
-### When Payment Succeeds (Webhook)
-- Listen for `payment_intent.succeeded` or `checkout.session.completed` events
-- Extract reservation ID from payment intent metadata (or look up via payment link if metadata missing)
-- Create booking record with charge ID stored
-- Calculate split amounts based on distribution table
-- **Idempotency**: Check if booking already exists before creating (prevents duplicates)
+**Proposed time accepted:** Same as request accepted, using `proposed_times[slot]` date/time
 
-### When Completion Confirmed
-- Retrieve charge ID from payment intent (if not already stored)
-- Create Transfer to supplier's connected Stripe account:
-  - Amount: `supplier_amount_cents` from booking record
-  - Use `source_transaction` parameter (charge ID) - required for test mode transfers
-  - This allows transfers even if platform balance is insufficient
-- Store transfer ID on booking record
+**Payment webhook:** Create booking with charge ID → calculate split → idempotency check
 
-### When Refund Needed
-- Create Refund using stored charge ID
-- Full amount refund
-- Store refund ID on booking record
-- Store `refund_reason` on booking record (e.g., 'supplier_cancellation', 'guest_cancellation', 'no-show')
+**Completion confirmed:** Transfer to supplier using `source_transaction` (charge ID) → store transfer ID → record hotel commission
 
-### When No-Show Reported (No Refund)
-- Update booking status to `completed` (supplier still gets paid)
-- Store `refund_reason` as 'no-show' or 'guest_fault'
-- Proceed with normal payout flow (transfer to supplier, record hotel commission)
-- No refund is processed
+**Refund needed:** Refund via charge ID → store refund ID + reason
+
+**No-show (no refund):** Status `completed` → normal payout → `refund_reason = 'no-show'`
 
 ---
 
-## Edge Cases to Handle
+## Edge Cases
 
-| Situation | How to Handle |
-|-----------|---------------|
-| Supplier clicks Accept twice | Second click shows "Already accepted" message |
-| Supplier clicks Decline after Accept | Not allowed, show "Booking already approved" |
-| Guest clicks pay link after expiry | Payment link should be deactivated, show error |
-| Guest clicks cancel after 7-day window | Show "Cancellation no longer available" |
-| Stripe webhook arrives before redirect | Handle gracefully, booking might already exist |
-| Supplier has no Stripe account yet | Block accept action, prompt to complete Stripe onboarding |
-| Experience session is full | Reject request at submission time |
-| Double payment attempt | Stripe handles this, only one charge goes through |
-| Multiple requests for same date/time | On accept, system checks for existing session and reuses it, updating spots accordingly |
-| Request-based booking accepted | Session is automatically created, making remaining spots available to other guests in widget |
-
----
-
-## Data to Store
-
-### On Session-Based Reservation Creation
-- Experience ID, Session ID, Hotel ID
-- Guest name, email, phone
-- Number of participants
-- Total price in cents
-- Payment deadline timestamp (24 hours)
-- Stripe payment link ID and URL
-- Status: **`approved`** (immediate)
-
-### On Request-Based Reservation Creation
-- Experience ID, Hotel ID (no session yet)
-- Guest name, email, phone
-- Number of participants
-- Total price in cents
-- Requested date/time
-- Response deadline timestamp (48 hours)
-- Status: **`pending`**
-
-### On Supplier Accept (Request-Based Only)
-- **Session ID** (created or reused for requested date/time)
-- Payment deadline timestamp
-- Stripe payment link ID and URL
-- Status: `approved`
-
-### On Payment Success
-- Create booking record with:
-  - **Session ID** (required - always available since sessions are created on accept)
-  - Stripe payment intent ID
-  - Stripe charge ID
-  - Total amount, supplier amount, hotel amount, platform amount
-  - Paid at timestamp
-  - Status: `confirmed`
-
-### On Completion
-- Completion confirmed at timestamp
-- Stripe transfer ID (created with `source_transaction` for test mode compatibility)
-- Status: `completed`
-- `refund_reason`: `null` (normal completion) or `'no-show'` (guest no-show, no refund)
-
-### On Refund Required (No Experience)
-- Cancelled at timestamp
-- Stripe refund ID
-- Status: `cancelled`
-- `refund_reason`: `'supplier_cancellation'` or other reason indicating supplier fault
+| Situation | Handling |
+|-----------|----------|
+| Supplier clicks Accept twice | "Already accepted" message |
+| Decline after Accept | Blocked, "Already approved" |
+| Pay link after expiry | Deactivated, show error |
+| Cancel after 7-day window | "No longer available" |
+| Webhook before redirect | Handle gracefully, booking may exist |
+| No Stripe account | Block accept, prompt onboarding |
+| Session full | Reject at submission |
+| Double payment | Stripe handles, one charge only |
+| Multiple requests same time | Reuse existing session on accept |
+| Propose time for non-pending | Blocked in dashboard, only works on `pending` status |
+| Guest changes slot param | Acceptable -- can only choose from supplier-proposed times |
 
 ---
 
-## Success Metrics to Track
+## Data Stored
 
-| Metric | How to Calculate |
-|--------|------------------|
-| Request conversion rate | Bookings created / Requests submitted |
-| Supplier response rate | (Accepted + Declined) / Total requests |
-| Payment completion rate | Bookings / Approved reservations |
-| Average response time | Time between request and supplier action |
-| Cancellation rate | Cancelled bookings / Total bookings |
-| Hotel revenue | Sum of hotel_amount_cents for completed bookings per hotel |
+**Reservation created (session-based):** experience_id, session_id, hotel_id, guest name/email/phone, participants, total_cents, payment_deadline, stripe payment link, status `approved`
+
+**Reservation created (request-based):** experience_id, hotel_id, guest name/email/phone, participants, total_cents, requested_date/time, response_deadline, status `pending`
+
+**On propose new time (dashboard):** `proposed_times` JSONB (1-3 slots), status `proposed`, response_deadline reset to 48h
+
+**On accept/accept-proposed:** session_id (created/reused), payment_deadline, stripe payment link, status `approved`
+
+**On payment:** booking record with session_id, stripe_payment_intent_id, stripe_charge_id, amount splits, paid_at, status `confirmed`
+
+**On completion:** completed_at, stripe_transfer_id, status `completed`, refund_reason null or 'no-show'
+
+**On refund:** cancelled_at, stripe_refund_id, status `cancelled`, refund_reason
 
 ---
 
-## Summary
+## Metrics
 
-Traverum supports **two booking flows**:
-
-### Flow A: Session-Based (Instant)
-```
-Guest picks session → Spots deducted → Pay immediately → Booking confirmed
-```
-- No supplier approval needed
-- Guest can pay right away
-- Supplier notified (FYI only)
-
-### Flow B: Request-Based (Approval Required)
-```
-Guest requests time → Supplier approves → Session created → Pay → Booking confirmed
-```
-- Supplier must accept/decline
-- On accept: Session created for requested time (visible to other guests!)
-- Guest then pays
-
-### Common Final Steps
-1. **Payment** → Guest pays via Stripe link
-2. **Settlement** → After experience, supplier confirms → Funds transferred
-
-Everything happens via email links. No dashboards required for MVP.
-
-The system is designed to be **self-correcting**: timeouts auto-expire stale requests, auto-completion ensures funds don't get stuck, and refunds happen automatically when needed.
-
-**Business benefit**: Request-based bookings create new inventory (sessions) that suppliers can fill with additional guests, maximizing revenue from popular time slots.
-
-### Refund Management
-The system distinguishes between two scenarios when an experience does not take place:
-
-1. **Refund Required** (Supplier fault: weather, illness, cancellation)
-   - Guest receives full refund
-   - Supplier does not get paid
-   - Hotel does not receive commission
-   - Spots are released for future bookings
-
-2. **No Refund** (Guest fault: no-show, guest cancellation after deadline)
-   - Guest does not receive refund
-   - Supplier still gets paid (80%)
-   - Hotel still receives commission (12%)
-   - Booking marked as completed with `refund_reason = 'no-show'`
-
-This ensures fair financial handling: suppliers are protected from guest no-shows, while guests are protected from supplier cancellations.
+| Metric | Calculation |
+|--------|-------------|
+| Request conversion | Bookings / Requests |
+| Supplier response rate | (Accepted + Declined + Proposed) / Total requests |
+| Proposal acceptance rate | Proposed-accepted / Total proposals |
+| Payment completion | Bookings / Approved reservations |
+| Avg response time | Time between request and supplier action |
+| Cancellation rate | Cancelled / Total bookings |
+| Hotel revenue | Sum hotel_amount_cents for completed bookings per hotel |

@@ -12,12 +12,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { isLoading, activePartner } = useActivePartner();
   const { isOpen } = useSidebar();
 
-  if (isLoading || !activePartner) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
+  }
+
+  // No active partner (e.g. new user with no organizations yet)
+  // Render children directly without sidebar — the child component handles its own empty state
+  if (!activePartner) {
+    return <>{children}</>;
   }
 
   return (

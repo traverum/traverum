@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useActivePartner } from '@/hooks/useActivePartner';
+import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -389,6 +390,7 @@ function luminance(hex: string): number {
 // ── Main Page ──
 export default function WidgetCustomization() {
   const { activePartner, activePartnerId, isLoading: partnerLoading } = useActivePartner();
+  const { activeHotelConfigId, isLoading: hotelConfigLoading } = useActiveHotelConfig();
   const { toast } = useToast();
 
   const [theme, setTheme] = useState<ThemeState>(DEFAULT_THEME);
@@ -403,15 +405,15 @@ export default function WidgetCustomization() {
 
   // Load hotel config
   useEffect(() => {
-    if (!activePartnerId || partnerLoading) return;
+    if (!activeHotelConfigId || partnerLoading || hotelConfigLoading) return;
 
     const loadConfig = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('hotel_configs')
         .select('*')
-        .eq('partner_id', activePartnerId)
-        .maybeSingle();
+        .eq('id', activeHotelConfigId)
+        .single();
 
       if (error) {
         console.error('Error loading hotel config:', error);
@@ -454,7 +456,7 @@ export default function WidgetCustomization() {
     };
 
     loadConfig();
-  }, [activePartnerId, partnerLoading]);
+  }, [activeHotelConfigId, partnerLoading, hotelConfigLoading]);
 
   // Autosave with debounce
   const saveConfig = useCallback(

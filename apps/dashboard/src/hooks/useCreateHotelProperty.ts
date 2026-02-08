@@ -5,8 +5,6 @@ import { useActivePartner } from './useActivePartner';
 
 interface CreateHotelPropertyData {
   hotelName: string;
-  slug: string;
-  displayName: string;
 }
 
 export function useCreateHotelProperty() {
@@ -22,15 +20,27 @@ export function useCreateHotelProperty() {
     setIsLoading(true);
 
     try {
-      // Check if slug already exists
-      const { data: existingConfig } = await supabase
-        .from('hotel_configs')
-        .select('id')
-        .eq('slug', data.slug)
-        .single();
+      // Auto-generate slug from hotel name
+      const baseSlug = data.hotelName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
 
-      if (existingConfig) {
-        return { error: new Error('This slug is already taken. Please choose another.') };
+      // Ensure slug is unique by appending a suffix if needed
+      let slug = baseSlug;
+      let attempt = 0;
+      while (true) {
+        const { data: existingConfig } = await supabase
+          .from('hotel_configs')
+          .select('id')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        if (!existingConfig) break;
+        attempt++;
+        slug = `${baseSlug}-${attempt}`;
       }
 
       // Create hotel_config for the existing organization
@@ -38,8 +48,8 @@ export function useCreateHotelProperty() {
         .from('hotel_configs')
         .insert({
           partner_id: activePartner.partner_id,
-          slug: data.slug,
-          display_name: data.displayName,
+          slug,
+          display_name: data.hotelName,
           is_active: true,
         });
 
@@ -51,6 +61,8 @@ export function useCreateHotelProperty() {
       await queryClient.invalidateQueries({ queryKey: ['userPartners'] });
       await queryClient.invalidateQueries({ queryKey: ['partnerCapabilities'] });
       await queryClient.invalidateQueries({ queryKey: ['hotelConfigs', activePartner.partner_id] });
+      // Also refresh the dropdown's all-hotel-configs query
+      await queryClient.invalidateQueries({ queryKey: ['allHotelConfigs'] });
 
       return { error: null };
     } catch (error) {

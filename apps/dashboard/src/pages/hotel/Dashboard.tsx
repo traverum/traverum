@@ -1,7 +1,9 @@
+import { useNavigate } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
 
 export default function HotelDashboard() {
-  const { activePartner, isLoading: partnerLoading } = useActivePartner();
+  const navigate = useNavigate();
+  const { activePartner, capabilities, isLoading: partnerLoading } = useActivePartner();
 
   if (partnerLoading || !activePartner) {
     return (
@@ -21,13 +23,26 @@ export default function HotelDashboard() {
 
   return (
     <div className="p-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-5xl mx-auto space-y-8">
         {/* Greeting */}
-        <div className="text-center">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-semibold text-foreground">
             {getGreeting()}
           </h1>
         </div>
+
+        {/* Getting Started for new hotels */}
+        {!capabilities.hasHotelConfig && (
+          <div className="rounded-md border border-border bg-card p-6 text-center space-y-4">
+            <h2 className="text-lg font-semibold text-foreground">Select experiences to showcase</h2>
+            <button
+              onClick={() => navigate('/hotel/selection')}
+              className="h-7 px-3 text-sm font-medium rounded-[3px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Browse Experiences
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

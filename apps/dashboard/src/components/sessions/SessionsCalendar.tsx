@@ -5,7 +5,9 @@ import { CalendarDay } from './CalendarDay';
 import { DayTimeView } from './DayTimeView';
 import { WeekTimeView } from './WeekTimeView';
 import { SessionCreatePopup } from './SessionCreatePopup';
+import { SessionQuickEditPopup } from './SessionQuickEditPopup';
 import type { Experience } from '@/hooks/useExperienceSessions';
+import type { SessionWithExperience } from '@/hooks/useAllSessions';
 import { AvailabilityRule } from '@/lib/availability';
 import { 
   format, 
@@ -78,6 +80,11 @@ export function SessionsCalendar({
   const [quickAddDate, setQuickAddDate] = useState<Date | undefined>();
   const [quickAddTime, setQuickAddTime] = useState<string | undefined>();
   const [quickAddPosition, setQuickAddPosition] = useState<{ x: number; y: number } | undefined>();
+  
+  // Quick-edit popup state
+  const [quickEditOpen, setQuickEditOpen] = useState(false);
+  const [quickEditSession, setQuickEditSession] = useState<SessionWithExperience | null>(null);
+  const [quickEditPosition, setQuickEditPosition] = useState<{ x: number; y: number } | undefined>();
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -152,6 +159,27 @@ export function SessionsCalendar({
   const handleCreateSession = (data: SessionData | RecurringData) => {
     onCreateSession(data);
     setQuickAddOpen(false);
+  };
+
+  // Handle session click → open quick-edit popup instead of navigating
+  const handleSessionClickWithPosition = (sessionId: string, clickPosition?: { x: number; y: number }): void => {
+    // Find the session in sessionsByDate
+    let foundSession: SessionWithExperience | null = null;
+    for (const daySessions of Object.values(sessionsByDate)) {
+      const found = (daySessions as SessionWithExperience[]).find(s => s.id === sessionId);
+      if (found) {
+        foundSession = found;
+        break;
+      }
+    }
+    if (foundSession) {
+      setQuickEditSession(foundSession);
+      setQuickEditPosition(clickPosition);
+      setQuickEditOpen(true);
+      setQuickAddOpen(false); // Close create popup if open
+    } else if (onSessionClick) {
+      onSessionClick(sessionId);
+    }
   };
 
   const getDaySessions = (date: Date) => {
@@ -238,6 +266,7 @@ export function SessionsCalendar({
                       onDayClick={handleDayClick}
                       showExperienceTitle={showExperienceTitle}
                       availabilityRules={availabilityRules || []}
+                      onSessionClick={handleSessionClickWithPosition}
                     />
                   );
                 })}
@@ -251,7 +280,7 @@ export function SessionsCalendar({
               sessionsByDate={sessionsByDate}
               experiences={experiences}
               onTimeSlotClick={handleTimeSlotClick}
-              onSessionClick={onSessionClick}
+              onSessionClick={handleSessionClickWithPosition}
               showExperienceTitle={showExperienceTitle}
               onSessionUpdate={onSessionUpdate}
             />
@@ -263,7 +292,7 @@ export function SessionsCalendar({
               sessions={getDaySessions(selectedDay)}
               experiences={experiences}
               onTimeSlotClick={handleTimeSlotClick}
-              onSessionClick={onSessionClick}
+              onSessionClick={handleSessionClickWithPosition}
               showExperienceTitle={showExperienceTitle}
               onSessionUpdate={onSessionUpdate}
             />
@@ -290,6 +319,15 @@ export function SessionsCalendar({
             onSubmit={handleCreateSession}
           />
         )}
+
+        {/* Session Quick-Edit Popup */}
+        <SessionQuickEditPopup
+          isOpen={quickEditOpen}
+          onClose={() => { setQuickEditOpen(false); setQuickEditSession(null); }}
+          session={quickEditSession}
+          position={quickEditPosition}
+          onSessionUpdate={onSessionUpdate}
+        />
       </>
     );
   } catch (error) {

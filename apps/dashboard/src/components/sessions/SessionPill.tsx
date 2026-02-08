@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface SessionPillProps {
@@ -15,16 +14,18 @@ interface SessionPillProps {
     };
   };
   showExperienceTitle?: boolean;
+  onSessionClick?: (sessionId: string, position: { x: number; y: number }) => void;
 }
 
-export function SessionPill({ session, showExperienceTitle = false }: SessionPillProps) {
-  const navigate = useNavigate();
+export function SessionPill({ session, showExperienceTitle = false, onSessionClick }: SessionPillProps) {
   const bookingsCount = session.spots_total - session.spots_available;
   const hasCustomPrice = session.price_override_cents !== null;
   
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigate(`/supplier/sessions/${session.id}`);
+    if (onSessionClick) {
+      onSessionClick(session.id, { x: e.clientX, y: e.clientY });
+    }
   };
 
   return (

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,7 +15,7 @@ import {
 } from '@/components/ui/tooltip';
 import { HelpCircle } from 'lucide-react';
 
-type BusinessType = 'supplier' | 'hotel' | 'hybrid';
+type BusinessType = 'supplier' | 'hotel';
 
 interface BusinessTypeSelectionProps {
   open: boolean;
@@ -94,28 +93,10 @@ export function BusinessTypeSelection({
               </div>
             </div>
 
-            <div className="flex items-start space-x-3 space-y-0 rounded-md border border-border p-4 hover:bg-accent/50 transition-ui">
-              <RadioGroupItem value="hybrid" id="hybrid" className="mt-1" />
-              <div className="flex-1 space-y-1">
-                <Label
-                  htmlFor="hybrid"
-                  className="text-sm font-medium leading-none cursor-pointer"
-                >
-                  I do both (Hybrid)
-                </Label>
-                <div className="flex items-center gap-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="h-3 w-3 text-muted-foreground" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">Hotels that also create their own experiences</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-            </div>
           </RadioGroup>
+          <p className="text-xs text-muted-foreground pt-1">
+            You can always add more capabilities to your business later.
+          </p>
         </div>
         <div className="flex justify-end gap-3">
           <Button

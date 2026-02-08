@@ -1,6 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
+import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { OrganizationDropdown } from './OrganizationDropdown';
 import { usePendingRequests } from '@/hooks/usePendingRequests';
 import { useSupplierData } from '@/hooks/useSupplierData';
@@ -19,7 +20,7 @@ import {
   PaintBrushIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 interface SidebarProps {
@@ -30,12 +31,22 @@ export function Sidebar({ children }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { capabilities, activePartner, isLoading, activePartnerId } = useActivePartner();
-  const { isOpen, toggle, open } = useSidebar();
+  const { activeHotelConfig } = useActiveHotelConfig();
+  const { isOpen, toggle } = useSidebar();
+  const queryClient = useQueryClient();
   
-  // Get data for supplier
-  const { experiences, refetchExperiences } = capabilities.isSupplier ? useSupplierData() : { experiences: [], refetchExperiences: async () => {} };
+  // Always call useSupplierData (no conditional hook) — it handles empty state internally
+  const { experiences, refetchExperiences } = useSupplierData();
   const { requests: pendingRequests } = usePendingRequests();
   const [creatingExperience, setCreatingExperience] = useState(false);
+
+  // Determine current view context from route
+  const isSupplierContext = location.pathname.startsWith('/supplier');
+  const isHotelContext = location.pathname.startsWith('/hotel');
+
+  // On neutral routes (e.g. /dashboard, /analytics), show both if hybrid
+  const showSupplierNav = isSupplierContext || (!isHotelContext && capabilities.isSupplier);
+  const showHotelNav = isHotelContext || (!isSupplierContext && capabilities.isHotel);
 
   const handleAddExperience = async () => {
     if (creatingExperience || !activePartnerId) return;
@@ -59,6 +70,8 @@ export function Sidebar({ children }: SidebarProps) {
 
       if (error) throw error;
       await refetchExperiences();
+      // Invalidate partner capabilities so Calendar/Bookings nav items appear for newly-hybrid orgs
+      queryClient.invalidateQueries({ queryKey: ['partnerCapabilities', activePartnerId] });
       navigate(`/supplier/experiences/${data.id}`);
     } catch (error) {
       console.error('Failed to create experience:', error);
@@ -138,7 +151,7 @@ export function Sidebar({ children }: SidebarProps) {
           <div className="flex-1 space-y-2">
             {/* Home */}
             <NavLink
-              to={capabilities.isHotel ? '/hotel/dashboard' : '/supplier/dashboard'}
+              to={isHotelContext ? '/hotel/dashboard' : (capabilities.isSupplier ? '/supplier/dashboard' : '/hotel/dashboard')}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
@@ -153,62 +166,63 @@ export function Sidebar({ children }: SidebarProps) {
               <span>Home</span>
             </NavLink>
 
-            {/* Calendar Section */}
-            {capabilities.isSupplier && (
-              <NavLink
-                to="/supplier/sessions"
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                    'hover:bg-accent',
-                    isActive
-                      ? 'bg-accent text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )
-                }
-              >
-                <CalendarIcon className="h-4 w-4 flex-shrink-0" />
-                <span className="flex-1">Calendar</span>
-                {upcomingSessionsCount > 0 && (
-                  <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                    {upcomingSessionsCount > 99 ? '99+' : upcomingSessionsCount}
-                  </span>
-                )}
-              </NavLink>
-            )}
-
-            {/* Pending Requests Section */}
-            {capabilities.isSupplier && (
-              <NavLink
-                to="/supplier/requests"
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                    'hover:bg-accent',
-                    isActive
-                      ? 'bg-accent text-foreground'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )
-                }
-              >
-                <ClockIcon className="h-4 w-4 flex-shrink-0" />
-                <span className="flex-1">Pending Requests</span>
-                {pendingRequests.length > 0 && (
-                  <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
-                    {pendingRequests.length > 99 ? '99+' : pendingRequests.length}
-                  </span>
-                )}
-              </NavLink>
-            )}
-
-            {/* Experiences Section */}
-            {capabilities.isSupplier && (
+            {/* ── Supplier Navigation ── */}
+            {showSupplierNav && (
               <>
+                {/* Calendar */}
+                {capabilities.isSupplier && (
+                  <NavLink
+                    to="/supplier/sessions"
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                        'hover:bg-accent',
+                        isActive
+                          ? 'bg-accent text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )
+                    }
+                  >
+                    <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+                    <span className="flex-1">Calendar</span>
+                    {upcomingSessionsCount > 0 && (
+                      <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                        {upcomingSessionsCount > 99 ? '99+' : upcomingSessionsCount}
+                      </span>
+                    )}
+                  </NavLink>
+                )}
+
+                {/* Bookings */}
+                {capabilities.isSupplier && (
+                  <NavLink
+                    to="/supplier/bookings"
+                    className={({ isActive }) =>
+                      cn(
+                        'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                        'hover:bg-accent',
+                        isActive
+                          ? 'bg-accent text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )
+                    }
+                  >
+                    <ClockIcon className="h-4 w-4 flex-shrink-0" />
+                    <span className="flex-1">Bookings</span>
+                    {pendingRequests.length > 0 && (
+                      <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
+                        {pendingRequests.length > 99 ? '99+' : pendingRequests.length}
+                      </span>
+                    )}
+                  </NavLink>
+                )}
+
+                {/* Experiences List */}
                 <div className="flex items-center justify-between px-2 py-1 mt-3">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Experiences
                   </h3>
-                  {experiences.length > 0 && (
+                  {capabilities.isSupplier && experiences.length > 0 && (
                     <button
                       onClick={() => navigate('/supplier/experiences')}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -217,11 +231,7 @@ export function Sidebar({ children }: SidebarProps) {
                     </button>
                   )}
                 </div>
-                {experiences.length === 0 ? (
-                  <div className="px-2 py-1 text-xs text-muted-foreground">
-                    No experiences yet
-                  </div>
-                ) : (
+                {capabilities.isSupplier && experiences.length > 0 && (
                   <div className="space-y-1">
                     {experiences.map((experience) => {
                       const isActive = isExperienceActive(experience.id);
@@ -243,6 +253,11 @@ export function Sidebar({ children }: SidebarProps) {
                     })}
                   </div>
                 )}
+                {capabilities.isSupplier && experiences.length === 0 && (
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    No experiences yet
+                  </div>
+                )}
                 <button
                   onClick={handleAddExperience}
                   disabled={creatingExperience}
@@ -258,9 +273,18 @@ export function Sidebar({ children }: SidebarProps) {
               </>
             )}
 
-            {/* Hotel navigation */}
-            {capabilities.isHotel && (
+            {/* ── Hotel Navigation ── */}
+            {showHotelNav && capabilities.isHotel && (
               <>
+                {/* Active property indicator */}
+                {activeHotelConfig && (
+                  <div className="px-2 py-1 mt-3">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {activeHotelConfig.display_name || activeHotelConfig.slug}
+                    </h3>
+                  </div>
+                )}
+
                 <NavLink
                   to="/hotel/selection"
                   className={({ isActive }) =>
@@ -345,7 +369,6 @@ export function Sidebar({ children }: SidebarProps) {
           </div>
         </nav>
         
-        {/* Add Organization (if needed) */}
         {children}
       </aside>
     </>

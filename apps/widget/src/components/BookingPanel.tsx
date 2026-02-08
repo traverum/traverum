@@ -9,14 +9,16 @@ import { DatePickerDrawer } from './DatePickerDrawer'
 import { ParticipantSelector } from './ParticipantSelector'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 import type { ExperienceSession } from '@/lib/supabase/types'
+import type { AvailabilityRule } from '@/lib/availability'
 
 interface BookingPanelProps {
   experience: ExperienceWithMedia
   sessions: ExperienceSession[]
   hotelSlug: string
+  availabilityRules?: AvailabilityRule[]
 }
 
-export function BookingPanel({ experience, sessions, hotelSlug }: BookingPanelProps) {
+export function BookingPanel({ experience, sessions, hotelSlug, availabilityRules = [] }: BookingPanelProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnUrl = searchParams.get('returnUrl')
@@ -177,6 +179,7 @@ export function BookingPanel({ experience, sessions, hotelSlug }: BookingPanelPr
         onCustomTimeChange={setCustomTime}
         onConfirm={() => setDateDrawerOpen(false)}
         participants={participants}
+        availabilityRules={availabilityRules}
       />
     </>
   )

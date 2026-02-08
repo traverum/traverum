@@ -154,6 +154,7 @@ export async function POST(request: NextRequest) {
         .insert({
           experience_id: experienceId,
           hotel_id: hotel.partner_id,
+          hotel_config_id: hotel.id,
           session_id: sessionId,
           guest_name: guestName,
           guest_email: guestEmail,
@@ -222,6 +223,7 @@ export async function POST(request: NextRequest) {
       .insert({
         experience_id: experienceId,
         hotel_id: hotel.partner_id,
+        hotel_config_id: hotel.id,
         session_id: sessionId || null,
         guest_name: guestName,
         guest_email: guestEmail,

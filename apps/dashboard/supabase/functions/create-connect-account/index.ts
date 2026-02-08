@@ -42,18 +42,37 @@ serve(async (req) => {
       throw new Error('Invalid user token');
     }
 
-    // Get partner data for this user
+    // Parse request body to get partner_id
+    const body = await req.json().catch(() => ({}));
+    const { partner_id: requestedPartnerId, origin } = body;
+
+    if (!requestedPartnerId) {
+      throw new Error('partner_id is required in request body');
+    }
+
+    // Get the user record
     const { data: userData, error: userDataError } = await supabase
       .from('users')
-      .select('partner_id')
+      .select('id')
       .eq('auth_id', user.id)
       .single();
 
-    if (userDataError || !userData?.partner_id) {
-      throw new Error('User has no partner associated');
+    if (userDataError || !userData) {
+      throw new Error('User record not found');
     }
 
-    const partnerId = userData.partner_id;
+    // Validate that the user is authorized for this partner_id via user_partners
+    const { count: authCount, error: authError } = await supabase
+      .from('user_partners')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userData.id)
+      .eq('partner_id', requestedPartnerId);
+
+    if (authError || !authCount || authCount === 0) {
+      throw new Error('Not authorized for this organization');
+    }
+
+    const partnerId = requestedPartnerId;
 
     // Get partner details
     const { data: partner, error: partnerError } = await supabase
@@ -101,9 +120,8 @@ serve(async (req) => {
       console.log('Stripe account created:', stripeAccountId);
     }
 
-    // Get the origin from the request for return URLs
-    const { origin } = await req.json().catch(() => ({ origin: null }));
-    const baseUrl = origin || 'https://lovable.dev';
+    // Use origin from the already-parsed request body for return URLs
+    const baseUrl = origin || 'https://dashboard.traverum.com';
 
     // Create an account link for onboarding
     const accountLink = await stripe.accountLinks.create({

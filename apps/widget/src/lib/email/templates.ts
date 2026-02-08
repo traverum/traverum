@@ -633,6 +633,59 @@ export function supplierPayoutSent(data: {
   return baseTemplate(content, 'Payment Sent')
 }
 
+// Guest: Time proposed by supplier (1-3 alternative slots)
+export function guestTimeProposed(data: {
+  experienceTitle: string
+  guestName: string
+  originalDate: string
+  originalTime: string
+  proposedTimes: Array<{ date: string; time: string }>
+  participants: number
+  totalCents: number
+  currency?: string
+  acceptUrl: string
+  declineUrl: string
+}) {
+  const slotsHtml = data.proposedTimes.map((slot, index) => `
+    <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 16px; margin: 8px 0; text-align: center;">
+      <strong>Option ${index + 1}:</strong> ${formatEmailDate(slot.date)} at ${formatEmailTime(slot.time)}
+      <br/>
+      <a href="${data.acceptUrl}&slot=${index}" class="btn btn-success" style="margin-top: 8px; padding: 10px 20px; font-size: 14px;">Accept this time</a>
+    </div>
+  `).join('')
+
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>New Time Proposed</h1>
+      </div>
+      <p>Hi ${data.guestName},</p>
+      <p>The experience provider reviewed your request for <strong>${data.experienceTitle}</strong> on ${formatEmailDate(data.originalDate)} at ${formatEmailTime(data.originalTime)}, but that time isn't available.</p>
+      <p>They've proposed the following alternative${data.proposedTimes.length > 1 ? 's' : ''}:</p>
+      
+      ${slotsHtml}
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Total</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+      </div>
+      
+      <div class="text-center mt-4">
+        <a href="${data.declineUrl}" class="btn btn-secondary">None of these work</a>
+      </div>
+      
+      <p class="text-muted text-center mt-4">Please respond within 48 hours. If you don't respond, the request will expire automatically.</p>
+    </div>
+  `
+  return baseTemplate(content, 'New Time Proposed')
+}
+
 // Admin: Stripe account updated
 export function adminAccountStatusChanged(data: {
   partnerName: string

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useActivePartner } from '@/hooks/useActivePartner';
+import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -77,24 +78,9 @@ function CopyBlock({ code, label }: { code: string; label: string }) {
 }
 
 export default function EmbedSetup() {
-  const { activePartner, isLoading: partnerLoading, activePartnerId } = useActivePartner();
+  const { activePartner, isLoading: partnerLoading } = useActivePartner();
+  const { activeHotelConfig: hotelConfig, activeHotelConfigId, isLoading: configLoading } = useActiveHotelConfig();
   const [showCustomization, setShowCustomization] = useState(false);
-
-  // Fetch hotel config to get the slug
-  const { data: hotelConfig, isLoading: configLoading } = useQuery({
-    queryKey: ['hotelConfig', activePartnerId],
-    queryFn: async () => {
-      if (!activePartnerId) return null;
-      const { data, error } = await supabase
-        .from('hotel_configs')
-        .select('*')
-        .eq('partner_id', activePartnerId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!activePartnerId,
-  });
 
   if (partnerLoading || configLoading || !activePartner) {
     return (

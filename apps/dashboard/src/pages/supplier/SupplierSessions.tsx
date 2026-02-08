@@ -147,8 +147,8 @@ export default function SupplierSessions() {
             onCreateSession={handleCreateSession}
             showExperienceTitle={true}
             availabilityRules={[]}
-            onSessionClick={(sessionId) => {
-              window.location.href = `/supplier/sessions/${sessionId}`;
+            onSessionClick={() => {
+              // Session clicks handled by SessionsCalendar's internal quick-edit popup
             }}
             onSessionUpdate={refetch}
           />

@@ -78,14 +78,14 @@ export function LanguageSelector({ selectedLanguages, onLanguagesChange, disable
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between h-8 border-0 bg-[rgba(242,241,238,0.6)] px-[10px] py-1 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:shadow-[inset_0_0_0_1px_rgba(35,131,226,0.57)] disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full justify-between h-8 border-0 bg-[rgba(242,241,238,0.6)] px-[10px] py-1 text-sm font-normal ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:shadow-[inset_0_0_0_1px_rgba(35,131,226,0.57)] disabled:cursor-not-allowed disabled:opacity-50"
             disabled={disabled}
           >
             <span className="flex items-center gap-1.5">
               {selectedLanguages.length > 0 ? (
-                <span className="text-base">{getSelectedDisplay()}</span>
+                <span className="text-sm">{getSelectedDisplay()}</span>
               ) : (
-                <span className="text-muted-foreground">Select languages...</span>
+                <span className="text-muted-foreground text-sm">Select languages...</span>
               )}
             </span>
             <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

@@ -9,7 +9,7 @@ interface TimeSlotSessionProps {
   width: number;
   experience?: { id: string; title: string; duration_minutes: number } | undefined;
   showExperienceTitle?: boolean;
-  onClick?: () => void;
+  onClick?: (position: { x: number; y: number }) => void;
   isDragging?: boolean;
   isBeingDragged?: boolean;
   dragPreviewTime?: string;
@@ -63,6 +63,9 @@ export function TimeSlotSession({
     // Only start drag on left click and if not cancelled
     if (e.button !== 0 || isCancelled) return;
     
+    // Capture click position immediately
+    const clickPosition = { x: e.clientX, y: e.clientY };
+    
     // Check if it's a quick click (will be handled as regular click)
     const startTime = Date.now();
     
@@ -70,7 +73,7 @@ export function TimeSlotSession({
       const duration = Date.now() - startTime;
       // If it's a quick click (< 200ms), treat as click
       if (duration < 200) {
-        onClick?.();
+        onClick?.(clickPosition);
       }
       window.removeEventListener('mouseup', handleMouseUp);
     };

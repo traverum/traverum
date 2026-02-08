@@ -109,3 +109,25 @@ export function generateNoExperienceToken(bookingId: string, expiresInDays: numb
     exp: Date.now() + expiresInDays * 24 * 60 * 60 * 1000,
   })
 }
+
+/**
+ * Generate a token for guest to accept a proposed time slot
+ */
+export function generateAcceptProposedToken(reservationId: string, expiresInHours: number = 48): string {
+  return signToken({
+    id: reservationId,
+    action: 'accept-proposed',
+    exp: Date.now() + expiresInHours * 60 * 60 * 1000,
+  })
+}
+
+/**
+ * Generate a token for guest to decline all proposed time slots
+ */
+export function generateDeclineProposedToken(reservationId: string, expiresInHours: number = 48): string {
+  return signToken({
+    id: reservationId,
+    action: 'decline-proposed',
+    exp: Date.now() + expiresInHours * 60 * 60 * 1000,
+  })
+}

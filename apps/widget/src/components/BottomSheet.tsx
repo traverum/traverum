@@ -10,6 +10,7 @@ import { formatPrice } from '@/lib/utils'
 import { calculatePrice } from '@/lib/pricing'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 import type { ExperienceSession } from '@/lib/supabase/types'
+import type { AvailabilityRule } from '@/lib/availability'
 
 interface BottomSheetProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ interface BottomSheetProps {
   onCustomTimeChange: (time: string) => void
   onParticipantsChange: (participants: number) => void
   hotelSlug: string
+  availabilityRules?: AvailabilityRule[]
 }
 
 export function BottomSheet({
@@ -43,6 +45,7 @@ export function BottomSheet({
   onCustomTimeChange,
   onParticipantsChange,
   hotelSlug,
+  availabilityRules = [],
 }: BottomSheetProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -156,6 +159,7 @@ export function BottomSheet({
                 onCustomDateChange={onCustomDateChange}
                 onCustomTimeChange={onCustomTimeChange}
                 participants={participants}
+                availabilityRules={availabilityRules}
               />
 
               {/* Participants */}

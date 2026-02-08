@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
+import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { getCategoryLabel, getCategoryIcon } from '@traverum/shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -36,6 +37,7 @@ interface AvailableExperience {
 
 export default function ExperienceSelection() {
   const { activePartner, isLoading: partnerLoading, capabilities } = useActivePartner();
+  const { activeHotelConfigId } = useActiveHotelConfig();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
@@ -118,13 +120,12 @@ export default function ExperienceSelection() {
           hotel_location: hotelLoc,
           hotel_location_type: typeof hotelLoc,
           radius_meters: radiusMeters,
-          exclude_partner_id: partnerId,
         });
         
         const { data: experiencesData, error: rpcError } = await supabase.rpc('get_experiences_within_radius', {
           hotel_location: hotelLoc,
           radius_meters: radiusMeters,
-          exclude_partner_id: partnerId,
+          // exclude_partner_id omitted — hybrid orgs can see their own experiences
         });
 
         if (rpcError) {
@@ -159,8 +160,8 @@ export default function ExperienceSelection() {
                 city
               )
             `)
-            .eq('experience_status', 'active')
-            .neq('partner_id', partnerId);
+            .eq('experience_status', 'active');
+            // No partner exclusion — hybrid orgs can see their own experiences
 
           if (expError) throw expError;
 
@@ -218,8 +219,8 @@ export default function ExperienceSelection() {
               city
             )
           `)
-          .eq('experience_status', 'active')
-          .neq('partner_id', partnerId);
+          .eq('experience_status', 'active');
+          // No partner exclusion — hybrid orgs can see their own experiences
 
         if (expError) throw expError;
 
@@ -231,11 +232,11 @@ export default function ExperienceSelection() {
         }));
       }
 
-      // Get current distributions for this hotel
+      // Get current distributions for this hotel property
       const { data: distributions, error: distError } = await supabase
         .from('distributions')
         .select('id, experience_id, is_active')
-        .eq('hotel_id', partnerId);
+        .eq('hotel_config_id', activeHotelConfigId);
 
       if (distError) throw distError;
 
@@ -284,10 +285,12 @@ export default function ExperienceSelection() {
         if (error) throw error;
       } else {
         // Create new distribution with default commissions
+        if (!activeHotelConfigId) throw new Error('No hotel property selected');
         const { error } = await supabase
           .from('distributions')
           .insert({
             hotel_id: partnerId,
+            hotel_config_id: activeHotelConfigId,
             experience_id: experienceId,
             commission_supplier: 80,
             commission_hotel: 12,
@@ -441,6 +444,9 @@ export default function ExperienceSelection() {
                             </h3>
                             {exp.isSelected && (
                               <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                            )}
+                            {exp.supplier?.id === partnerId && (
+                              <Badge variant="secondary" className="text-xs font-normal">Your Experience</Badge>
                             )}
                           </div>
                           {exp.supplier?.name && (

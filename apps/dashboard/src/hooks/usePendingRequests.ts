@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
+import { useActivePartner } from '@/hooks/useActivePartner';
 
 export interface PendingRequest {
   id: string;
@@ -29,25 +29,18 @@ export interface PendingRequest {
 }
 
 export function usePendingRequests() {
-  const { user } = useAuth();
+  const { activePartnerId } = useActivePartner();
 
   const { data: requests = [], isLoading, refetch } = useQuery({
-    queryKey: ['pending-requests', user?.id],
+    queryKey: ['pending-requests', activePartnerId],
     queryFn: async () => {
-      // First get the user's partner_id
-      const { data: userData } = await supabase
-        .from('users')
-        .select('partner_id')
-        .eq('auth_id', user!.id)
-        .single();
-
-      if (!userData?.partner_id) return [];
+      if (!activePartnerId) return [];
 
       // Get all experiences for this partner
       const { data: experiences } = await supabase
         .from('experiences')
         .select('id, title, price_cents')
-        .eq('partner_id', userData.partner_id);
+        .eq('partner_id', activePartnerId);
 
       if (!experiences || experiences.length === 0) return [];
 
@@ -79,7 +72,7 @@ export function usePendingRequests() {
         session: reservation.experience_sessions,
       })) as PendingRequest[];
     },
-    enabled: !!user,
+    enabled: !!activePartnerId,
   });
 
   return {

@@ -33,7 +33,7 @@ export async function optimizeImage(
     maxWidthOrHeight: Math.max(maxWidth, maxHeight),
     useWebWorker,
     fileType: 'image/webp', // Always convert to WebP
-    initialQuality: isCoverImage ? 0.85 : 0.80, // Slightly higher quality for covers
+    initialQuality: isCoverImage ? 0.90 : 0.85, // Premium quality for covers, high quality for galleries
     alwaysKeepResolution: false,
   };
 
@@ -60,7 +60,7 @@ export async function optimizeCoverImage(file: File): Promise<File> {
   return optimizeImage(file, {
     maxWidth: 1200,
     maxHeight: 900,
-    maxSizeMB: 0.4, // 400KB target for covers
+    maxSizeMB: 0.5, // 500KB target for covers (premium quality)
   });
 }
 
@@ -71,6 +71,6 @@ export async function optimizeGalleryImage(file: File): Promise<File> {
   return optimizeImage(file, {
     maxWidth: 1920,
     maxHeight: 1080,
-    maxSizeMB: 0.6, // 600KB target for galleries
+    maxSizeMB: 0.7, // 700KB target for galleries (premium quality)
   });
 }

@@ -10,7 +10,7 @@ interface DayTimeViewProps {
   sessions: SessionWithExperience[];
   experiences: Array<{ id: string; title: string; duration_minutes: number; max_participants?: number; price_cents?: number }>;
   onTimeSlotClick: (date: Date, time: string, position?: { x: number; y: number }) => void;
-  onSessionClick?: (sessionId: string) => void;
+  onSessionClick?: (sessionId: string, position?: { x: number; y: number }) => void;
   showExperienceTitle?: boolean;
   onSessionUpdate?: () => void;
 }
@@ -355,7 +355,7 @@ export function DayTimeView({
                     width={session.width}
                     experience={experienceMap.get(session.experience_id)}
                     showExperienceTitle={showExperienceTitle}
-                    onClick={() => onSessionClick?.(session.id)}
+                    onClick={(pos) => onSessionClick?.(session.id, pos)}
                     isDragging={dragState.isDragging}
                     isBeingDragged={isBeingDragged}
                     dragPreviewTime={isBeingDragged ? dragState.newTime || undefined : undefined}

@@ -6,6 +6,14 @@ import { Check, Mail } from 'lucide-react'
 import { format, isSameDay } from 'date-fns'
 import { Calendar } from '@/components/ui/calendar'
 import { formatTime, cn } from '@/lib/utils'
+import {
+  isDateAvailable,
+  getOperatingHours,
+  generateTimeSlots,
+  groupTimeSlots,
+  DEFAULT_TIME_GROUPS,
+} from '@/lib/availability'
+import type { AvailabilityRule } from '@/lib/availability'
 import type { ExperienceSession } from '@/lib/supabase/types'
 
 interface SessionPickerProps {
@@ -18,13 +26,7 @@ interface SessionPickerProps {
   onCustomDateChange: (date: string) => void
   onCustomTimeChange: (time: string) => void
   participants: number
-}
-
-// Time options grouped by period
-const timeGroups = {
-  morning: ['08:00', '09:00', '10:00', '11:00'],
-  afternoon: ['12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
-  evening: ['18:00', '19:00', '20:00', '21:00']
+  availabilityRules?: AvailabilityRule[]
 }
 
 // Animation variants with reduced motion support
@@ -48,6 +50,7 @@ export function SessionPicker({
   onCustomDateChange,
   onCustomTimeChange,
   participants,
+  availabilityRules = [],
 }: SessionPickerProps) {
   const shouldReduceMotion = useReducedMotion()
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(
@@ -88,6 +91,36 @@ export function SessionPicker({
     return sessionsByDate[dateKey] || []
   }, [selectedCalendarDate, sessionsByDate])
 
+  // Generate dynamic time groups based on availability rules for the selected date
+  const timeGroups = useMemo(() => {
+    if (!selectedCalendarDate || availabilityRules.length === 0) {
+      return DEFAULT_TIME_GROUPS
+    }
+
+    const hours = getOperatingHours(selectedCalendarDate, availabilityRules)
+    if (!hours) {
+      return DEFAULT_TIME_GROUPS
+    }
+
+    const slots = generateTimeSlots(hours.start, hours.end)
+    return groupTimeSlots(slots)
+  }, [selectedCalendarDate, availabilityRules])
+
+  // Check if a date should be disabled (past or not available per rules)
+  const isDateDisabled = useMemo(() => {
+    return (date: Date): boolean => {
+      const dateOnly = new Date(date)
+      dateOnly.setHours(0, 0, 0, 0)
+      // Disable past dates
+      if (dateOnly < today) return true
+      // Disable dates not matching availability rules
+      if (availabilityRules.length > 0 && !isDateAvailable(dateOnly, availabilityRules)) {
+        return true
+      }
+      return false
+    }
+  }, [availabilityRules, today])
+
   // Handle calendar date selection
   const handleCalendarDateSelect = (date: Date | undefined) => {
     setSelectedCalendarDate(date)
@@ -124,6 +157,9 @@ export function SessionPicker({
     onCustomTimeChange('')
   }
 
+  // Check if there are any time slots to show
+  const hasTimeSlots = timeGroups.morning.length > 0 || timeGroups.afternoon.length > 0 || timeGroups.evening.length > 0
+
   return (
     <div className="font-body">
       {/* Desktop: side-by-side layout, Mobile: stacked */}
@@ -133,11 +169,7 @@ export function SessionPicker({
           <Calendar
             selected={selectedCalendarDate}
             onSelect={handleCalendarDateSelect}
-            disabled={(date) => {
-              const dateOnly = new Date(date)
-              dateOnly.setHours(0, 0, 0, 0)
-              return dateOnly < today
-            }}
+            disabled={isDateDisabled}
             datesWithSessions={Object.keys(sessionsByDate)}
             className="rounded-lg border border-border p-2"
           />
@@ -221,93 +253,105 @@ export function SessionPicker({
                   <span>Provider confirms within 48h → You pay after approval</span>
                 </div>
                   
-                <fieldset className="space-y-3">
-                  <legend className="sr-only">Select a time</legend>
-                  
-                  {/* Morning */}
-                  <div>
-                    <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Morning</p>
-                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Morning times">
-                      {timeGroups.morning.map((time) => {
-                        const isSelected = customTime === time && isCustomRequest
-                        return (
-                          <button
-                            key={time}
-                            type="button"
-                            onClick={() => handleTimeSelect(time)}
-                            aria-pressed={isSelected}
-                            className={cn(
-                              'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
-                              'transition-colors duration-150',
-                              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
-                              isSelected
-                                ? 'border-accent bg-accent/10 text-accent font-semibold'
-                                : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
-                            )}
-                          >
-                            {time}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                {hasTimeSlots ? (
+                  <fieldset className="space-y-3">
+                    <legend className="sr-only">Select a time</legend>
+                    
+                    {/* Morning */}
+                    {timeGroups.morning.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Morning</p>
+                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Morning times">
+                          {timeGroups.morning.map((time) => {
+                            const isSelected = customTime === time && isCustomRequest
+                            return (
+                              <button
+                                key={time}
+                                type="button"
+                                onClick={() => handleTimeSelect(time)}
+                                aria-pressed={isSelected}
+                                className={cn(
+                                  'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
+                                  'transition-colors duration-150',
+                                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+                                  isSelected
+                                    ? 'border-accent bg-accent/10 text-accent font-semibold'
+                                    : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
+                                )}
+                              >
+                                {time}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
 
-                  {/* Afternoon */}
-                  <div>
-                    <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Afternoon</p>
-                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Afternoon times">
-                      {timeGroups.afternoon.map((time) => {
-                        const isSelected = customTime === time && isCustomRequest
-                        return (
-                          <button
-                            key={time}
-                            type="button"
-                            onClick={() => handleTimeSelect(time)}
-                            aria-pressed={isSelected}
-                            className={cn(
-                              'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
-                              'transition-colors duration-150',
-                              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
-                              isSelected
-                                ? 'border-accent bg-accent/10 text-accent font-semibold'
-                                : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
-                            )}
-                          >
-                            {time}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                    {/* Afternoon */}
+                    {timeGroups.afternoon.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Afternoon</p>
+                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Afternoon times">
+                          {timeGroups.afternoon.map((time) => {
+                            const isSelected = customTime === time && isCustomRequest
+                            return (
+                              <button
+                                key={time}
+                                type="button"
+                                onClick={() => handleTimeSelect(time)}
+                                aria-pressed={isSelected}
+                                className={cn(
+                                  'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
+                                  'transition-colors duration-150',
+                                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+                                  isSelected
+                                    ? 'border-accent bg-accent/10 text-accent font-semibold'
+                                    : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
+                                )}
+                              >
+                                {time}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
 
-                  {/* Evening */}
-                  <div>
-                    <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Evening</p>
-                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Evening times">
-                      {timeGroups.evening.map((time) => {
-                        const isSelected = customTime === time && isCustomRequest
-                        return (
-                          <button
-                            key={time}
-                            type="button"
-                            onClick={() => handleTimeSelect(time)}
-                            aria-pressed={isSelected}
-                            className={cn(
-                              'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
-                              'transition-colors duration-150',
-                              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
-                              isSelected
-                                ? 'border-accent bg-accent/10 text-accent font-semibold'
-                                : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
-                            )}
-                          >
-                            {time}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                </fieldset>
+                    {/* Evening */}
+                    {timeGroups.evening.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Evening</p>
+                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Evening times">
+                          {timeGroups.evening.map((time) => {
+                            const isSelected = customTime === time && isCustomRequest
+                            return (
+                              <button
+                                key={time}
+                                type="button"
+                                onClick={() => handleTimeSelect(time)}
+                                aria-pressed={isSelected}
+                                className={cn(
+                                  'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
+                                  'transition-colors duration-150',
+                                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+                                  isSelected
+                                    ? 'border-accent bg-accent/10 text-accent font-semibold'
+                                    : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
+                                )}
+                              >
+                                {time}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </fieldset>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No time slots available for this date.
+                  </p>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

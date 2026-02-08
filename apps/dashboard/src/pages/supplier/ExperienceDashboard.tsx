@@ -79,7 +79,7 @@ function ExperienceDashboardInner() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { partner, experiences, refetchExperiences } = useSupplierData();
-  const { availability, saveAvailability } = useExperienceAvailability(experienceId || null);
+  const { availability, isLoading: availabilityLoading, saveAvailability } = useExperienceAvailability(experienceId || null);
 
   // Resolve experience early so we can seed initial state from React Query cache.
   // When navigating from the sidebar the data is already cached → no flash.
@@ -91,6 +91,8 @@ function ExperienceDashboardInner() {
   const [deleting, setDeleting] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const hasInitialized = useRef(false);
+  const hasAvailabilityInitialized = useRef(false);
+  const hasImagesLoaded = useRef(false);
 
   // Form state — seeded from cached experience so the first render already shows correct data
   const [title, setTitle] = useState(() => experience?.title || '');
@@ -133,7 +135,14 @@ function ExperienceDashboardInner() {
   const refetchRef = useRef(refetchExperiences);
   refetchRef.current = refetchExperiences;
 
-  // Keep form values ref in sync on every render (cheap, no side effects)
+  // Stable ref for saveAvailability to avoid it as a dependency in auto-save effects.
+  // useMutation returns an unstable reference that changes on every render,
+  // which would constantly reset the auto-save timer and create infinite save loops.
+  const saveAvailabilityRef = useRef(saveAvailability);
+  saveAvailabilityRef.current = saveAvailability;
+
+  // Keep form values ref in sync on every render (cheap, no side effects).
+  // Includes availability values so the unmount flush can save them too.
   useEffect(() => {
     if (!hasInitialized.current) return;
     formValuesRef.current = {
@@ -141,6 +150,7 @@ function ExperienceDashboardInner() {
       meetingPoint, minParticipants, maxParticipants, pricingType, basePriceCents,
       includedParticipants, extraPersonCents, minDays, maxDays,
       cancellationPolicy, forceMajeureRefund, allowsRequests, availableLanguages,
+      weekdays, startTime, endTime, validFrom, validUntil,
     };
   });
 
@@ -196,6 +206,32 @@ function ExperienceDashboardInner() {
         .update(experienceData)
         .eq('id', experienceId)
         .then(() => refetchRef.current());
+
+      // Also flush pending availability changes (prevents data loss when switching experiences quickly)
+      if (hasAvailabilityInitialized.current && vals.weekdays) {
+        supabase
+          .from('experience_availability')
+          .select('id')
+          .eq('experience_id', experienceId)
+          .limit(1)
+          .then(({ data: existing }) => {
+            const payload = {
+              experience_id: experienceId,
+              weekdays: vals.weekdays,
+              start_time: vals.startTime,
+              end_time: vals.endTime,
+              valid_from: vals.validFrom,
+              valid_until: vals.validUntil,
+              updated_at: new Date().toISOString(),
+            };
+            if (existing && existing.length > 0) {
+              return supabase.from('experience_availability').update(payload).eq('id', existing[0].id);
+            } else {
+              return supabase.from('experience_availability').insert(payload);
+            }
+          })
+          .catch(() => {}); // fire-and-forget
+      }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps — with key-based remount, experienceId is stable for the component's lifetime
@@ -265,8 +301,16 @@ function ExperienceDashboardInner() {
     }
   }, [experience]);
 
-  // Load availability
+  // Load availability — only once, when data first arrives.
+  // Without this guard, every query refetch (e.g. after save, window refocus)
+  // would overwrite unsaved user edits with stale DB data.
+  // Also marks as initialized when the query completes with null (new experience,
+  // no existing rules), so the auto-save can start working when the user makes changes.
   useEffect(() => {
+    if (hasAvailabilityInitialized.current) return;
+    if (availabilityLoading) return; // Still loading, wait
+
+    // Query completed — either with data or null (new experience with no rules yet)
     if (availability) {
       setWeekdays(availability.weekdays);
       setStartTime(availability.startTime);
@@ -274,7 +318,9 @@ function ExperienceDashboardInner() {
       setValidFrom(availability.validFrom);
       setValidUntil(availability.validUntil);
     }
-  }, [availability]);
+    // Mark as initialized regardless — null means new experience with defaults
+    hasAvailabilityInitialized.current = true;
+  }, [availability, availabilityLoading]);
 
   const loadExistingImages = async (expId: string) => {
       const { data, error } = await supabase
@@ -285,6 +331,7 @@ function ExperienceDashboardInner() {
 
     if (error) {
       console.error('Error loading images:', error);
+      hasImagesLoaded.current = true; // Mark loaded even on error so auto-save guard unblocks
       return;
     }
 
@@ -296,6 +343,7 @@ function ExperienceDashboardInner() {
         sort_order: m.sort_order || 0,
       })));
     }
+    hasImagesLoaded.current = true;
   };
 
   // Debounced values for auto-save
@@ -389,7 +437,7 @@ function ExperienceDashboardInner() {
 
         if (error) throw error;
 
-        await refetchExperiences();
+        await refetchRef.current();
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2000);
       } catch (error: any) {
@@ -417,6 +465,7 @@ function ExperienceDashboardInner() {
     };
 
     autoSave();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     experienceId,
     debouncedTitle, debouncedCategory, debouncedDescription, debouncedLocationAddress, debouncedLocationLat, debouncedLocationLng, debouncedMeetingPoint, debouncedDuration,
@@ -424,16 +473,20 @@ function ExperienceDashboardInner() {
     debouncedBasePrice, debouncedIncludedParticipants, debouncedExtraPersonPrice,
     debouncedMinDays, debouncedMaxDays,
     debouncedCancellationPolicy, debouncedForceMajeure, debouncedAllowsRequests, debouncedAvailableLanguages,
-    refetchExperiences,
+    // refetchExperiences intentionally omitted — uses refetchRef.current to avoid unstable reference triggering extra saves
   ]);
 
-  // Separate effect for availability changes
+  // Separate effect for availability changes.
+  // Guards on both hasInitialized (experience loaded) AND hasAvailabilityInitialized
+  // (availability loaded from DB) to prevent saving defaults before real data arrives.
+  // Uses saveAvailabilityRef instead of saveAvailability to avoid unstable mutation
+  // reference resetting the timer on every render.
   useEffect(() => {
-    if (!experienceId || !hasInitialized.current) return;
+    if (!experienceId || !hasInitialized.current || !hasAvailabilityInitialized.current) return;
 
     const saveAvail = async () => {
       try {
-        await saveAvailability.mutateAsync({
+        await saveAvailabilityRef.current.mutateAsync({
           experienceId,
           data: {
             weekdays,
@@ -450,16 +503,19 @@ function ExperienceDashboardInner() {
 
     const timeout = setTimeout(saveAvail, 2000);
     return () => clearTimeout(timeout);
-  }, [weekdays, startTime, endTime, validFrom, validUntil, experienceId, saveAvailability]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekdays, startTime, endTime, validFrom, validUntil, experienceId]);
 
-  // Separate effect for images
+  // Separate effect for images.
+  // Guards on hasImagesLoaded to prevent the default empty `images` state from
+  // triggering a save that deletes all existing media before DB images are loaded.
   useEffect(() => {
-    if (!experienceId || !hasInitialized.current || !partner?.id) return;
+    if (!experienceId || !hasInitialized.current || !hasImagesLoaded.current || !partner?.id) return;
 
     const saveImages = async () => {
       try {
         await saveMediaRecords(experienceId, partner.id);
-        await refetchExperiences();
+        await refetchRef.current();
       } catch (error) {
         console.error('Error saving images:', error);
       }
@@ -467,7 +523,9 @@ function ExperienceDashboardInner() {
 
     const timeout = setTimeout(saveImages, 2000);
     return () => clearTimeout(timeout);
-  }, [images, experienceId, partner?.id, refetchExperiences]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [images, experienceId, partner?.id]);
+  // refetchExperiences intentionally omitted — uses refetchRef.current to avoid unstable reference
 
   const saveMediaRecords = async (expId: string, partnerId: string): Promise<string | null> => {
     const { data: existingMedia } = await supabase
@@ -835,32 +893,6 @@ function ExperienceDashboardInner() {
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  {pricingType !== 'per_day' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="minParticipants" className="text-sm">Min Participants *</Label>
-                      <Input
-                        id="minParticipants"
-                        type="number"
-                        min="1"
-                        value={minParticipants}
-                        onChange={(e) => setMinParticipants(e.target.value)}
-                        className="h-8"
-                      />
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="maxParticipants" className="text-sm">Max Participants *</Label>
-                    <Input
-                      id="maxParticipants"
-                      type="number"
-                      min="1"
-                      value={maxParticipants}
-                      onChange={(e) => setMaxParticipants(e.target.value)}
-                      className="h-8"
-                    />
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -893,6 +925,33 @@ function ExperienceDashboardInner() {
                       <Label htmlFor="per_day" className="text-sm font-normal cursor-pointer">Per day (Rental)</Label>
                     </div>
                   </RadioGroup>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
+                  {pricingType !== 'per_day' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="minParticipants" className="text-sm">Min Participants *</Label>
+                      <Input
+                        id="minParticipants"
+                        type="number"
+                        min="1"
+                        value={minParticipants}
+                        onChange={(e) => setMinParticipants(e.target.value)}
+                        className="h-8"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="maxParticipants" className="text-sm">Max Participants *</Label>
+                    <Input
+                      id="maxParticipants"
+                      type="number"
+                      min="1"
+                      value={maxParticipants}
+                      onChange={(e) => setMaxParticipants(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
                 </div>
 
                 {pricingType === 'per_person' && (

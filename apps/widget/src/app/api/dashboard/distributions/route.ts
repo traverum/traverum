@@ -25,31 +25,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user record to find partner_id
+    const body = await request.json()
+    const { experience_id, is_active, partner_id, hotel_config_id } = body as {
+      experience_id: string;
+      is_active: boolean;
+      partner_id: string;
+      hotel_config_id: string;
+    }
+
+    if (!experience_id || typeof is_active !== 'boolean' || !partner_id || !hotel_config_id) {
+      return NextResponse.json({ error: 'Invalid request body. Required: experience_id, is_active, partner_id, hotel_config_id' }, { status: 400 })
+    }
+
+    // Validate that user has access to this partner via user_partners
     const { data: userData } = await adminClient
       .from('users')
-      .select('partner_id')
+      .select('id')
       .eq('auth_id', user.id)
-      .single() as { data: { partner_id: string } | null }
+      .single() as { data: { id: string } | null }
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const hotelPartnerId = userData.partner_id
+    const { data: membership } = await adminClient
+      .from('user_partners')
+      .select('id')
+      .eq('user_id', userData.id)
+      .eq('partner_id', partner_id)
+      .single() as { data: { id: string } | null }
 
-    const body = await request.json()
-    const { experience_id, is_active } = body as { experience_id: string; is_active: boolean }
-
-    if (!experience_id || typeof is_active !== 'boolean') {
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    if (!membership) {
+      return NextResponse.json({ error: 'Unauthorized for this partner' }, { status: 403 })
     }
 
     // Check if distribution exists
     const { data: existingDist } = await adminClient
       .from('distributions')
       .select('id')
-      .eq('hotel_id', hotelPartnerId)
+      .eq('hotel_config_id', hotel_config_id)
       .eq('experience_id', experience_id)
       .single() as { data: { id: string } | null }
 
@@ -71,7 +85,8 @@ export async function POST(request: NextRequest) {
     } else if (is_active) {
       // Create new distribution (only when activating)
       const newDistribution: DistributionInsert = {
-        hotel_id: hotelPartnerId,
+        hotel_id: partner_id,
+        hotel_config_id,
         experience_id,
         is_active: true,
         commission_supplier: DEFAULT_COMMISSION.supplier,

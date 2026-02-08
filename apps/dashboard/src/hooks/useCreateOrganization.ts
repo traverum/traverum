@@ -5,19 +5,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { useActivePartner } from './useActivePartner';
 
-type BusinessType = 'supplier' | 'hotel' | 'hybrid';
+type BusinessType = 'supplier' | 'hotel';
 
 interface CreateOrganizationData {
   businessType: BusinessType;
   name: string;
   email: string;
-  city?: string;
-  country?: string;
-  businessEntityType?: string;
-  taxId?: string;
-  hotelName?: string;
-  slug?: string;
-  displayName?: string;
 }
 
 export function useCreateOrganization() {
@@ -35,7 +28,7 @@ export function useCreateOrganization() {
     setIsLoading(true);
 
     try {
-      // First, get the user record from the users table
+      // Get the user record from the users table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
@@ -47,31 +40,13 @@ export function useCreateOrganization() {
       }
 
       // Determine partner_type
-      let partnerType = 'supplier';
-      if (data.businessType === 'hotel') {
-        partnerType = 'hotel';
-      } else if (data.businessType === 'hybrid') {
-        partnerType = 'hybrid';
-      }
+      const partnerType = data.businessType === 'hotel' ? 'hotel' : 'supplier';
 
-      // Create the partner/organization
-      const { data: partner, error: partnerError } = await supabase
-        .from('partners')
-        .insert({
-          name: data.name,
-          email: data.email,
-          partner_type: partnerType,
-          city: data.city || null,
-          country: data.country || null,
-        })
-        .select()
-        .single();
+      // Generate UUID client-side so we can reference it immediately
+      // (avoids needing .select() which is blocked by SELECT RLS before user_partners exists)
+      const partnerId = crypto.randomUUID();
 
-      if (partnerError || !partner) {
-        return { error: partnerError || new Error('Failed to create organization') };
-      }
-
-      // Check if user already has organizations
+      // Check if user already has organizations (before insert so we know is_default)
       const { data: existingPartners } = await supabase
         .from('user_partners')
         .select('id')
@@ -79,57 +54,104 @@ export function useCreateOrganization() {
 
       const isFirstOrganization = !existingPartners || existingPartners.length === 0;
 
-      // Create user_partner relationship
+      // Create the partner/organization
+      const { error: partnerError } = await supabase
+        .from('partners')
+        .insert({
+          id: partnerId,
+          name: data.name,
+          email: data.email,
+          partner_type: partnerType,
+        });
+
+      if (partnerError) {
+        return { error: partnerError };
+      }
+
+      // Create user_partner relationship (must happen right after partner insert
+      // so the SELECT RLS policy via get_user_partner_ids() grants access)
       const { error: userPartnerError } = await supabase
         .from('user_partners')
         .insert({
           user_id: userData.id,
-          partner_id: partner.id,
+          partner_id: partnerId,
           role: 'owner',
-          is_default: isFirstOrganization, // Only first organization is default
+          is_default: isFirstOrganization,
         });
 
       if (userPartnerError) {
-        // Rollback: delete the partner if user_partner creation fails
-        await supabase.from('partners').delete().eq('id', partner.id);
+        // Rollback: try to delete the partner (may fail if DELETE RLS requires user_partners,
+        // but the orphaned partner is invisible to all users via SELECT RLS, so it's harmless)
+        await supabase.from('partners').delete().eq('id', partnerId).catch(() => {});
         return { error: userPartnerError };
       }
 
-      // If hotel or hybrid, create hotel_config
-      if (data.businessType === 'hotel' || data.businessType === 'hybrid') {
-        if (!data.slug || !data.displayName) {
-          return { error: new Error('Hotel slug and display name are required') };
+      // If hotel, create hotel_config with auto-generated slug
+      if (data.businessType === 'hotel') {
+        // Generate slug from hotel name
+        const baseSlug = data.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+
+        // Ensure slug is at least 3 characters
+        if (baseSlug.length < 3) {
+          // Rollback
+          await supabase.from('user_partners').delete().eq('partner_id', partnerId);
+          await supabase.from('partners').delete().eq('id', partnerId);
+          return { error: new Error('Hotel name must be at least 3 characters to generate a valid URL') };
         }
 
-        // Check if slug already exists
-        const { data: existingConfig } = await supabase
-          .from('hotel_configs')
-          .select('id')
-          .eq('slug', data.slug)
-          .single();
+        // Find a unique slug by appending numbers if needed
+        let slug = baseSlug;
+        let attempt = 0;
+        let isUnique = false;
 
-        if (existingConfig) {
-          // Rollback: delete partner and user_partner
-          await supabase.from('user_partners').delete().eq('partner_id', partner.id);
-          await supabase.from('partners').delete().eq('id', partner.id);
-          return { error: new Error('This slug is already taken. Please choose another.') };
+        while (!isUnique && attempt < 100) {
+          const { data: existingConfig } = await supabase
+            .from('hotel_configs')
+            .select('id')
+            .eq('slug', slug)
+            .single();
+
+          if (!existingConfig) {
+            isUnique = true;
+          } else {
+            attempt++;
+            slug = `${baseSlug}-${attempt}`;
+          }
+        }
+
+        if (!isUnique) {
+          // Rollback
+          await supabase.from('user_partners').delete().eq('partner_id', partnerId);
+          await supabase.from('partners').delete().eq('id', partnerId);
+          return { error: new Error('Could not generate a unique URL. Please try a different hotel name.') };
         }
 
         const { error: hotelConfigError } = await supabase
           .from('hotel_configs')
           .insert({
-            partner_id: partner.id,
-            slug: data.slug,
-            display_name: data.displayName,
+            partner_id: partnerId,
+            slug: slug,
+            display_name: data.name, // Hotel name = display name
             is_active: true,
           });
 
         if (hotelConfigError) {
-          // Rollback: delete partner and user_partner
-          await supabase.from('user_partners').delete().eq('partner_id', partner.id);
-          await supabase.from('partners').delete().eq('id', partner.id);
+          // Rollback
+          await supabase.from('user_partners').delete().eq('partner_id', partnerId);
+          await supabase.from('partners').delete().eq('id', partnerId);
           return { error: hotelConfigError };
         }
+      }
+
+      // Backfill users.partner_id for backward compatibility (first org only)
+      if (isFirstOrganization) {
+        await supabase
+          .from('users')
+          .update({ partner_id: partnerId })
+          .eq('id', userData.id);
       }
 
       // Invalidate queries to refresh data
@@ -137,13 +159,13 @@ export function useCreateOrganization() {
       await queryClient.invalidateQueries({ queryKey: ['partnerCapabilities'] });
 
       // Set as active partner
-      setActivePartnerId(partner.id);
+      setActivePartnerId(partnerId);
 
       // Redirect based on business type
-      if (data.businessType === 'supplier' || data.businessType === 'hybrid') {
+      if (data.businessType === 'supplier') {
         navigate('/supplier/dashboard', { replace: true });
-      } else if (data.businessType === 'hotel') {
-        navigate('/hotel/selection', { replace: true });
+      } else {
+        navigate('/hotel/dashboard', { replace: true });
       }
 
       return { error: null };

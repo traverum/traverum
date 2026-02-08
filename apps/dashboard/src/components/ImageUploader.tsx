@@ -249,6 +249,21 @@ export function ImageUploader({
                   onDelete={() => handleDeleteImage(image.id)}
                 />
               ))}
+              {images.length < maxImages && (
+                <div
+                  className="relative aspect-square border-2 border-dashed border-muted rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {uploading ? (
+                    <div className="animate-spin w-5 h-5 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full" />
+                  ) : (
+                    <>
+                      <span className="text-xl text-muted-foreground leading-none">+</span>
+                      <span className="text-[10px] text-muted-foreground mt-1">Bild</span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </SortableContext>
         </DndContext>

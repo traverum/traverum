@@ -8,14 +8,16 @@ import { formatPrice } from '@/lib/utils'
 import { calculatePrice } from '@/lib/pricing'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 import type { ExperienceSession } from '@/lib/supabase/types'
+import type { AvailabilityRule } from '@/lib/availability'
 
 interface ExperienceDetailClientProps {
   experience: ExperienceWithMedia
   sessions: ExperienceSession[]
   hotelSlug: string
+  availabilityRules?: AvailabilityRule[]
 }
 
-export function ExperienceDetailClient({ experience, sessions, hotelSlug }: ExperienceDetailClientProps) {
+export function ExperienceDetailClient({ experience, sessions, hotelSlug, availabilityRules = [] }: ExperienceDetailClientProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [participants, setParticipants] = useState(experience.min_participants)
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
@@ -62,6 +64,7 @@ export function ExperienceDetailClient({ experience, sessions, hotelSlug }: Expe
         onCustomTimeChange={setCustomTime}
         onParticipantsChange={setParticipants}
         hotelSlug={hotelSlug}
+        availabilityRules={availabilityRules}
       />
     </>
   )
