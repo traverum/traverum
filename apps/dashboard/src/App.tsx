@@ -29,6 +29,8 @@ import HotelDashboard from "./pages/hotel/Dashboard";
 import LocationSettings from "./pages/hotel/LocationSettings";
 import EmbedSetup from "./pages/hotel/EmbedSetup";
 import WidgetCustomization from "./pages/hotel/WidgetCustomization";
+import StayDashboard from "./pages/hotel/StayDashboard";
+import StaysList from "./pages/hotel/StaysList";
 import AddBusinessFlow from "./pages/onboarding/AddBusinessFlow";
 import EmailVerification from "./pages/EmailVerification";
 import Analytics from "./pages/Analytics";
@@ -148,7 +150,7 @@ const App = () => (
                 } 
               />
               
-              {/* Hotel Routes */}
+              {/* Hotel / Stays Routes */}
               <Route 
                 path="/hotel/dashboard" 
                 element={
@@ -157,6 +159,23 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
+              <Route 
+                path="/hotel/stays" 
+                element={
+                  <ProtectedRoute>
+                    <StaysList />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/hotel/stays/:id" 
+                element={
+                  <ProtectedRoute>
+                    <StayDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              {/* Legacy hotel routes — redirect to stays dashboard */}
               <Route 
                 path="/hotel/selection" 
                 element={

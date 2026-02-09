@@ -3,7 +3,6 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -388,7 +387,11 @@ function luminance(hex: string): number {
 }
 
 // ── Main Page ──
-export default function WidgetCustomization() {
+interface WidgetCustomizationProps {
+  embedded?: boolean;
+}
+
+export default function WidgetCustomization({ embedded = false }: WidgetCustomizationProps) {
   const { activePartner, activePartnerId, isLoading: partnerLoading } = useActivePartner();
   const { activeHotelConfigId, isLoading: hotelConfigLoading } = useActiveHotelConfig();
   const { toast } = useToast();
@@ -539,33 +542,29 @@ export default function WidgetCustomization() {
 
   if (partnerLoading || loading) {
     return (
-      <DashboardLayout>
-        <div className="container max-w-6xl mx-auto px-4 py-6 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      </DashboardLayout>
+      <div className={embedded ? 'flex items-center justify-center py-8' : 'container max-w-6xl mx-auto px-4 py-6 flex items-center justify-center'}>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
     );
   }
 
   if (!hotelConfigId) {
     return (
-      <DashboardLayout>
-        <div className="container max-w-6xl mx-auto px-4 py-6">
-          <div className="max-w-2xl mx-auto text-center py-16">
-            <h1 className="text-xl font-semibold text-foreground mb-2">No Hotel Property</h1>
-            <p className="text-sm text-muted-foreground">
-              You need a hotel property set up before you can customize the widget.
-            </p>
-          </div>
+      <div className={embedded ? 'text-center py-8' : 'container max-w-6xl mx-auto px-4 py-6'}>
+        <div className="max-w-2xl mx-auto text-center py-16">
+          <h1 className="text-xl font-semibold text-foreground mb-2">No Hotel Property</h1>
+          <p className="text-sm text-muted-foreground">
+            You need a hotel property set up before you can customize the widget.
+          </p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      {/* Autosave indicator */}
-      {saveStatus !== 'idle' && (
+    <>
+      {/* Autosave indicator - only when standalone */}
+      {!embedded && saveStatus !== 'idle' && (
         <div className="fixed top-4 right-4 z-50 bg-background/95 backdrop-blur-sm border border-border/50 rounded-md px-2.5 py-1 shadow-sm flex items-center gap-1.5">
           {saveStatus === 'saving' && (
             <>
@@ -588,14 +587,16 @@ export default function WidgetCustomization() {
         </div>
       )}
 
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-xl font-semibold text-foreground">Widget Customization</h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Customize how the experience widget looks on your website.
-          </p>
-        </div>
+      <div className={embedded ? '' : 'container max-w-6xl mx-auto px-4 py-6'}>
+        {/* Header - hidden when embedded in tabs */}
+        {!embedded && (
+          <div className="mb-4">
+            <h1 className="text-xl font-semibold text-foreground">Widget Customization</h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Customize how the experience widget looks on your website.
+            </p>
+          </div>
+        )}
 
         {/* Two-column layout: Settings + Preview */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -1099,6 +1100,6 @@ export default function WidgetCustomization() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

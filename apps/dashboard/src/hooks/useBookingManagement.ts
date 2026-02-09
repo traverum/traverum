@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
+import { isSessionUpcoming } from '@/lib/date-utils';
 
 // --- Types ---
 
@@ -231,13 +232,13 @@ export function useBookingManagement() {
     enabled: experienceIds.length > 0,
   });
 
-  // Split sessions into upcoming / past
-  const today = new Date().toISOString().split('T')[0];
+  // Split sessions into upcoming / past (using shared date utility for local timezone)
   const upcomingSessions = sessionsWithGuests
-    .filter(s => s.session_date >= today)
+    .filter(s => isSessionUpcoming(s.session_date, s.start_time))
     .sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time));
+  
   const pastSessions = sessionsWithGuests
-    .filter(s => s.session_date < today)
+    .filter(s => !isSessionUpcoming(s.session_date, s.start_time))
     .sort((a, b) => b.session_date.localeCompare(a.session_date) || b.start_time.localeCompare(a.start_time));
 
   // --- Mutations ---

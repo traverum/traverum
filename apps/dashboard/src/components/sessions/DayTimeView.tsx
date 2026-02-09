@@ -242,14 +242,9 @@ export function DayTimeView({
   }, [sessions, experienceMap]);
 
   const handleTimeSlotClick = (e: React.MouseEvent, hour: number) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickY = e.clientY - rect.top;
-    const minuteOffset = Math.floor((clickY / HOUR_HEIGHT) * 60);
-    const roundedMinutes = Math.round(minuteOffset / 15) * 15; // Round to nearest 15 min
-    const adjustedMinutes = roundedMinutes >= 60 ? 0 : roundedMinutes;
-    const adjustedHour = roundedMinutes >= 60 ? hour + 1 : hour;
-    
-    const time = `${adjustedHour.toString().padStart(2, '0')}:${adjustedMinutes.toString().padStart(2, '0')}`;
+    // Always snap to the even hour — the highlighted slot represents a full hour
+    // Supplier can manually adjust to uneven times in the create popup
+    const time = `${hour.toString().padStart(2, '0')}:00`;
     const position = { x: e.clientX, y: e.clientY };
     onTimeSlotClick(date, time, position);
   };

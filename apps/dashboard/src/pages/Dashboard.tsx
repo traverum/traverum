@@ -5,14 +5,16 @@ import { BusinessDetails } from '@/pages/onboarding/BusinessDetails';
 
 type BusinessType = 'supplier' | 'hotel';
 
+const VIEW_STORAGE_KEY = 'traverum_active_view';
+
 /**
  * Smart dashboard redirect component.
- * Redirects to the appropriate dashboard based on partner capabilities.
+ * Redirects based on saved view preference (Experiences or Stays).
  * Shows inline onboarding if user has no organizations.
  */
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { capabilities, isLoading, activePartner, userPartners, activePartnerId } = useActivePartner();
+  const { isLoading, activePartner, userPartners, activePartnerId } = useActivePartner();
   const [selectedType, setSelectedType] = useState<BusinessType | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
@@ -21,14 +23,19 @@ export default function Dashboard() {
     if (userPartners.length === 0) return;
     if (!activePartner || !activePartnerId) return;
 
-    if (capabilities.isSupplier) {
-      navigate('/supplier/dashboard', { replace: true });
-    } else if (capabilities.isHotel) {
+    // Redirect based on saved view preference, default to experiences
+    let savedView = 'experiences';
+    try {
+      const stored = localStorage.getItem(VIEW_STORAGE_KEY);
+      if (stored === 'experiences' || stored === 'stays') savedView = stored;
+    } catch {}
+
+    if (savedView === 'stays') {
       navigate('/hotel/dashboard', { replace: true });
     } else {
       navigate('/supplier/dashboard', { replace: true });
     }
-  }, [capabilities, isLoading, activePartner, activePartnerId, userPartners.length, navigate]);
+  }, [isLoading, activePartner, activePartnerId, userPartners.length, navigate]);
 
   if (isLoading) {
     return (
@@ -74,12 +81,12 @@ export default function Dashboard() {
               </p>
             </button>
 
-            {/* Hotel Card */}
+            {/* Stays Card */}
             <button
               onClick={() => handleCardClick('hotel')}
               className="group border border-border rounded-md p-6 text-center transition-ui hover:bg-accent/50 cursor-pointer"
             >
-              <h3 className="text-lg font-semibold text-foreground mb-2">Hotel</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Stays</h3>
               <p className="text-sm text-muted-foreground">
                 Hotels, resorts, B&Bs
               </p>

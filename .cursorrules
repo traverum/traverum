@@ -16,9 +16,13 @@ Traverum is a white-label booking platform that connects experience suppliers (t
 - All prices in cents, display as EUR (€)
 - UUIDs for primary keys
 - Booking ref format: TRV-XXXXXX
-- European dates: DD.MM.YYYY - do not use english day or month names. use numbers like 01.01.2026. Calendar weeks should always start from monday. not sunday.
+- European dates: DD.MM.YYYY - do not use english day or month names (except in calendar). use numbers like 01.01.2026. Calendar weeks should always start from monday. not sunday.
 - 24-hour time format
 - **Never use actual place names as placeholders** - Do not use place holder at all. If absolutely necessary, use general ones.
+- **CRITICAL: Timezone handling for session date/time comparisons**: Session dates (`session_date`) and times (`start_time`) are stored in local timezone without timezone info. When comparing sessions to "now" to determine if they're upcoming/past:
+  - **ALWAYS use `getTodayLocal()` and `isSessionUpcoming()` from `@/lib/date-utils`**
+  - **NEVER use `new Date().toISOString()`** for date comparisons — it returns UTC, causing timezone bugs
+  - Example: `import { getTodayLocal, isSessionUpcoming } from '@/lib/date-utils';` then `sessions.filter(s => isSessionUpcoming(s.session_date, s.start_time))`
 
 ## Design System
 - Primary: Teal #0D9488

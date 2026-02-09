@@ -52,6 +52,27 @@ export default function SupplierSessions() {
       return;
     }
 
+    // Safety check: prevent creating sessions in the past
+    const now = new Date();
+    const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const nowHours = now.getHours();
+    const nowMinutes = now.getMinutes();
+    
+    if ('single' in data) {
+      const [startH, startM] = data.time.split(':').map(Number);
+      const isPast = data.date < todayLocal || 
+        (data.date === todayLocal && (startH < nowHours || (startH === nowHours && startM < nowMinutes)));
+      
+      if (isPast) {
+        toast({
+          title: 'Error',
+          description: 'Cannot create sessions in the past. Please select a future date and time.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     try {
       if ('single' in data) {
         const { error } = await supabase
@@ -78,6 +99,16 @@ export default function SupplierSessions() {
           spots: data.spots,
           frequency: data.frequency,
         });
+        
+        if (baseSessions.length === 0) {
+          toast({
+            title: 'No sessions created',
+            description: 'All selected sessions are in the past.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
         const sessionsWithPricing = baseSessions.map(s => ({
           ...s,
           price_override_cents: data.priceOverrideCents,

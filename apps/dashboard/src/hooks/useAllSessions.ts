@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
 export interface SessionWithExperience {
   id: string;
@@ -29,11 +29,15 @@ interface UseAllSessionsOptions {
 export function useAllSessions({ currentMonth, experienceId }: UseAllSessionsOptions) {
   const { activePartnerId } = useActivePartner();
 
-  const monthStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-  const monthEnd = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+  // Expand range to include calendar overflow days (Mon of first week → Sun of last week)
+  // This ensures sessions on adjacent-month days visible in the calendar grid are fetched
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const rangeStart = format(startOfWeek(monthStart, { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const rangeEnd = format(endOfWeek(monthEnd, { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
   const { data: sessions = [], isLoading, refetch } = useQuery({
-    queryKey: ['all-sessions', activePartnerId, monthStart, monthEnd, experienceId],
+    queryKey: ['all-sessions', activePartnerId, rangeStart, rangeEnd, experienceId],
     queryFn: async () => {
       if (!activePartnerId) return [];
 
@@ -50,13 +54,14 @@ export function useAllSessions({ currentMonth, experienceId }: UseAllSessionsOpt
         ? [experienceId]
         : experiences.map(e => e.id);
 
-      // Get all sessions for these experiences in the current month
+      // Get all sessions for these experiences in the visible calendar range
+      // (includes overflow days from adjacent months shown in the grid)
       const { data: sessionsData, error } = await supabase
         .from('experience_sessions')
         .select('*')
         .in('experience_id', experienceIds)
-        .gte('session_date', monthStart)
-        .lte('session_date', monthEnd)
+        .gte('session_date', rangeStart)
+        .lte('session_date', rangeEnd)
         .order('session_date', { ascending: true })
         .order('start_time', { ascending: true });
 

@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -77,33 +76,33 @@ function CopyBlock({ code, label }: { code: string; label: string }) {
   );
 }
 
-export default function EmbedSetup() {
+interface EmbedSetupProps {
+  embedded?: boolean;
+}
+
+export default function EmbedSetup({ embedded = false }: EmbedSetupProps) {
   const { activePartner, isLoading: partnerLoading } = useActivePartner();
   const { activeHotelConfig: hotelConfig, activeHotelConfigId, isLoading: configLoading } = useActiveHotelConfig();
   const [showCustomization, setShowCustomization] = useState(false);
 
   if (partnerLoading || configLoading || !activePartner) {
     return (
-      <DashboardLayout>
-        <div className="container max-w-6xl mx-auto px-4 py-6 flex items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      </DashboardLayout>
+      <div className={embedded ? 'flex items-center justify-center py-8' : 'container max-w-6xl mx-auto px-4 py-6 flex items-center justify-center'}>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
     );
   }
 
   if (!hotelConfig) {
     return (
-      <DashboardLayout>
-        <div className="container max-w-6xl mx-auto px-4 py-6">
-          <div className="max-w-2xl mx-auto text-center py-16">
-            <h1 className="text-xl font-semibold text-foreground mb-2">No Hotel Property</h1>
-            <p className="text-sm text-muted-foreground">
-              You need a hotel property set up before you can embed the widget.
-            </p>
-          </div>
+      <div className={embedded ? 'text-center py-8' : 'container max-w-6xl mx-auto px-4 py-6'}>
+        <div className="max-w-2xl mx-auto text-center py-16">
+          <h1 className="text-xl font-semibold text-foreground mb-2">No Hotel Property</h1>
+          <p className="text-sm text-muted-foreground">
+            You need a hotel property set up before you can embed the widget.
+          </p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
@@ -122,16 +121,17 @@ export default function EmbedSetup() {
 }`;
 
   return (
-    <DashboardLayout>
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        <div className="max-w-3xl mx-auto space-y-4">
-          {/* Header */}
-          <div>
-            <h1 className="text-xl font-semibold text-foreground">Embed Widget</h1>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Add the experience widget to your website as a native section.
-            </p>
-          </div>
+    <div className={embedded ? '' : 'container max-w-6xl mx-auto px-4 py-6'}>
+      <div className={embedded ? 'space-y-4' : 'max-w-3xl mx-auto space-y-4'}>
+          {/* Header - hidden when embedded in tabs */}
+          {!embedded && (
+            <div>
+              <h1 className="text-xl font-semibold text-foreground">Embed Widget</h1>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Add the experience widget to your website as a native section.
+              </p>
+            </div>
+          )}
 
           {/* How it works - Visual steps */}
           <Card className="border border-border">
@@ -333,9 +333,8 @@ export default function EmbedSetup() {
               </ul>
             </CardContent>
           </Card>
-        </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
 

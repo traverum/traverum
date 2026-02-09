@@ -85,15 +85,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, action: 'updated' })
     } else if (is_active) {
       // Create new distribution (only when activating)
+      // Check if this is a self-owned experience (hotel selling their own experience)
+      const { data: experienceData } = await adminClient
+        .from('experiences')
+        .select('partner_id')
+        .eq('id', experience_id)
+        .single()
+
+      const isSelfOwned = experienceData?.partner_id === partner_id
+
+      // Set commission rates: 92/0/8 for self-owned, 80/12/8 for regular
+      const commissionRates = isSelfOwned
+        ? { supplier: 92, hotel: 0, platform: 8 }
+        : DEFAULT_COMMISSION
+
       // hotel_config_id is added via migration but not yet in generated types
       const newDistribution = {
         hotel_id: partner_id,
         hotel_config_id,
         experience_id,
         is_active: true,
-        commission_supplier: DEFAULT_COMMISSION.supplier,
-        commission_hotel: DEFAULT_COMMISSION.hotel,
-        commission_platform: DEFAULT_COMMISSION.platform,
+        commission_supplier: commissionRates.supplier,
+        commission_hotel: commissionRates.hotel,
+        commission_platform: commissionRates.platform,
       }
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

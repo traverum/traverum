@@ -1,13 +1,18 @@
 import { useNavigate } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
+import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function HotelDashboard() {
   const navigate = useNavigate();
-  const { activePartner, capabilities, isLoading: partnerLoading } = useActivePartner();
+  const { activePartner, isLoading: partnerLoading } = useActivePartner();
+  const { hotelConfigs, isLoading: configLoading, setActiveHotelConfigId } = useActiveHotelConfig();
 
-  if (partnerLoading || !activePartner) {
+  if (partnerLoading || configLoading || !activePartner) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex items-center justify-center py-16">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
@@ -21,6 +26,11 @@ export default function HotelDashboard() {
     return 'Good evening';
   };
 
+  const handlePropertyClick = (configId: string) => {
+    setActiveHotelConfigId(configId);
+    navigate(`/hotel/stays/${configId}`);
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-5xl mx-auto space-y-8">
@@ -29,20 +39,73 @@ export default function HotelDashboard() {
           <h1 className="text-4xl font-semibold text-foreground">
             {getGreeting()}
           </h1>
+          <p className="text-sm text-muted-foreground mt-1.5">
+            Every stay tells a story
+          </p>
         </div>
 
-        {/* Getting Started for new hotels */}
-        {!capabilities.hasHotelConfig && (
-          <div className="rounded-md border border-border bg-card p-6 text-center space-y-4">
-            <h2 className="text-lg font-semibold text-foreground">Select experiences to showcase</h2>
-            <button
-              onClick={() => navigate('/hotel/selection')}
-              className="h-7 px-3 text-sm font-medium rounded-[3px] bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Browse Experiences
-            </button>
+        {/* Properties Section */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-sm font-medium text-foreground">Properties</h2>
+            {hotelConfigs.length > 0 && (
+              <button
+                onClick={() => navigate('/hotel/stays')}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                See all
+              </button>
+            )}
           </div>
-        )}
+
+          {hotelConfigs.length === 0 ? (
+            <Card className="border border-border">
+              <CardContent className="p-6 text-center space-y-4">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Add your first property
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Get started by adding a property to manage experiences and create your guest-facing widget.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="relative">
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+                {hotelConfigs.map((config) => (
+                  <Card
+                    key={config.id}
+                    className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[240px]"
+                    onClick={() => handlePropertyClick(config.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="text-sm font-medium text-foreground line-clamp-2">
+                          {config.display_name || config.slug}
+                        </h3>
+                        <Badge
+                          className={cn(
+                            'text-xs font-medium flex-shrink-0',
+                            config.is_active ? 'bg-success' : 'bg-muted-foreground'
+                          )}
+                        >
+                          {config.is_active ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground font-mono">
+                        /{config.slug}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {/* Fade overlay on right */}
+              {hotelConfigs.length > 3 && (
+                <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

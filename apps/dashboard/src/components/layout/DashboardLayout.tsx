@@ -3,6 +3,8 @@ import { Sidebar } from './Sidebar';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { cn } from '@/lib/utils';
+import { PanelLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -10,7 +12,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { isLoading, activePartner } = useActivePartner();
-  const { isOpen } = useSidebar();
+  const { isOpen, toggle } = useSidebar();
 
   if (isLoading) {
     return (
@@ -33,9 +35,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Content Area - Clean and Focused */}
       <main className={cn(
-        'flex-1 min-h-screen transition-all duration-200',
+        'flex-1 min-h-screen transition-all duration-200 relative',
         isOpen ? 'ml-[224px]' : 'ml-0'
       )}>
+        {/* Sidebar Toggle Button - Top-left when closed */}
+        {!isOpen && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggle}
+            className="fixed top-4 left-4 z-50 h-8 w-8"
+            aria-label="Toggle sidebar"
+          >
+            <PanelLeft className="h-4 w-4" />
+          </Button>
+        )}
         {children}
       </main>
     </div>

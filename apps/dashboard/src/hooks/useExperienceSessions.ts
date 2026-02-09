@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfMonth, endOfMonth, format, addDays, getDay } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, addDays, getDay } from 'date-fns';
 
 export interface Session {
   id: string;
@@ -34,8 +34,9 @@ interface UseExperienceSessionsOptions {
 
 export function useExperienceSessions({ experienceId, currentMonth }: UseExperienceSessionsOptions) {
   const queryClient = useQueryClient();
-  const monthStart = format(startOfMonth(currentMonth), 'yyyy-MM-dd');
-  const monthEnd = format(endOfMonth(currentMonth), 'yyyy-MM-dd');
+  // Expand range to include calendar overflow days (Mon of first week → Sun of last week)
+  const rangeStart = format(startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 }), 'yyyy-MM-dd');
+  const rangeEnd = format(endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 1 }), 'yyyy-MM-dd');
 
   // Fetch experience details
   const { data: experience, isLoading: isLoadingExperience } = useQuery({
@@ -53,16 +54,16 @@ export function useExperienceSessions({ experienceId, currentMonth }: UseExperie
     enabled: !!experienceId,
   });
 
-  // Fetch sessions for the month
+  // Fetch sessions for the visible calendar range (includes overflow days)
   const { data: sessions = [], isLoading: isLoadingSessions, refetch } = useQuery({
-    queryKey: ['sessions', experienceId, monthStart, monthEnd],
+    queryKey: ['sessions', experienceId, rangeStart, rangeEnd],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('experience_sessions')
         .select('*')
         .eq('experience_id', experienceId)
-        .gte('session_date', monthStart)
-        .lte('session_date', monthEnd)
+        .gte('session_date', rangeStart)
+        .lte('session_date', rangeEnd)
         .order('session_date', { ascending: true })
         .order('start_time', { ascending: true });
 
@@ -217,17 +218,44 @@ export function generateRecurringSessions({
   const start = new Date(startDate);
   const end = new Date(endDate);
   
+  // Get current date/time for filtering past sessions
+  const now = new Date();
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const [timeHours, timeMinutes] = time.split(':').map(Number);
+  const nowHours = now.getHours();
+  const nowMinutes = now.getMinutes();
+  
   let currentDate = new Date(start);
   
   while (currentDate <= end) {
-    sessions.push({
-      experience_id: experienceId,
-      session_date: format(currentDate, 'yyyy-MM-dd'),
-      start_time: time,
-      spots_total: spots,
-      spots_available: spots,
-      session_status: 'available',
-    });
+    const sessionDateStr = format(currentDate, 'yyyy-MM-dd');
+    
+    // Skip past sessions
+    if (sessionDateStr < todayLocal) {
+      // Past date, skip
+    } else if (sessionDateStr === todayLocal) {
+      // Today - check time
+      if (timeHours > nowHours || (timeHours === nowHours && timeMinutes > nowMinutes)) {
+        sessions.push({
+          experience_id: experienceId,
+          session_date: sessionDateStr,
+          start_time: time,
+          spots_total: spots,
+          spots_available: spots,
+          session_status: 'available',
+        });
+      }
+    } else {
+      // Future date, include
+      sessions.push({
+        experience_id: experienceId,
+        session_date: sessionDateStr,
+        start_time: time,
+        spots_total: spots,
+        spots_available: spots,
+        session_status: 'available',
+      });
+    }
     
     if (frequency === 'daily') {
       currentDate = addDays(currentDate, 1);

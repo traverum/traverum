@@ -1,4 +1,4 @@
-import { ChevronDown, Building2, Briefcase, Check, Plus } from 'lucide-react';
+import { ChevronDown, Check, Plus } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,31 +20,11 @@ export function PartnerSwitcher({ className }: PartnerSwitcherProps) {
     setActivePartnerId,
     userPartners,
     hasMultiplePartners,
-    capabilities,
   } = useActivePartner();
 
   if (!activePartner) {
     return null;
   }
-
-  // Determine badge text based on capabilities
-  const getBadgeText = (partnerId: string) => {
-    const partner = userPartners.find(up => up.partner_id === partnerId);
-    if (!partner) return '';
-    
-    // For non-active partners, use partner_type as fallback
-    const type = partner.partner.partner_type;
-    if (type === 'supplier') return 'Experiences';
-    if (type === 'hotel') return 'Hotel';
-    return '';
-  };
-
-  const getActivePartnerBadge = () => {
-    if (capabilities.isSupplier && capabilities.isHotel) return 'Both';
-    if (capabilities.isSupplier) return 'Experiences';
-    if (capabilities.isHotel) return 'Hotel';
-    return '';
-  };
 
   // If only one partner, show simple display without dropdown
   if (!hasMultiplePartners) {
@@ -53,11 +33,6 @@ export function PartnerSwitcher({ className }: PartnerSwitcherProps) {
         <span className="font-semibold text-foreground truncate">
           {activePartner.partner.name}
         </span>
-        {getActivePartnerBadge() && (
-          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full flex-shrink-0">
-            {getActivePartnerBadge()}
-          </span>
-        )}
       </div>
     );
   }
@@ -71,11 +46,6 @@ export function PartnerSwitcher({ className }: PartnerSwitcherProps) {
         >
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <span className="font-semibold truncate">{activePartner.partner.name}</span>
-            {getActivePartnerBadge() && (
-              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full flex-shrink-0">
-                {getActivePartnerBadge()}
-              </span>
-            )}
           </div>
           <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
         </Button>
@@ -83,8 +53,6 @@ export function PartnerSwitcher({ className }: PartnerSwitcherProps) {
       <DropdownMenuContent align="start" className="w-64">
         {userPartners.map((up) => {
           const isActive = up.partner_id === activePartner.partner_id;
-          const badgeText = isActive ? getActivePartnerBadge() : getBadgeText(up.partner_id);
-          const Icon = up.partner.partner_type === 'hotel' ? Building2 : Briefcase;
           
           return (
             <DropdownMenuItem
@@ -95,20 +63,10 @@ export function PartnerSwitcher({ className }: PartnerSwitcherProps) {
                 isActive && 'bg-accent'
               )}
             >
-              <div className="flex items-center gap-2">
-                <Icon className="h-4 w-4 text-muted-foreground" />
-                <span className={cn(isActive && 'font-medium')}>
-                  {up.partner.name}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                {badgeText && (
-                  <span className="text-xs text-muted-foreground">
-                    {badgeText}
-                  </span>
-                )}
-                {isActive && <Check className="h-4 w-4 text-primary" />}
-              </div>
+              <span className={cn(isActive && 'font-medium')}>
+                {up.partner.name}
+              </span>
+              {isActive && <Check className="h-4 w-4 text-primary" />}
             </DropdownMenuItem>
           );
         })}

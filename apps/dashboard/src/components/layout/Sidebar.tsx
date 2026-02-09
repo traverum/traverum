@@ -7,21 +7,21 @@ import { usePendingRequests } from '@/hooks/usePendingRequests';
 import { useSupplierData } from '@/hooks/useSupplierData';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { cn } from '@/lib/utils';
+import { getTodayLocal, isSessionUpcoming } from '@/lib/date-utils';
 import {
   HomeIcon,
   ClockIcon,
   CalendarIcon,
-  BuildingOfficeIcon,
   ChartBarIcon,
-  Bars3Icon,
   ChevronLeftIcon,
-  MapPinIcon,
-  CodeBracketIcon,
-  PaintBrushIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
+import { PanelLeft } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+
+const VIEW_STORAGE_KEY = 'traverum_active_view';
+type ViewMode = 'experiences' | 'stays';
 
 interface SidebarProps {
   children?: ReactNode;
@@ -30,8 +30,8 @@ interface SidebarProps {
 export function Sidebar({ children }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { capabilities, activePartner, isLoading, activePartnerId } = useActivePartner();
-  const { activeHotelConfig } = useActiveHotelConfig();
+  const { activePartner, isLoading, activePartnerId } = useActivePartner();
+  const { hotelConfigs, setActiveHotelConfigId } = useActiveHotelConfig();
   const { isOpen, toggle } = useSidebar();
   const queryClient = useQueryClient();
   
@@ -39,14 +39,34 @@ export function Sidebar({ children }: SidebarProps) {
   const { experiences, refetchExperiences } = useSupplierData();
   const { requests: pendingRequests } = usePendingRequests();
   const [creatingExperience, setCreatingExperience] = useState(false);
+  const [creatingStay, setCreatingStay] = useState(false);
 
-  // Determine current view context from route
+  // Determine current view context purely from route — no capability gating
   const isSupplierContext = location.pathname.startsWith('/supplier');
   const isHotelContext = location.pathname.startsWith('/hotel');
 
-  // On neutral routes (e.g. /dashboard, /analytics), show both if hybrid
-  const showSupplierNav = isSupplierContext || (!isHotelContext && capabilities.isSupplier);
-  const showHotelNav = isHotelContext || (!isSupplierContext && capabilities.isHotel);
+  // Resolve active view: route-based first, then localStorage fallback
+  const getActiveView = (): ViewMode => {
+    if (isSupplierContext) return 'experiences';
+    if (isHotelContext) return 'stays';
+    try {
+      const stored = localStorage.getItem(VIEW_STORAGE_KEY);
+      if (stored === 'experiences' || stored === 'stays') return stored as ViewMode;
+    } catch {}
+    return 'experiences';
+  };
+  const activeView = getActiveView();
+
+  const handleViewSwitch = (view: ViewMode) => {
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, view);
+    } catch {}
+    if (view === 'experiences') {
+      navigate('/supplier/dashboard');
+    } else {
+      navigate('/hotel/dashboard');
+    }
+  };
 
   const handleAddExperience = async () => {
     if (creatingExperience || !activePartnerId) return;
@@ -70,7 +90,6 @@ export function Sidebar({ children }: SidebarProps) {
 
       if (error) throw error;
       await refetchExperiences();
-      // Invalidate partner capabilities so Calendar/Bookings nav items appear for newly-hybrid orgs
       queryClient.invalidateQueries({ queryKey: ['partnerCapabilities', activePartnerId] });
       navigate(`/supplier/experiences/${data.id}`);
     } catch (error) {
@@ -79,27 +98,61 @@ export function Sidebar({ children }: SidebarProps) {
       setCreatingExperience(false);
     }
   };
+
+  const handleAddStay = async () => {
+    if (creatingStay || !activePartnerId) return;
+    setCreatingStay(true);
+    try {
+      const slug = 'new-stay-' + Date.now();
+      const { data, error } = await supabase
+        .from('hotel_configs')
+        .insert({
+          partner_id: activePartnerId,
+          display_name: 'New Property',
+          slug,
+          is_active: true,
+        })
+        .select('id')
+        .single();
+
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['hotelConfigs', activePartnerId] });
+      queryClient.invalidateQueries({ queryKey: ['partnerCapabilities', activePartnerId] });
+      setActiveHotelConfigId(data.id);
+      navigate(`/hotel/stays/${data.id}`);
+    } catch (error) {
+      console.error('Failed to create property:', error);
+    } finally {
+      setCreatingStay(false);
+    }
+  };
   
-  // Get upcoming sessions count
+  // Get upcoming sessions count (exclude sessions whose start time has already passed)
+  const todayLocal = getTodayLocal();
+  
   const { data: upcomingSessionsCount = 0 } = useQuery({
-    queryKey: ['upcomingSessionsCount', activePartnerId],
+    queryKey: ['upcomingSessionsCount', activePartnerId, todayLocal],
     queryFn: async () => {
-      if (!activePartnerId || !capabilities.isSupplier || experiences.length === 0) return 0;
+      if (!activePartnerId || experiences.length === 0) return 0;
       
       const experienceIds = experiences.map(e => e.id);
-      const today = new Date().toISOString().split('T')[0];
       
-      const { count, error } = await supabase
+      const { data: sessions, error } = await supabase
         .from('experience_sessions')
-        .select('*', { count: 'exact', head: true })
+        .select('session_date, start_time')
         .in('experience_id', experienceIds)
-        .gte('session_date', today)
-        .neq('session_status', 'cancelled');
+        .neq('session_status', 'cancelled')
+        .gte('session_date', todayLocal);
       
       if (error) throw error;
-      return count || 0;
+      
+      return (sessions || []).filter(s =>
+        isSessionUpcoming(s.session_date, s.start_time)
+      ).length;
     },
-    enabled: !!activePartnerId && capabilities.isSupplier && experiences.length > 0,
+    enabled: !!activePartnerId && experiences.length > 0,
+    refetchInterval: 60000,
+    staleTime: 0,
   });
 
   if (isLoading || !activePartner) {
@@ -114,17 +167,6 @@ export function Sidebar({ children }: SidebarProps) {
 
   return (
     <>
-      {/* Toggle Button - Outside when closed */}
-      {!isOpen && (
-        <button
-          onClick={toggle}
-          className="fixed top-3 left-3 z-50 p-1.5 bg-background border border-border rounded-md shadow-sm hover:bg-accent transition-all duration-200"
-          aria-label="Open sidebar"
-        >
-          <Bars3Icon className="h-4 w-4 text-foreground" />
-        </button>
-      )}
-
       {/* Sidebar */}
       <aside
         className={cn(
@@ -132,17 +174,53 @@ export function Sidebar({ children }: SidebarProps) {
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        {/* Top Section: Close Button + Organization Dropdown */}
+        {/* Top Section: Toggle Button + Organization Dropdown */}
         <div className="flex items-center gap-2 px-2 py-2 border-b border-border">
           <button
             onClick={toggle}
             className="p-1.5 rounded-md hover:bg-accent transition-colors flex-shrink-0"
-            aria-label="Close sidebar"
+            aria-label="Toggle sidebar"
           >
-            <ChevronLeftIcon className="h-4 w-4 text-muted-foreground" />
+            <PanelLeft className="h-4 w-4 text-muted-foreground" />
           </button>
           <div className="flex-1 min-w-0">
             <OrganizationDropdown />
+          </div>
+        </div>
+
+        {/* View Toggle: Experiences / Stays */}
+        <div className="px-3 py-2.5 border-b border-border">
+          <div className="relative flex p-[3px] rounded-full bg-[rgba(242,241,238,0.7)]">
+            {/* Sliding pill indicator */}
+            <div
+              className="absolute top-[3px] bottom-[3px] rounded-full bg-primary transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+              style={{
+                width: 'calc(50% - 3px)',
+                left: activeView === 'experiences' ? '3px' : 'calc(50%)',
+              }}
+            />
+            <button
+              onClick={() => handleViewSwitch('experiences')}
+              className={cn(
+                'relative z-10 flex-1 h-6 rounded-full text-[11px] font-medium transition-colors duration-200',
+                activeView === 'experiences'
+                  ? 'text-white'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Experiences
+            </button>
+            <button
+              onClick={() => handleViewSwitch('stays')}
+              className={cn(
+                'relative z-10 flex-1 h-6 rounded-full text-[11px] font-medium transition-colors duration-200',
+                activeView === 'stays'
+                  ? 'text-white'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Stays
+            </button>
           </div>
         </div>
 
@@ -151,7 +229,7 @@ export function Sidebar({ children }: SidebarProps) {
           <div className="flex-1 space-y-2">
             {/* Home */}
             <NavLink
-              to={isHotelContext ? '/hotel/dashboard' : (capabilities.isSupplier ? '/supplier/dashboard' : '/hotel/dashboard')}
+              to={isHotelContext ? '/hotel/dashboard' : '/supplier/dashboard'}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
@@ -166,63 +244,59 @@ export function Sidebar({ children }: SidebarProps) {
               <span>Home</span>
             </NavLink>
 
-            {/* ── Supplier Navigation ── */}
-            {showSupplierNav && (
+            {/* ── Supplier Navigation (Experiences view) ── */}
+            {isSupplierContext && (
               <>
                 {/* Calendar */}
-                {capabilities.isSupplier && (
-                  <NavLink
-                    to="/supplier/sessions"
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                        'hover:bg-accent',
-                        isActive
-                          ? 'bg-accent text-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )
-                    }
-                  >
-                    <CalendarIcon className="h-4 w-4 flex-shrink-0" />
-                    <span className="flex-1">Calendar</span>
-                    {upcomingSessionsCount > 0 && (
-                      <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        {upcomingSessionsCount > 99 ? '99+' : upcomingSessionsCount}
-                      </span>
-                    )}
-                  </NavLink>
-                )}
+                <NavLink
+                  to="/supplier/sessions"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                      'hover:bg-accent',
+                      isActive
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <CalendarIcon className="h-4 w-4 flex-shrink-0" />
+                  <span className="flex-1">Calendar</span>
+                  {upcomingSessionsCount > 0 && (
+                    <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                      {upcomingSessionsCount > 99 ? '99+' : upcomingSessionsCount}
+                    </span>
+                  )}
+                </NavLink>
 
                 {/* Bookings */}
-                {capabilities.isSupplier && (
-                  <NavLink
-                    to="/supplier/bookings"
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                        'hover:bg-accent',
-                        isActive
-                          ? 'bg-accent text-foreground'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )
-                    }
-                  >
-                    <ClockIcon className="h-4 w-4 flex-shrink-0" />
-                    <span className="flex-1">Bookings</span>
-                    {pendingRequests.length > 0 && (
-                      <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
-                        {pendingRequests.length > 99 ? '99+' : pendingRequests.length}
-                      </span>
-                    )}
-                  </NavLink>
-                )}
+                <NavLink
+                  to="/supplier/bookings"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                      'hover:bg-accent',
+                      isActive
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <ClockIcon className="h-4 w-4 flex-shrink-0" />
+                  <span className="flex-1">Bookings</span>
+                  {pendingRequests.length > 0 && (
+                    <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
+                      {pendingRequests.length > 99 ? '99+' : pendingRequests.length}
+                    </span>
+                  )}
+                </NavLink>
 
                 {/* Experiences List */}
                 <div className="flex items-center justify-between px-2 py-1 mt-3">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     Experiences
                   </h3>
-                  {capabilities.isSupplier && experiences.length > 0 && (
+                  {experiences.length > 0 && (
                     <button
                       onClick={() => navigate('/supplier/experiences')}
                       className="text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -231,7 +305,7 @@ export function Sidebar({ children }: SidebarProps) {
                     </button>
                   )}
                 </div>
-                {capabilities.isSupplier && experiences.length > 0 && (
+                {experiences.length > 0 && (
                   <div className="space-y-1">
                     {experiences.map((experience) => {
                       const isActive = isExperienceActive(experience.id);
@@ -253,7 +327,7 @@ export function Sidebar({ children }: SidebarProps) {
                     })}
                   </div>
                 )}
-                {capabilities.isSupplier && experiences.length === 0 && (
+                {experiences.length === 0 && (
                   <div className="px-2 py-1 text-xs text-muted-foreground">
                     No experiences yet
                   </div>
@@ -273,78 +347,65 @@ export function Sidebar({ children }: SidebarProps) {
               </>
             )}
 
-            {/* ── Hotel Navigation ── */}
-            {showHotelNav && capabilities.isHotel && (
+            {/* ── Hotel Navigation (Stays view) ── */}
+            {isHotelContext && (
               <>
-                {/* Active property indicator */}
-                {activeHotelConfig && (
-                  <div className="px-2 py-1 mt-3">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      {activeHotelConfig.display_name || activeHotelConfig.slug}
-                    </h3>
+                {/* Stays List */}
+                <div className="flex items-center justify-between px-2 py-1 mt-3">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Stays
+                  </h3>
+                  {hotelConfigs.length > 0 && (
+                    <button
+                      onClick={() => navigate('/hotel/stays')}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      See all
+                    </button>
+                  )}
+                </div>
+                {hotelConfigs.length > 0 && (
+                  <div className="space-y-1">
+                    {hotelConfigs.map((config) => {
+                      const isActive = location.pathname === `/hotel/stays/${config.id}`;
+                      return (
+                        <button
+                          key={config.id}
+                          onClick={() => {
+                            setActiveHotelConfigId(config.id);
+                            navigate(`/hotel/stays/${config.id}`);
+                          }}
+                          className={cn(
+                            'w-full flex items-center gap-2 h-7 px-2 rounded-md text-sm transition-colors text-left',
+                            'hover:bg-accent',
+                            isActive
+                              ? 'bg-accent text-foreground font-medium'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          <span className="flex-1 truncate">{config.display_name || config.slug}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-
-                <NavLink
-                  to="/hotel/selection"
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                      'hover:bg-accent',
-                      isActive
-                        ? 'bg-accent text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )
-                  }
+                {hotelConfigs.length === 0 && (
+                  <div className="px-2 py-1 text-xs text-muted-foreground">
+                    No properties yet
+                  </div>
+                )}
+                <button
+                  onClick={handleAddStay}
+                  disabled={creatingStay}
+                  className={cn(
+                    'w-full flex items-center gap-2 h-7 px-2 rounded-md text-xs transition-colors text-left mt-1',
+                    'text-muted-foreground hover:text-foreground hover:bg-accent',
+                    creatingStay && 'opacity-50 cursor-not-allowed'
+                  )}
                 >
-                  <BuildingOfficeIcon className="h-4 w-4 flex-shrink-0" />
-                  <span>Experience Selection</span>
-                </NavLink>
-                <NavLink
-                  to="/hotel/location"
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                      'hover:bg-accent',
-                      isActive
-                        ? 'bg-accent text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )
-                  }
-                >
-                  <MapPinIcon className="h-4 w-4 flex-shrink-0" />
-                  <span>Location Settings</span>
-                </NavLink>
-                <NavLink
-                  to="/hotel/customize"
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                      'hover:bg-accent',
-                      isActive
-                        ? 'bg-accent text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )
-                  }
-                >
-                  <PaintBrushIcon className="h-4 w-4 flex-shrink-0" />
-                  <span>Widget Style</span>
-                </NavLink>
-                <NavLink
-                  to="/hotel/embed"
-                  className={({ isActive }) =>
-                    cn(
-                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                      'hover:bg-accent',
-                      isActive
-                        ? 'bg-accent text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )
-                  }
-                >
-                  <CodeBracketIcon className="h-4 w-4 flex-shrink-0" />
-                  <span>Embed Widget</span>
-                </NavLink>
+                  <PlusIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{creatingStay ? 'Adding...' : 'Add'}</span>
+                </button>
               </>
             )}
           </div>

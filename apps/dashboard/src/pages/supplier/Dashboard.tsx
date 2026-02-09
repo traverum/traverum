@@ -8,10 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, parseISO, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
 import { ChevronRight, Compass, AlertCircle } from 'lucide-react';
-import { ClockIcon } from '@heroicons/react/24/outline';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
+import { getTodayLocal, isSessionUpcoming } from '@/lib/date-utils';
 
 export default function SupplierDashboard() {
   const navigate = useNavigate();
@@ -26,14 +26,15 @@ export default function SupplierDashboard() {
   // Check if Stripe onboarding is needed
   const needsStripeOnboarding = !hasStripe;
 
-  // Get all upcoming sessions
+  // Get all upcoming sessions (exclude sessions whose start time has already passed)
+  const todayLocal = getTodayLocal();
+  
   const { data: upcomingSessions = [], isLoading: sessionsLoading } = useQuery({
-    queryKey: ['upcomingSessions', activePartnerId, experiences.length],
+    queryKey: ['upcomingSessions', activePartnerId, experiences.length, todayLocal],
     queryFn: async () => {
       if (!activePartnerId || experiences.length === 0) return [];
       
       const experienceIds = experiences.map(e => e.id);
-      const today = new Date().toISOString().split('T')[0];
       
       const { data, error } = await supabase
         .from('experience_sessions')
@@ -46,13 +47,18 @@ export default function SupplierDashboard() {
           )
         `)
         .in('experience_id', experienceIds)
-        .gte('session_date', today)
         .neq('session_status', 'cancelled')
+        .gte('session_date', todayLocal)
         .order('session_date', { ascending: true })
         .order('start_time', { ascending: true });
       
       if (error) throw error;
-      return data || [];
+      
+      const upcoming = (data || []).filter(s =>
+        isSessionUpcoming(s.session_date, s.start_time)
+      );
+      
+      return upcoming;
     },
     enabled: !!activePartnerId && experiences.length > 0 && !supplierLoading,
   });
@@ -108,6 +114,9 @@ export default function SupplierDashboard() {
           <h1 className="text-4xl font-semibold text-foreground">
             {getGreeting()}
           </h1>
+          <p className="text-sm text-muted-foreground mt-1.5">
+            Craft moments that matter
+          </p>
         </div>
 
         {/* Stripe Onboarding Alert */}
@@ -133,7 +142,6 @@ export default function SupplierDashboard() {
         {/* Pending Requests Section - Always visible */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 px-1">
-            <ClockIcon className="h-4 w-4 text-muted-foreground" />
             <h2 className="text-sm font-medium text-foreground">Pending Requests</h2>
           </div>
           {requestsLoading ? (

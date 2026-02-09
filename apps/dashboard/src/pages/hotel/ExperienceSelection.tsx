@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
@@ -8,10 +8,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { formatPrice } from '@/lib/pricing';
-import { Search, Clock, Users, MapPin, CheckCircle2 } from 'lucide-react';
+import { LocationAutocomplete } from '@/components/LocationAutocomplete';
+import { Search, Clock, Users, MapPin, CheckCircle2, Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDebounce } from '@/hooks/useDebounce';
 
 interface AvailableExperience {
   id: string;
@@ -32,280 +36,302 @@ interface AvailableExperience {
   };
   isSelected: boolean;
   distributionId: string | null;
-  distance_km: number | null; // Distance from hotel in kilometers
+  distance_km: number | null;
 }
 
-export default function ExperienceSelection() {
-  const { activePartner, isLoading: partnerLoading, capabilities } = useActivePartner();
+interface ExperienceSelectionProps {
+  embedded?: boolean;
+}
+
+export default function ExperienceSelection({ embedded = false }: ExperienceSelectionProps) {
+  const { activePartner, isLoading: partnerLoading } = useActivePartner();
   const { activeHotelConfigId } = useActiveHotelConfig();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ── Location state ──
+  const [locationAddress, setLocationAddress] = useState('');
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
+  const [radiusKm, setRadiusKm] = useState(25);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const hasInitialized = useRef(false);
+
+  // Debounce all location values (same pattern as ExperienceDashboard)
+  const debouncedAddress = useDebounce(locationAddress, 2000);
+  const debouncedLat = useDebounce(locationLat, 2000);
+  const debouncedLng = useDebounce(locationLng, 2000);
+  const debouncedRadiusKm = useDebounce(radiusKm, 2000);
+
   const partnerId = activePartner?.partner_id;
+  const hasLocation = locationLat !== null && locationLng !== null;
 
-  // Show loading while partner is loading
-  if (partnerLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  // Show error state if no partner
-  if (!activePartner) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">No organization selected</h2>
-          <p className="text-muted-foreground">
-            Please select an organization to view available experiences.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show error if organization doesn't have hotel capabilities
-  if (!capabilities.isHotel) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Hotel capabilities required</h2>
-          <p className="text-muted-foreground">
-            This organization does not have hotel capabilities. Please select a hotel organization.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Fetch hotel location and radius first
-  const { data: hotelLocation } = useQuery({
-    queryKey: ['hotelLocation', partnerId],
+  // ── Load saved location from hotel_config ──
+  const { data: savedConfig } = useQuery({
+    queryKey: ['hotelConfigLocation', activeHotelConfigId],
     queryFn: async () => {
-      if (!partnerId) return null;
-
+      if (!activeHotelConfigId) return null;
       const { data, error } = await supabase
-        .from('partners')
-        .select('location, location_radius_km, address')
-        .eq('id', partnerId)
+        .from('hotel_configs')
+        .select('*')
+        .eq('id', activeHotelConfigId)
         .single();
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.error('Error fetching hotel config:', error);
+        return null;
+      }
+      const config = data as any;
+      return {
+        address: config?.address ?? null,
+        location: config?.location ?? null,
+        location_radius_km: config?.location_radius_km ?? 25,
+      };
     },
-    enabled: !!partnerId,
+    enabled: !!activeHotelConfigId,
   });
 
-  // Fetch all active experiences (not owned by this hotel) and current distributions
-  const { data: experiences = [], isLoading } = useQuery({
-    queryKey: ['availableExperiences', partnerId, hotelLocation?.location, hotelLocation?.location_radius_km],
-    queryFn: async () => {
-      if (!partnerId) return [];
+  // Initialize from saved config (once per config change)
+  useEffect(() => {
+    hasInitialized.current = false;
+  }, [activeHotelConfigId]);
 
-      // Get hotel location and radius
-      const hotelLoc = hotelLocation?.location;
-      const radiusKm = hotelLocation?.location_radius_km || 25;
+  useEffect(() => {
+    if (!savedConfig || hasInitialized.current) return;
 
-      let filteredExperiences: any[] = [];
+    if (savedConfig.address) {
+      setLocationAddress(savedConfig.address);
+    }
+    setRadiusKm(savedConfig.location_radius_km || 25);
 
-      // If hotel has location, use optimized RPC function
-      if (hotelLoc) {
-        const radiusMeters = radiusKm * 1000; // Convert km to meters
-
-        // RPC function now accepts text (WKB hex string) and casts to geography internally
-        console.log('Calling RPC with:', {
-          hotel_location: hotelLoc,
-          hotel_location_type: typeof hotelLoc,
-          radius_meters: radiusMeters,
-        });
-        
-        const { data: experiencesData, error: rpcError } = await supabase.rpc('get_experiences_within_radius', {
-          hotel_location: hotelLoc,
-          radius_meters: radiusMeters,
-          // exclude_partner_id omitted — hybrid orgs can see their own experiences
-        });
-
-        if (rpcError) {
-          console.error('RPC error details:', {
-            code: rpcError.code,
-            message: rpcError.message,
-            details: rpcError.details,
-            hint: rpcError.hint,
-            fullError: rpcError,
-          });
-          
-          // Fall back to fetching all experiences if RPC fails
-          console.warn('RPC failed, falling back to fetching all experiences');
-          const { data: allExperiences, error: expError } = await supabase
-            .from('experiences')
-            .select(`
-              id,
-              title,
-              slug,
-              description,
-              image_url,
-              price_cents,
-              duration_minutes,
-              max_participants,
-              meeting_point,
-              tags,
-              experience_status,
-              location,
-              supplier:partners!experiences_partner_fk(
-                id,
-                name,
-                city
-              )
-            `)
-            .eq('experience_status', 'active');
-            // No partner exclusion — hybrid orgs can see their own experiences
-
-          if (expError) throw expError;
-
-          filteredExperiences = (allExperiences || []).map((exp: any) => ({
-            ...exp,
-            supplier: exp.supplier as any,
-            tags: exp.tags || [],
-            distance_km: null,
-          }));
-        } else {
-          console.log('RPC success, returned experiences:', experiencesData?.length || 0);
-          
-          // Transform RPC result to match our interface
-          filteredExperiences = (experiencesData || []).map((exp: any) => ({
-            id: exp.id,
-            title: exp.title,
-            slug: exp.slug,
-            description: exp.description,
-            image_url: exp.image_url,
-            price_cents: exp.price_cents,
-            duration_minutes: exp.duration_minutes,
-            max_participants: exp.max_participants,
-            meeting_point: exp.meeting_point,
-            tags: exp.tags || [],
-            experience_status: exp.experience_status,
-            location: exp.location,
-            distance_km: exp.distance_meters ? exp.distance_meters / 1000 : null,
-            supplier: {
-              id: exp.supplier_id,
-              name: exp.supplier_name,
-              city: exp.supplier_city,
-            },
-          }));
+    if (savedConfig.location) {
+      try {
+        const loc = savedConfig.location;
+        if (typeof loc === 'string') {
+          const match = loc.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+          if (match) {
+            setLocationLng(parseFloat(match[1]));
+            setLocationLat(parseFloat(match[2]));
+          }
+        } else if (loc && typeof loc === 'object') {
+          if ('coordinates' in loc && Array.isArray(loc.coordinates)) {
+            setLocationLng(loc.coordinates[0]);
+            setLocationLat(loc.coordinates[1]);
+          } else if ('x' in loc && 'y' in loc) {
+            setLocationLng(loc.x);
+            setLocationLat(loc.y);
+          }
         }
-      } else {
-        // No hotel location set, fetch all experiences normally
-        const { data: allExperiences, error: expError } = await supabase
-          .from('experiences')
-          .select(`
-            id,
-            title,
-            slug,
-            description,
-            image_url,
-            price_cents,
-            duration_minutes,
-            max_participants,
-            meeting_point,
-            tags,
-            experience_status,
-            location,
-            supplier:partners!experiences_partner_fk(
-              id,
-              name,
-              city
-            )
-          `)
-          .eq('experience_status', 'active');
-          // No partner exclusion — hybrid orgs can see their own experiences
+      } catch (e) {
+        console.error('Error parsing saved location:', e);
+      }
+    }
+    hasInitialized.current = true;
+  }, [savedConfig]);
 
-        if (expError) throw expError;
+  // ── Auto-save location to hotel_config (same pattern as ExperienceDashboard) ──
+  useEffect(() => {
+    if (!activeHotelConfigId || !hasInitialized.current) return;
+    if (!debouncedLat || !debouncedLng || !debouncedAddress.trim()) return;
 
-        filteredExperiences = (allExperiences || []).map((exp: any) => ({
-          ...exp,
-          supplier: exp.supplier as any,
+    const autoSave = async () => {
+      setSaveStatus('saving');
+      try {
+        const { error } = await supabase
+          .from('hotel_configs')
+          .update({
+            address: debouncedAddress.trim(),
+            location: `POINT(${debouncedLng} ${debouncedLat})`,
+            location_radius_km: debouncedRadiusKm,
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq('id', activeHotelConfigId);
+
+        if (error) throw error;
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      } catch (error: any) {
+        console.error('Error saving location:', error);
+        setSaveStatus('idle');
+        toast({
+          title: 'Error',
+          description: 'Failed to save location. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    };
+
+    autoSave();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeHotelConfigId, debouncedAddress, debouncedLat, debouncedLng, debouncedRadiusKm]);
+
+  // ── Fetch experiences within radius (when location set) or all (when not) ──
+  const { data: experienceResults = [], isLoading: experiencesLoading } = useQuery({
+    queryKey: ['experiencesForHotel', hasLocation, debouncedLat, debouncedLng, debouncedRadiusKm],
+    queryFn: async () => {
+      if (debouncedLat !== null && debouncedLng !== null) {
+        // Use RPC to get distance-filtered results
+        const locationWkt = `POINT(${debouncedLng} ${debouncedLat})`;
+        const radiusMeters = debouncedRadiusKm * 1000;
+
+        const { data, error } = await supabase.rpc('get_experiences_within_radius', {
+          hotel_location: locationWkt,
+          radius_meters: radiusMeters,
+        });
+
+        if (error) {
+          console.error('RPC error, falling back to all experiences:', error);
+          // Fallback: fetch all
+          return fetchAllExperiences();
+        }
+
+        return (data || []).map((exp: any) => ({
+          id: exp.id,
+          title: exp.title,
+          slug: exp.slug,
+          description: exp.description,
+          image_url: exp.image_url,
+          price_cents: exp.price_cents,
+          duration_minutes: exp.duration_minutes,
+          max_participants: exp.max_participants,
+          meeting_point: exp.meeting_point,
           tags: exp.tags || [],
-          distance_km: null,
+          experience_status: exp.experience_status,
+          distance_km: exp.distance_meters ? exp.distance_meters / 1000 : 0,
+          supplier: {
+            id: exp.supplier_id,
+            name: exp.supplier_name,
+            city: exp.supplier_city,
+          },
         }));
       }
 
-      // Get current distributions for this hotel property
-      // hotel_config_id added via migration, not yet in generated types
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: distributions, error: distError } = await (supabase
-        .from('distributions') as any)
-        .select('id, experience_id, is_active')
-        .eq('hotel_config_id', activeHotelConfigId);
-
-      if (distError) throw distError;
-
-      // Merge to show selection state
-      const distributionMap = new Map(
-        (distributions || []).map(d => [d.experience_id, { id: d.id, isActive: d.is_active }])
-      );
-
-      return filteredExperiences.map((exp: any): AvailableExperience => {
-        const dist = distributionMap.get(exp.id);
-        return {
-          ...exp,
-          supplier: exp.supplier as any,
-          tags: exp.tags || [],
-          isSelected: dist?.isActive ?? false,
-          distributionId: dist?.id || null,
-          distance_km: exp.distance_km || null,
-        };
-      });
+      // No location set — fetch all
+      return fetchAllExperiences();
     },
-    enabled: !!partnerId && hotelLocation !== undefined, // Wait for hotelLocation to load (even if null)
   });
 
-  // Toggle experience selection
+  async function fetchAllExperiences() {
+    const { data, error } = await supabase
+      .from('experiences')
+      .select(`
+        id, title, slug, description, image_url, price_cents,
+        duration_minutes, max_participants, meeting_point, tags,
+        experience_status,
+        supplier:partners!experiences_partner_fk(id, name, city)
+      `)
+      .eq('experience_status', 'active');
+
+    if (error) throw error;
+
+    return (data || []).map((exp: any) => ({
+      ...exp,
+      supplier: exp.supplier as any,
+      tags: exp.tags || [],
+      distance_km: null,
+    }));
+  }
+
+  // ── Fetch distributions ──
+  const { data: distributions = [], isLoading: distributionsLoading } = useQuery({
+    queryKey: ['hotelDistributions', partnerId, activeHotelConfigId],
+    queryFn: async () => {
+      if (!partnerId) return [];
+
+      const { data, error } = await supabase
+        .from('distributions')
+        .select('id, experience_id, is_active, hotel_config_id')
+        .eq('hotel_id', partnerId);
+
+      if (error) {
+        console.error('Distributions error:', error);
+        return [];
+      }
+
+      return (data || []).filter(
+        (d: any) => d.hotel_config_id === activeHotelConfigId
+      );
+    },
+    enabled: !!partnerId && !!activeHotelConfigId,
+  });
+
+  // ── Merge experiences + distributions ──
+  const isLoading = experiencesLoading || distributionsLoading;
+
+  const distributionMap = new Map(
+    distributions.map((d: any) => [d.experience_id, { id: d.id, isActive: d.is_active }])
+  );
+
+  const experiences: AvailableExperience[] = experienceResults
+    .map((exp: any) => {
+      const dist = distributionMap.get(exp.id);
+      return {
+        ...exp,
+        isSelected: dist?.isActive ?? false,
+        distributionId: dist?.id || null,
+      };
+    })
+    // Sort: selected first, then by distance, then alphabetically
+    .sort((a, b) => {
+      if (a.isSelected !== b.isSelected) return a.isSelected ? -1 : 1;
+      if (a.distance_km !== null && b.distance_km !== null) return a.distance_km - b.distance_km;
+      if (a.distance_km !== null) return -1;
+      if (b.distance_km !== null) return 1;
+      return a.title.localeCompare(b.title);
+    });
+
+  // ── Toggle experience selection ──
   const toggleMutation = useMutation({
-    mutationFn: async ({ experienceId, isSelected, distributionId }: { 
-      experienceId: string; 
-      isSelected: boolean; 
+    mutationFn: async ({ experienceId, isSelected, distributionId }: {
+      experienceId: string;
+      isSelected: boolean;
       distributionId: string | null;
     }) => {
       if (!partnerId) throw new Error('No partner selected');
 
       if (isSelected && distributionId) {
-        // Deselect: set is_active to false
         const { error } = await supabase
           .from('distributions')
           .update({ is_active: false })
           .eq('id', distributionId);
         if (error) throw error;
       } else if (!isSelected && distributionId) {
-        // Re-select existing distribution
         const { error } = await supabase
           .from('distributions')
           .update({ is_active: true })
           .eq('id', distributionId);
         if (error) throw error;
       } else {
-        // Create new distribution with default commissions
-        // hotel_config_id added via migration, not yet in generated types
+        const { data: experienceData } = await supabase
+          .from('experiences')
+          .select('partner_id')
+          .eq('id', experienceId)
+          .single();
+
+        const isSelfOwned = experienceData?.partner_id === partnerId;
+        const commissionRates = isSelfOwned
+          ? { supplier: 92, hotel: 0, platform: 8 }
+          : { supplier: 80, hotel: 12, platform: 8 };
+
         if (!activeHotelConfigId) throw new Error('No hotel property selected');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase
-          .from('distributions') as any)
+
+        const { error } = await supabase
+          .from('distributions')
           .insert({
             hotel_id: partnerId,
             hotel_config_id: activeHotelConfigId,
             experience_id: experienceId,
-            commission_supplier: 80,
-            commission_hotel: 12,
-            commission_platform: 8,
+            commission_supplier: commissionRates.supplier,
+            commission_hotel: commissionRates.hotel,
+            commission_platform: commissionRates.platform,
             is_active: true,
-          });
+          } as any);
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['availableExperiences', partnerId] });
+      queryClient.invalidateQueries({ queryKey: ['hotelDistributions', partnerId, activeHotelConfigId] });
     },
     onError: (error) => {
       toast({
@@ -325,7 +351,20 @@ export default function ExperienceSelection() {
     });
   };
 
-  // Filter experiences by search
+  // ── Location handlers ──
+  const handleLocationSelect = (address: string, lat: number, lng: number) => {
+    setLocationAddress(address);
+    setLocationLat(lat);
+    setLocationLng(lng);
+  };
+
+  const handleAddressChange = (address: string) => {
+    setLocationAddress(address);
+    setLocationLat(null);
+    setLocationLng(null);
+  };
+
+  // ── Client-side text search ──
   const filteredExperiences = experiences.filter(exp => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -347,20 +386,118 @@ export default function ExperienceSelection() {
     return `${hours}h ${mins}min`;
   };
 
-  return (
-    <div className="bg-background-alt min-h-screen">
-      <div className="container max-w-6xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl font-semibold">Experience Selection</h1>
-            {selectedCount > 0 && (
-              <Badge className="bg-primary text-primary-foreground font-medium">
-                {selectedCount}
-              </Badge>
-            )}
-          </div>
+  // ── Loading / Error states ──
+  if (partnerLoading) {
+    return (
+      <div className={cn(embedded ? 'flex items-center justify-center py-8' : 'min-h-screen flex items-center justify-center bg-background')}>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!activePartner) {
+    return (
+      <div className={cn(embedded ? 'py-8 text-center' : 'min-h-screen flex items-center justify-center bg-background')}>
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">No organization selected</h2>
+          <p className="text-muted-foreground">
+            Please select an organization to view available experiences.
+          </p>
         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn(embedded ? '' : 'bg-background-alt min-h-screen')}>
+      <div className={cn(embedded ? '' : 'container max-w-6xl mx-auto px-4 py-6')}>
+        {/* Header */}
+        {!embedded && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <h1 className="text-2xl font-semibold">Experience Selection</h1>
+              {selectedCount > 0 && (
+                <Badge className="bg-primary text-primary-foreground font-medium">
+                  {selectedCount}
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+        {embedded && selectedCount > 0 && (
+          <div className="mb-4 flex items-center gap-2">
+            <Badge className="bg-primary text-primary-foreground font-medium">
+              {selectedCount} selected
+            </Badge>
+          </div>
+        )}
+
+        {/* ── Property Location ── */}
+        <Card className="mb-4 border-border">
+          <CardContent className="p-4 space-y-4">
+            {/* Address */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Property location</Label>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {saveStatus === 'saving' && (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Saving</span>
+                    </>
+                  )}
+                  {saveStatus === 'saved' && (
+                    <>
+                      <Check className="h-3 w-3 text-[#6B8E6B]" />
+                      <span className="text-xs text-[#6B8E6B]">Saved</span>
+                    </>
+                  )}
+                </div>
+              </div>
+              <LocationAutocomplete
+                value={locationAddress}
+                onChange={handleLocationSelect}
+                onAddressChange={handleAddressChange}
+                placeholder="Search for your property address..."
+              />
+              {!hasLocation && (
+                <p className="text-xs text-muted-foreground">
+                  Set your property address to show nearby experiences
+                </p>
+              )}
+            </div>
+
+            {/* Radius slider — always visible */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">Search radius</Label>
+                <span className="text-sm font-medium tabular-nums">{radiusKm} km</span>
+              </div>
+              <Slider
+                value={[radiusKm]}
+                onValueChange={([val]) => setRadiusKm(val)}
+                min={1}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>1 km</span>
+                <span>100 km</span>
+              </div>
+            </div>
+
+            {/* Result count when filtering */}
+            {hasLocation && !isLoading && (
+              <p className="text-xs text-muted-foreground pt-1 border-t border-border">
+                {experiences.length} experience{experiences.length !== 1 ? 's' : ''} within {radiusKm} km
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Search */}
         <div className="mb-4">
@@ -384,17 +521,12 @@ export default function ExperienceSelection() {
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-sm text-secondary mb-1">
-                {searchQuery 
-                  ? 'No experiences match your search.' 
-                  : hotelLocation?.location
-                  ? `No experiences found within ${hotelLocation.location_radius_km || 25} km.`
+                {searchQuery
+                  ? 'No experiences match your search.'
+                  : hasLocation
+                  ? `No experiences found within ${radiusKm} km. Try increasing the radius.`
                   : 'No experiences available yet.'}
               </p>
-              {hotelLocation?.location && !searchQuery && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  Try increasing your search radius in <a href="/hotel/location" className="text-primary hover:underline">Location Settings</a>.
-                </p>
-              )}
             </CardContent>
           </Card>
         ) : (
@@ -404,8 +536,8 @@ export default function ExperienceSelection() {
                 key={exp.id}
                 className={cn(
                   "bg-card cursor-pointer transition-ui",
-                  exp.isSelected 
-                    ? "bg-primary/5 border-primary/30" 
+                  exp.isSelected
+                    ? "bg-primary/5 border-primary/30"
                     : "hover:bg-accent/50"
                 )}
                 onClick={() => handleToggle(exp)}
@@ -482,9 +614,9 @@ export default function ExperienceSelection() {
                         {exp.distance_km !== null && (
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
-                            {exp.distance_km < 1 
+                            {exp.distance_km < 1
                               ? `${Math.round(exp.distance_km * 1000)}m`
-                              : `${exp.distance_km.toFixed(1)}km`}
+                              : `${exp.distance_km.toFixed(1)} km`}
                           </span>
                         )}
                       </div>
@@ -492,8 +624,8 @@ export default function ExperienceSelection() {
                       {/* Category Badge */}
                       {exp.tags.length > 0 && exp.tags[0] && (
                         <div className="mt-2">
-                          <Badge 
-                            variant="outline" 
+                          <Badge
+                            variant="outline"
                             className="text-xs font-normal border-border/50"
                           >
                             <span className="mr-1">{getCategoryIcon(exp.tags[0])}</span>

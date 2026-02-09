@@ -172,6 +172,21 @@ export function SessionCreatePopup({
     e.preventDefault();
     if (!experienceId) return;
 
+    // Validate: prevent creating sessions in the past
+    const now = new Date();
+    const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const [startH, startM] = startTime.split(':').map(Number);
+    const nowHours = now.getHours();
+    const nowMinutes = now.getMinutes();
+    
+    const isPast = date < todayLocal || 
+      (date === todayLocal && (startH < nowHours || (startH === nowHours && startM < nowMinutes)));
+    
+    if (isPast) {
+      alert('Cannot create sessions in the past. Please select a future date and time.');
+      return;
+    }
+
     const priceOverrideCents = customPrice
       ? Math.round(parseFloat(customPrice) * 100)
       : null;
@@ -252,6 +267,7 @@ export function SessionCreatePopup({
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
+            min={format(new Date(), 'yyyy-MM-dd')}
             className={cn(inputClass, "h-9")}
             required
           />
