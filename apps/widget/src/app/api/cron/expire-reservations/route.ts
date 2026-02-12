@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       sessionGroups.set(res.session.id, existing)
     }
 
-    for (const [sessionId, reservations] of sessionGroups) {
+    for (const [sessionId, reservations] of Array.from(sessionGroups.entries())) {
       const session = reservations[0].session
       const experience = reservations[0].experience
 
