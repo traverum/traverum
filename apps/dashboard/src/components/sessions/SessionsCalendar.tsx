@@ -6,8 +6,10 @@ import { DayTimeView } from './DayTimeView';
 import { WeekTimeView } from './WeekTimeView';
 import { SessionCreatePopup } from './SessionCreatePopup';
 import { SessionQuickEditPopup } from './SessionQuickEditPopup';
+import { RequestQuickActionPopup } from './RequestQuickActionPopup';
 import type { Experience } from '@/hooks/useExperienceSessions';
 import type { SessionWithExperience } from '@/hooks/useAllSessions';
+import type { CalendarRequest } from '@/hooks/useCalendarRequests';
 import { AvailabilityRule } from '@/lib/availability';
 import { 
   format, 
@@ -50,6 +52,7 @@ interface RecurringData {
 interface SessionsCalendarProps {
   sessions: any[];
   sessionsByDate: Record<string, any[]>;
+  requestsByDate?: Record<string, CalendarRequest[]>;
   experience: Experience | null;
   experiences?: Array<{ id: string; title: string; duration_minutes: number; max_participants?: number; price_cents?: number }>;
   currentMonth: Date;
@@ -60,10 +63,12 @@ interface SessionsCalendarProps {
   availabilityRules?: AvailabilityRule[];
   onSessionClick?: (sessionId: string) => void;
   onSessionUpdate?: () => void;
+  onRequestAction?: () => void;
 }
 
 export function SessionsCalendar({
   sessionsByDate,
+  requestsByDate = {},
   currentMonth,
   onMonthChange,
   onCreateSession,
@@ -73,6 +78,7 @@ export function SessionsCalendar({
   experiences = [],
   onSessionClick,
   onSessionUpdate,
+  onRequestAction,
 }: SessionsCalendarProps) {
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
@@ -85,6 +91,12 @@ export function SessionsCalendar({
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const [quickEditSession, setQuickEditSession] = useState<SessionWithExperience | null>(null);
   const [quickEditPosition, setQuickEditPosition] = useState<{ x: number; y: number } | undefined>();
+
+  // Request day popup state
+  const [requestPopupOpen, setRequestPopupOpen] = useState(false);
+  const [selectedDateRequests, setSelectedDateRequests] = useState<CalendarRequest[]>([]);
+  const [requestPopupDateKey, setRequestPopupDateKey] = useState<string>('');
+  const [requestPopupPosition, setRequestPopupPosition] = useState<{ x: number; y: number } | undefined>();
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -182,6 +194,28 @@ export function SessionsCalendar({
     }
   };
 
+  const handleRequestBadgeClick = (dateKey: string, clickPosition: { x: number; y: number }) => {
+    const dayRequests = requestsByDate?.[dateKey] || [];
+    if (dayRequests.length > 0) {
+      setSelectedDateRequests(dayRequests);
+      setRequestPopupDateKey(dateKey);
+      setRequestPopupPosition(clickPosition);
+      setRequestPopupOpen(true);
+      // Close other popups
+      setQuickAddOpen(false);
+      setQuickEditOpen(false);
+    }
+  };
+
+  const getDayRequests = (date: Date): CalendarRequest[] => {
+    try {
+      const dateKey = format(date, 'yyyy-MM-dd');
+      return requestsByDate?.[dateKey] || [];
+    } catch (error) {
+      return [];
+    }
+  };
+
   const getDaySessions = (date: Date) => {
     try {
       const dateKey = format(date, 'yyyy-MM-dd');
@@ -255,11 +289,14 @@ export function SessionsCalendar({
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const daySessions = getDaySessions(day) || [];
 
+                  const dayRequests = getDayRequests(day);
+
                   return (
                     <CalendarDay
                       key={dateKey}
                       date={day}
                       sessions={daySessions}
+                      requests={dayRequests}
                       totalSessionCount={daySessions.length}
                       currentMonth={currentMonth}
                       onAddSession={() => {}}
@@ -267,6 +304,7 @@ export function SessionsCalendar({
                       showExperienceTitle={showExperienceTitle}
                       availabilityRules={availabilityRules || []}
                       onSessionClick={handleSessionClickWithPosition}
+                      onRequestBadgeClick={handleRequestBadgeClick}
                     />
                   );
                 })}
@@ -278,9 +316,11 @@ export function SessionsCalendar({
             <WeekTimeView
               currentDate={currentMonth}
               sessionsByDate={sessionsByDate}
+              requestsByDate={requestsByDate}
               experiences={experiences}
               onTimeSlotClick={handleTimeSlotClick}
               onSessionClick={handleSessionClickWithPosition}
+              onRequestBadgeClick={handleRequestBadgeClick}
               showExperienceTitle={showExperienceTitle}
               onSessionUpdate={onSessionUpdate}
             />
@@ -290,9 +330,11 @@ export function SessionsCalendar({
             <DayTimeView
               date={selectedDay}
               sessions={getDaySessions(selectedDay)}
+              requests={getDayRequests(selectedDay)}
               experiences={experiences}
               onTimeSlotClick={handleTimeSlotClick}
               onSessionClick={handleSessionClickWithPosition}
+              onRequestBadgeClick={handleRequestBadgeClick}
               showExperienceTitle={showExperienceTitle}
               onSessionUpdate={onSessionUpdate}
             />
@@ -327,6 +369,19 @@ export function SessionsCalendar({
           session={quickEditSession}
           position={quickEditPosition}
           onSessionUpdate={onSessionUpdate}
+        />
+
+        {/* Request Day Popup */}
+        <RequestQuickActionPopup
+          isOpen={requestPopupOpen}
+          onClose={() => { setRequestPopupOpen(false); setSelectedDateRequests([]); }}
+          requests={selectedDateRequests}
+          dateKey={requestPopupDateKey}
+          position={requestPopupPosition}
+          onRequestAction={() => {
+            onRequestAction?.();
+            onSessionUpdate?.();
+          }}
         />
       </>
     );

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 interface HeaderProps {
@@ -9,13 +9,12 @@ interface HeaderProps {
   hotelSlug: string
   showBack?: boolean
   backTo?: string
+  returnUrl?: string | null
 }
 
-export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo }: HeaderProps) {
+export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo, returnUrl }: HeaderProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
 
-  const returnUrl = searchParams.get('returnUrl')
   const homeHref = returnUrl
     ? `/${hotelSlug}?embed=full&returnUrl=${encodeURIComponent(returnUrl)}`
     : `/${hotelSlug}?embed=full`

@@ -141,11 +141,9 @@
           }
           self._render(data, hotel, hideTitle, buttonLabel);
         })
-        .catch(function (err) {
-          console.error('Traverum widget load error:', err);
-          console.error('Hotel slug:', hotel, 'API URL:', apiUrl);
-          self._shadow.innerHTML = self._baseStyles() +
-            '<p class="trv-error">Unable to load experiences. Check console for details.</p>';
+        .catch(function () {
+          // Hotel inactive or not found — render nothing (widget hidden from site)
+          self._shadow.innerHTML = '';
         });
     }
 

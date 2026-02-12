@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -32,6 +32,7 @@ interface CheckoutFormProps {
   sessionDate?: string
   sessionTime?: string
   isDemo?: boolean
+  returnUrl?: string | null
 }
 
 export function CheckoutForm({
@@ -48,10 +49,9 @@ export function CheckoutForm({
   sessionDate,
   sessionTime,
   isDemo = false,
+  returnUrl,
 }: CheckoutFormProps) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const returnUrl = searchParams.get('returnUrl')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDemoSuccess, setShowDemoSuccess] = useState(false)
@@ -67,7 +67,7 @@ export function CheckoutForm({
   
   // Get the date and time for display
   const displayDate = sessionDate || requestDate || ''
-  const displayTime = sessionTime || requestTime || ''
+  const displayTime = sessionTime || ''
   
   const onSubmit = async (data: CheckoutFormData) => {
     setIsSubmitting(true)
@@ -262,6 +262,7 @@ export function CheckoutForm({
             hotelSlug={hotelSlug}
             isRequest={isRequest}
             onClose={() => setShowDemoSuccess(false)}
+            returnUrl={returnUrl}
           />
         )}
       </AnimatePresence>

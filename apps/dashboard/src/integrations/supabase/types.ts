@@ -471,7 +471,9 @@ export type Database = {
           session_id: string | null
           stripe_payment_link_id: string | null
           stripe_payment_link_url: string | null
+          time_preference: string | null
           total_cents: number
+          preferred_language: string | null
           updated_at: string | null
         }
         Insert: {
@@ -485,6 +487,7 @@ export type Database = {
           is_request?: boolean | null
           participants: number
           payment_deadline?: string | null
+          preferred_language?: string | null
           requested_date?: string | null
           requested_time?: string | null
           reservation_status?: string
@@ -492,6 +495,7 @@ export type Database = {
           session_id?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
+          time_preference?: string | null
           total_cents: number
           updated_at?: string | null
         }
@@ -506,6 +510,7 @@ export type Database = {
           is_request?: boolean | null
           participants?: number
           payment_deadline?: string | null
+          preferred_language?: string | null
           requested_date?: string | null
           requested_time?: string | null
           reservation_status?: string
@@ -513,6 +518,7 @@ export type Database = {
           session_id?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
+          time_preference?: string | null
           total_cents?: number
           updated_at?: string | null
         }

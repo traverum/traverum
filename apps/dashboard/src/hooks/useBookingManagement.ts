@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { isSessionUpcoming } from '@/lib/date-utils';
 
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+
 // --- Types ---
 
 export interface PendingRequest {
@@ -14,12 +16,12 @@ export interface PendingRequest {
   total_cents: number;
   requested_date: string | null;
   requested_time: string | null;
+  time_preference: string | null;
   session_id: string | null;
   response_deadline: string;
   reservation_status: string;
   is_request: boolean;
   preferred_language: string | null;
-  proposed_times: Array<{ date: string; time: string }> | null;
   created_at: string;
   experience: {
     id: string;
@@ -66,9 +68,11 @@ export interface SessionWithGuests {
     id: string;
     title: string;
     price_cents: number;
+    min_participants?: number;
   };
   guests: SessionGuest[];
   bookingsCount: number;
+  pendingMinimumCount: number;
 }
 
 // --- Hook ---
@@ -83,7 +87,7 @@ export function useBookingManagement() {
     queryFn: async () => {
       const { data } = await supabase
         .from('experiences')
-        .select('id, title, price_cents, currency')
+        .select('id, title, price_cents, currency, min_participants')
         .eq('partner_id', partnerId!);
       return data || [];
     },
@@ -111,7 +115,7 @@ export function useBookingManagement() {
           )
         `)
         .in('experience_id', experienceIds)
-        .in('reservation_status', ['pending', 'proposed'])
+        .eq('reservation_status', 'pending')
         .order('response_deadline', { ascending: true });
 
       if (error) throw error;
@@ -126,14 +130,14 @@ export function useBookingManagement() {
         participants: r.participants,
         total_cents: r.total_cents,
         requested_date: r.requested_date,
-        requested_time: r.requested_time,
+        requested_time: r.requested_time || null,
+        time_preference: r.time_preference || null,
         session_id: r.session_id,
         response_deadline: r.response_deadline,
         reservation_status: r.reservation_status,
-        is_request: r.is_request,
-        preferred_language: (r as any).preferred_language || null,
-        proposed_times: (r as any).proposed_times || null,
-        created_at: r.created_at,
+        is_request: r.is_request ?? false,
+        preferred_language: r.preferred_language || null,
+        created_at: r.created_at || '',
         experience: experienceMap.get(r.experience_id)!,
         session: r.experience_sessions,
       })) as PendingRequest[];
@@ -203,7 +207,7 @@ export function useBookingManagement() {
           participants: r.participants,
           total_cents: r.total_cents,
           reservation_status: r.reservation_status,
-          preferred_language: (r as any).preferred_language || null,
+          preferred_language: r.preferred_language || null,
           booking: bookingsMap.get(r.id) ? {
             id: bookingsMap.get(r.id).id,
             booking_status: bookingsMap.get(r.id).booking_status,
@@ -226,6 +230,7 @@ export function useBookingManagement() {
           experience: experienceMap.get(session.experience_id)!,
           guests,
           bookingsCount: session.spots_total - session.spots_available,
+          pendingMinimumCount: guests.filter(g => g.reservation_status === 'pending_minimum').length,
         } as SessionWithGuests;
       });
     },
@@ -243,80 +248,56 @@ export function useBookingManagement() {
 
   // --- Mutations ---
 
-  // Accept a pending request
+  // Accept a pending request via widget API (accepts as-is using guest's requested date/time)
   const acceptRequest = useMutation({
     mutationFn: async (reservationId: string) => {
-      // Find the request
-      const request = pendingRequests.find(r => r.id === reservationId);
-      if (!request) throw new Error('Request not found');
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error('Not authenticated');
 
-      // TODO: This should call the widget API accept endpoint
-      // For now, directly update via Supabase
-      const { error } = await supabase
-        .from('reservations')
-        .update({
-          reservation_status: 'approved',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', reservationId);
+      const response = await fetch(`${WIDGET_BASE_URL}/api/dashboard/requests/${reservationId}/accept`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`,
+        },
+        body: JSON.stringify({}),
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to accept request');
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['booking-mgmt-pending'] });
       queryClient.invalidateQueries({ queryKey: ['booking-mgmt-sessions'] });
       queryClient.invalidateQueries({ queryKey: ['pending-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-requests'] });
     },
   });
 
-  // Decline a pending request
+  // Decline a pending request via widget API
   const declineRequest = useMutation({
-    mutationFn: async (reservationId: string) => {
-      const { error } = await supabase
-        .from('reservations')
-        .update({
-          reservation_status: 'declined',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', reservationId);
+    mutationFn: async ({ reservationId, message }: { reservationId: string; message?: string }) => {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error('Not authenticated');
 
-      if (error) throw error;
+      const response = await fetch(`${WIDGET_BASE_URL}/api/dashboard/requests/${reservationId}/decline`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`,
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to decline request');
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['booking-mgmt-pending'] });
       queryClient.invalidateQueries({ queryKey: ['pending-requests'] });
-    },
-  });
-
-  // Propose new times for a pending request
-  const proposeNewTimes = useMutation({
-    mutationFn: async ({
-      reservationId,
-      proposedTimes,
-    }: {
-      reservationId: string;
-      proposedTimes: Array<{ date: string; time: string }>;
-    }) => {
-      const responseDeadline = new Date();
-      responseDeadline.setHours(responseDeadline.getHours() + 48);
-
-      const { error } = await supabase
-        .from('reservations')
-        .update({
-          reservation_status: 'proposed',
-          proposed_times: proposedTimes,
-          response_deadline: responseDeadline.toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', reservationId);
-
-      if (error) throw error;
-
-      // TODO: Trigger email to guest via edge function
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-pending'] });
-      queryClient.invalidateQueries({ queryKey: ['pending-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['calendar-requests'] });
     },
   });
 
@@ -358,7 +339,6 @@ export function useBookingManagement() {
     // Mutations
     acceptRequest,
     declineRequest,
-    proposeNewTimes,
     cancelSession,
     // Refetch
     refetchAll,

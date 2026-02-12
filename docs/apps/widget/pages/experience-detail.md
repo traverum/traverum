@@ -41,8 +41,8 @@ Two-column layout:
 - Rich text with markdown support (bold, links, line breaks)
 
 ### Info Sections (below description, separated by border)
-- **How it works** — "Reserve now — free and non-binding. Pay after provider confirms."
-- **Cancellation** — "Free cancellation up to 7 days before."
+- **Booking** — "Select a date and time. If a slot is available, pay now to confirm. Otherwise request a time; the provider responds within 48h and you pay after approval."
+- **Cancellation** — From experience `cancellation_policy` + `force_majeure_refund` (flexible/moderate/strict/non_refundable)
 - **Meeting point** — Only shown if experience has one set
 
 ---

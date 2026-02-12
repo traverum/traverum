@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { format, parseISO, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
+import { format, parseISO, isToday, isTomorrow } from 'date-fns';
 import { ChevronRight, Compass, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -147,7 +147,7 @@ export default function SupplierDashboard() {
           {requestsLoading ? (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-32 w-[280px] bg-muted animate-pulse rounded-sm flex-shrink-0" />
+                <div key={i} className="h-20 w-[180px] bg-muted animate-pulse rounded-sm flex-shrink-0" />
               ))}
             </div>
           ) : pendingRequests.length === 0 ? (
@@ -159,56 +159,36 @@ export default function SupplierDashboard() {
           ) : (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
               {pendingRequests.slice(0, 6).map((request) => {
-                const deadline = parseISO(request.response_deadline);
-                const isUrgent = deadline.getTime() - Date.now() < 12 * 60 * 60 * 1000;
-                const timeUntil = formatDistanceToNow(deadline, { addSuffix: true });
-                
+                const day = request.requested_date ?? (request.session ? (Array.isArray(request.session) ? request.session[0]?.session_date : request.session.session_date) : null);
+                const dayLabel = day ? (() => {
+                  const d = parseISO(day);
+                  if (isToday(d)) return 'Today';
+                  if (isTomorrow(d)) return 'Tomorrow';
+                  return format(d, 'dd.MM');
+                })() : '—';
                 return (
                   <Card
                     key={request.id}
-                    className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[280px]"
-                    onClick={() => navigate('/supplier/requests')}
+                    className="border border-primary/30 bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[180px]"
+                    onClick={() => navigate('/supplier/bookings?tab=pending')}
                   >
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
-                              {request.experience.title}
-                            </h3>
-                            <p className="text-xs text-secondary mt-1">
-                              {request.guest_name}
-                            </p>
-                          </div>
-                          {isUrgent && (
-                            <Badge className="h-4 px-1.5 text-xs bg-destructive text-destructive-foreground flex-shrink-0 rounded-full">
-                              Urgent
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-secondary">
-                          <span>{request.participants} {request.participants === 1 ? 'guest' : 'guests'}</span>
-                          <span>·</span>
-                          <span>€{(request.total_cents / 100).toFixed(0)}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {timeUntil}
-                        </p>
-                      </div>
+                    <CardContent className="p-3 flex flex-col gap-0.5">
+                      <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
+                        {request.experience.title}
+                      </h3>
+                      <p className="text-xs text-secondary">{dayLabel}</p>
                     </CardContent>
                   </Card>
                 );
               })}
               {pendingRequests.length > 6 && (
                 <Card
-                  className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[120px] flex items-center justify-center"
-                  onClick={() => navigate('/supplier/requests')}
+                  className="border border-primary/30 bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[100px] flex items-center justify-center"
+                  onClick={() => navigate('/supplier/bookings?tab=pending')}
                 >
-                  <CardContent className="p-4 text-center">
-                    <ChevronRight className="h-5 w-5 text-muted-foreground mx-auto mb-1" />
-                    <p className="text-xs text-secondary">
-                      {pendingRequests.length - 6} more
-                    </p>
+                  <CardContent className="p-3 text-center">
+                    <ChevronRight className="h-5 w-5 text-muted-foreground mx-auto mb-0.5" />
+                    <p className="text-xs text-secondary">{pendingRequests.length - 6} more</p>
                   </CardContent>
                 </Card>
               )}

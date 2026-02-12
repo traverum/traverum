@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
-import { Users, ChevronDown, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ParticipantSelectorProps {
@@ -136,18 +135,12 @@ export function ParticipantSelector({
         className="w-full flex items-center justify-between px-4 py-3 border border-border rounded-button bg-background hover:border-accent/50 transition-colors duration-150 text-left mt-2 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
       >
         <div className="flex items-center gap-3">
-          <Users className="w-5 h-5 text-muted-foreground" aria-hidden="true" />
+          <svg className="w-5 h-5 text-muted-foreground" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path strokeLinecap="round" strokeLinejoin="round" d="M23 21v-2a4 4 0 0 0-3-3.87" /><path strokeLinecap="round" strokeLinejoin="round" d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
           <span className="text-foreground font-medium tabular-nums">
             {displayText}
           </span>
         </div>
-        <ChevronDown 
-          className={cn(
-            'w-5 h-5 text-muted-foreground transition-transform duration-150', 
-            isOpen && 'rotate-180'
-          )} 
-          aria-hidden="true"
-        />
+        <svg className={cn('w-5 h-5 text-muted-foreground transition-transform duration-150', isOpen && 'rotate-180')} aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
       </button>
       
       {/* Dropdown menu */}
@@ -182,7 +175,7 @@ export function ParticipantSelector({
                   )}
                 >
                   <span className="tabular-nums">{num} {num === 1 ? 'person' : 'people'}</span>
-                  {isSelected && <Check className="w-4 h-4" aria-hidden="true" />}
+                  {isSelected && <svg className="w-4 h-4" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" /></svg>}
                 </button>
               )
             })}

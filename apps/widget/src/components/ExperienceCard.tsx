@@ -2,7 +2,6 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 
@@ -10,12 +9,10 @@ interface ExperienceCardProps {
   experience: ExperienceWithMedia
   hotelSlug: string
   embedMode?: 'full' | 'section'
+  returnUrl?: string | null
 }
 
-export function ExperienceCard({ experience, hotelSlug, embedMode = 'full' }: ExperienceCardProps) {
-  const searchParams = useSearchParams()
-  const returnUrl = searchParams.get('returnUrl')
-
+export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', returnUrl }: ExperienceCardProps) {
   const params = new URLSearchParams()
   if (returnUrl) params.set('returnUrl', returnUrl)
 

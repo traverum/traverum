@@ -202,7 +202,7 @@ async function sendTestCompletionEmail() {
         experience:experiences(
           title,
           currency,
-          supplier:partners!experiences_partner_id_fkey(email, name)
+          supplier:partners!experiences_partner_fk(email, name)
         ),
         session:experience_sessions(session_date, start_time)
       )

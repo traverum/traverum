@@ -3,8 +3,8 @@ import Link from 'next/link'
 import { getHotelWithExperiences } from '@/lib/hotels'
 import { getEmbedMode, cn } from '@/lib/utils'
 import { Header } from '@/components/Header'
-import { ExperienceCard } from '@/components/ExperienceCard'
 import { ExperienceListClient } from '@/components/ExperienceListClient'
+import { EmbedResizer } from '@/components/EmbedResizer'
 
 // Inherit dynamic from layout - hotel config changes take effect immediately
 export const dynamic = 'force-dynamic'
@@ -52,6 +52,7 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
           logoUrl={hotel.logo_url}
           hotelSlug={hotelSlug}
           showBack={false}
+          returnUrl={returnUrl}
         />
       )}
       
@@ -134,6 +135,7 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
               experiences={displayExperiences}
               hotelSlug={hotelSlug}
               embedMode={embedMode}
+              returnUrl={returnUrl}
             />
             
             {/* View all link - section mode only */}
@@ -165,35 +167,8 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
         </div>
       </main>
       
-      {/* Embed mode resize script */}
-      {embedMode === 'section' && (
-        <EmbedResizer />
-      )}
+      {/* Embed mode resize + body classes (client-only, after hydration) */}
+      {embedMode === 'section' && <EmbedResizer />}
     </div>
-  )
-}
-
-// Client component for iframe resizing
-function EmbedResizer() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
-          (function() {
-            // Add embed-section class to body and html to prevent scrolling
-            document.body.classList.add('embed-section');
-            document.documentElement.classList.add('embed-section');
-            
-            function sendHeight() {
-              var height = document.body.scrollHeight;
-              window.parent.postMessage({ type: 'traverum-resize', height: height }, '*');
-            }
-            sendHeight();
-            window.addEventListener('resize', sendHeight);
-            new MutationObserver(sendHeight).observe(document.body, { childList: true, subtree: true });
-          })();
-        `,
-      }}
-    />
   )
 }

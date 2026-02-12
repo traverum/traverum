@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Media } from '@/lib/supabase/types'
 
@@ -153,14 +152,14 @@ export function ImageGallery({ images, fallbackImage, title }: ImageGalleryProps
               className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors"
               aria-label="Previous image"
             >
-              <ChevronLeft className="w-5 h-5 text-foreground" />
+              <svg className="w-5 h-5 text-foreground" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" /></svg>
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); goToNext(); }}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-full bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors"
               aria-label="Next image"
             >
-              <ChevronRight className="w-5 h-5 text-foreground" />
+              <svg className="w-5 h-5 text-foreground" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" /></svg>
             </button>
 
             {/* Dot Indicators */}
@@ -223,7 +222,7 @@ function Lightbox({ images, currentIndex, isOpen, onClose, onPrevious, onNext, t
             className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-background/10 hover:bg-background/20 transition-colors z-10"
             aria-label="Close lightbox"
           >
-            <X className="w-6 h-6 text-background" />
+            <svg className="w-6 h-6 text-background" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
 
           {/* Previous Button */}
@@ -233,7 +232,7 @@ function Lightbox({ images, currentIndex, isOpen, onClose, onPrevious, onNext, t
               className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-background/10 hover:bg-background/20 transition-colors z-10"
               aria-label="Previous image"
             >
-              <ChevronLeft className="w-6 h-6 text-background" />
+              <svg className="w-6 h-6 text-background" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" /></svg>
             </button>
           )}
 
@@ -244,7 +243,7 @@ function Lightbox({ images, currentIndex, isOpen, onClose, onPrevious, onNext, t
               className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full bg-background/10 hover:bg-background/20 transition-colors z-10"
               aria-label="Next image"
             >
-              <ChevronRight className="w-6 h-6 text-background" />
+              <svg className="w-6 h-6 text-background" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" /></svg>
             </button>
           )}
 

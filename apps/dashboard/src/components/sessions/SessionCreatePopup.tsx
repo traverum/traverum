@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { format, addMonths } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,8 +76,10 @@ export function SessionCreatePopup({
   // Advanced
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [customPrice, setCustomPrice] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
   
   const popupRef = useRef<HTMLDivElement>(null);
+  const hasPositioned = useRef(false);
   const selectedExperience = experiences.find(e => e.id === experienceId);
 
   // Session count for recurring
@@ -108,6 +110,7 @@ export function SessionCreatePopup({
       setEndTime(calculateEndTime(newStartTime, duration));
     }
     setStartTime(newStartTime);
+    setValidationError(null);
   };
 
   // Reset on open
@@ -133,11 +136,17 @@ export function SessionCreatePopup({
       setShowAdvanced(false);
       setIsRecurring(false);
       setCustomPrice('');
+      setValidationError(null);
     }
   }, [isOpen, initialDate, initialTime, experiences]);
 
-  // Position popup
+  // Reset positioning flag when popup closes
   useEffect(() => {
+    if (!isOpen) hasPositioned.current = false;
+  }, [isOpen]);
+
+  // Position popup — useLayoutEffect prevents visible flicker
+  useLayoutEffect(() => {
     if (isOpen && position && popupRef.current) {
       const popup = popupRef.current;
       const rect = popup.getBoundingClientRect();
@@ -154,6 +163,11 @@ export function SessionCreatePopup({
 
       popup.style.left = `${x}px`;
       popup.style.top = `${y}px`;
+
+      if (!hasPositioned.current) {
+        hasPositioned.current = true;
+        popup.style.opacity = '1';
+      }
     }
   }, [isOpen, position, showAdvanced, isRecurring]);
 
@@ -183,7 +197,7 @@ export function SessionCreatePopup({
       (date === todayLocal && (startH < nowHours || (startH === nowHours && startM < nowMinutes)));
     
     if (isPast) {
-      alert('Cannot create sessions in the past. Please select a future date and time.');
+      setValidationError('Cannot create sessions in the past');
       return;
     }
 
@@ -229,9 +243,10 @@ export function SessionCreatePopup({
         ref={popupRef}
         className="fixed z-50 w-72 bg-background border border-border rounded-lg shadow-lg"
         style={{
-          left: position?.x || '50%',
-          top: position?.y || '50%',
+          left: position?.x ?? '50%',
+          top: position?.y ?? '50%',
           transform: position ? 'none' : 'translate(-50%, -50%)',
+          opacity: position ? 0 : 1,
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -266,7 +281,7 @@ export function SessionCreatePopup({
           <Input
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => { setDate(e.target.value); setValidationError(null); }}
             min={format(new Date(), 'yyyy-MM-dd')}
             className={cn(inputClass, "h-9")}
             required
@@ -393,6 +408,11 @@ export function SessionCreatePopup({
               </div>
             </div>
           </div>
+
+          {/* Validation error */}
+          {validationError && (
+            <p className="text-xs text-destructive">{validationError}</p>
+          )}
 
           {/* Submit */}
           <Button

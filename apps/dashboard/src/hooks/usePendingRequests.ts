@@ -11,10 +11,12 @@ export interface PendingRequest {
   total_cents: number;
   requested_date: string | null;
   requested_time: string | null;
+  time_preference: string | null;
   session_id: string | null;
   response_deadline: string;
   reservation_status: string;
   is_request: boolean;
+  preferred_language: string | null;
   created_at: string;
   experience: {
     id: string;
@@ -66,10 +68,24 @@ export function usePendingRequests() {
       // Map experiences to reservations
       const experienceMap = new Map(experiences.map(e => [e.id, e]));
       
-      return (reservations || []).map(reservation => ({
-        ...reservation,
-        experience: experienceMap.get(reservation.experience_id)!,
-        session: reservation.experience_sessions,
+      return (reservations || []).map(r => ({
+        id: r.id,
+        guest_name: r.guest_name,
+        guest_email: r.guest_email,
+        guest_phone: r.guest_phone,
+        participants: r.participants,
+        total_cents: r.total_cents,
+        requested_date: r.requested_date,
+        requested_time: r.requested_time || null,
+        time_preference: r.time_preference || null,
+        session_id: r.session_id,
+        response_deadline: r.response_deadline,
+        reservation_status: r.reservation_status,
+        is_request: r.is_request ?? false,
+        preferred_language: r.preferred_language || null,
+        created_at: r.created_at || '',
+        experience: experienceMap.get(r.experience_id)!,
+        session: r.experience_sessions,
       })) as PendingRequest[];
     },
     enabled: !!activePartnerId,

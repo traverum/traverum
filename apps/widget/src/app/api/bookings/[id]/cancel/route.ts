@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/tokens'
 import { createRefund } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
 import { differenceInDays, parseISO } from 'date-fns'
+import { canGuestCancel } from '@/lib/availability'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -31,14 +32,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   
   const supabase = createAdminClient()
   
-  // Get booking with related data
+  // Get booking with related data (include cancellation_policy for policy-aware cancellation)
   const { data: bookingData } = await supabase
     .from('bookings')
     .select(`
       *,
       reservation:reservations(
         *,
-        experience:experiences(title, currency),
+        experience:experiences(title, currency, cancellation_policy),
         session:experience_sessions(session_date)
       )
     `)
@@ -57,14 +58,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   
   const reservation = booking.reservation
   const session = reservation.session
+  const experience = reservation.experience
   const experienceDate = session?.session_date || reservation.requested_date
-  
-  // Check if within cancellation window (7+ days before)
-  if (experienceDate) {
-    const daysUntil = differenceInDays(parseISO(experienceDate), new Date())
-    if (daysUntil < 7) {
-      return createResponse('error', `Cancellation is no longer available. You can only cancel up to 7 days before the experience. (${daysUntil} days remaining)`)
-    }
+
+  // Check if within cancellation window (policy-aware: flexible=1d, moderate=7d, strict/non_refundable=no cancel)
+  const daysUntil = experienceDate ? differenceInDays(parseISO(experienceDate), new Date()) : 0
+  const { canCancel, message } = canGuestCancel(experience?.cancellation_policy ?? 'moderate', daysUntil)
+  if (!canCancel) {
+    return createResponse('error', message)
   }
   
   try {

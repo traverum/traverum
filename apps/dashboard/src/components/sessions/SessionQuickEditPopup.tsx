@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ export function SessionQuickEditPopup({
   const navigate = useNavigate();
   const { toast } = useToast();
   const popupRef = useRef<HTMLDivElement>(null);
+  const hasPositioned = useRef(false);
 
   // Edit state
   const [editingField, setEditingField] = useState<'spots' | 'price' | null>(null);
@@ -47,6 +48,7 @@ export function SessionQuickEditPopup({
   const [saving, setSaving] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const bookingsCount = session ? session.spots_total - session.spots_available : 0;
   const isCancelled = session?.session_status === 'cancelled';
@@ -62,8 +64,13 @@ export function SessionQuickEditPopup({
     }
   }, [isOpen, session?.id]);
 
-  // Position popup
+  // Reset positioning flag when popup closes
   useEffect(() => {
+    if (!isOpen) hasPositioned.current = false;
+  }, [isOpen]);
+
+  // Position popup — useLayoutEffect prevents visible flicker
+  useLayoutEffect(() => {
     if (isOpen && position && popupRef.current) {
       const popup = popupRef.current;
       const rect = popup.getBoundingClientRect();
@@ -80,6 +87,11 @@ export function SessionQuickEditPopup({
 
       popup.style.left = `${x}px`;
       popup.style.top = `${y}px`;
+
+      if (!hasPositioned.current) {
+        hasPositioned.current = true;
+        popup.style.opacity = '1';
+      }
     }
   }, [isOpen, position, editingField]);
 
@@ -205,9 +217,10 @@ export function SessionQuickEditPopup({
         ref={popupRef}
         className="fixed z-50 w-72 bg-background border border-border rounded-lg shadow-lg"
         style={{
-          left: position?.x || '50%',
-          top: position?.y || '50%',
+          left: position?.x ?? '50%',
+          top: position?.y ?? '50%',
           transform: position ? 'none' : 'translate(-50%, -50%)',
+          opacity: position ? 0 : 1,
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -384,20 +397,28 @@ export function SessionQuickEditPopup({
       </AlertDialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => { setShowDeleteConfirm(open); if (!open) setDeleteConfirmText(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete session?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove this session. This action cannot be undone.
+              Type <strong>delete</strong> below to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Input
+            placeholder="Type delete to confirm"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            className="mt-2"
+            autoComplete="off"
+          />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={saving}
+              disabled={saving || deleteConfirmText !== 'delete'}
             >
               {saving ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>

@@ -32,16 +32,13 @@ export default function HotelDashboard() {
   };
 
   return (
-    <div className="p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
+    <div className="container max-w-6xl mx-auto px-4 py-6">
+      <div className="space-y-8">
         {/* Greeting */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-semibold text-foreground">
             {getGreeting()}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
-            Every stay tells a story
-          </p>
         </div>
 
         {/* Properties Section */}
@@ -60,13 +57,8 @@ export default function HotelDashboard() {
 
           {hotelConfigs.length === 0 ? (
             <Card className="border border-border">
-              <CardContent className="p-6 text-center space-y-4">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Add your first property
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Get started by adding a property to manage experiences and create your guest-facing widget.
-                </p>
+              <CardContent className="p-6 text-center">
+                <span className="text-sm text-muted-foreground">No properties yet</span>
               </CardContent>
             </Card>
           ) : (

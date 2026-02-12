@@ -10,7 +10,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,9 +26,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Loader2, Check, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Import existing hotel page components as tab content
 import ExperienceSelection from './ExperienceSelection';
@@ -45,14 +51,15 @@ export default function StayDashboard() {
 
   const [activeTab, setActiveTab] = useState('details');
   const [displayName, setDisplayName] = useState('');
-  const [slug, setSlug] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [statusUpdating, setStatusUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeletePropertyConfirm, setShowDeletePropertyConfirm] = useState(false);
+  const [deletePropertyConfirmText, setDeletePropertyConfirmText] = useState('');
   const hasInitialized = useRef(false);
 
   const debouncedDisplayName = useDebounce(displayName, 1500);
-  const debouncedSlug = useDebounce(slug, 1500);
 
   // Set the active hotel config from route param
   useEffect(() => {
@@ -68,7 +75,6 @@ export default function StayDashboard() {
   useEffect(() => {
     if (hotelConfig && !hasInitialized.current) {
       setDisplayName(hotelConfig.display_name || '');
-      setSlug(hotelConfig.slug || '');
       setIsActive(hotelConfig.is_active ?? true);
       hasInitialized.current = true;
     }
@@ -79,27 +85,40 @@ export default function StayDashboard() {
     hasInitialized.current = false;
   }, [id]);
 
-  // Auto-save details
+  // Auto-save details (slug auto-generated from display name)
   useEffect(() => {
     if (!hasInitialized.current || !id) return;
 
     const autoSave = async () => {
       setSaveStatus('saving');
       try {
+        const name = debouncedDisplayName.trim() || 'Untitled Property';
+        const baseSlug = name
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '') || 'property';
+
+        let slug = baseSlug;
+        let attempt = 0;
+        while (true) {
+          const { data: existing } = await supabase
+            .from('hotel_configs')
+            .select('id')
+            .eq('slug', slug)
+            .neq('id', id)
+            .maybeSingle();
+          if (!existing) break;
+          attempt++;
+          slug = `${baseSlug}-${attempt}`;
+        }
+
         const updateData: Record<string, any> = {
-          display_name: debouncedDisplayName.trim() || 'Untitled Property',
+          display_name: name,
+          slug,
           updated_at: new Date().toISOString(),
         };
-
-        // Only update slug if changed and valid
-        if (debouncedSlug.trim()) {
-          updateData.slug = debouncedSlug
-            .trim()
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-');
-        }
 
         const { error } = await supabase
           .from('hotel_configs')
@@ -125,11 +144,13 @@ export default function StayDashboard() {
     };
 
     autoSave();
-  }, [debouncedDisplayName, debouncedSlug, id, activePartnerId, queryClient, toast]);
+  }, [debouncedDisplayName, id, activePartnerId, queryClient, toast]);
 
-  // Toggle active status
-  const handleToggleActive = async (checked: boolean) => {
+  // Status change (Active / Inactive)
+  const handleStatusChange = async (value: 'active' | 'inactive') => {
+    const checked = value === 'active';
     setIsActive(checked);
+    setStatusUpdating(true);
     try {
       const { error } = await supabase
         .from('hotel_configs')
@@ -140,13 +161,16 @@ export default function StayDashboard() {
       await queryClient.invalidateQueries({
         queryKey: ['hotelConfigs', activePartnerId],
       });
+      toast({ title: 'Status updated', description: `Property is now ${value}.` });
     } catch (error: any) {
-      setIsActive(!checked); // revert
+      setIsActive(!checked);
       toast({
-        title: 'Error',
+        title: 'Error updating status',
         description: error.message || 'Failed to update status',
         variant: 'destructive',
       });
+    } finally {
+      setStatusUpdating(false);
     }
   };
 
@@ -165,6 +189,8 @@ export default function StayDashboard() {
         queryKey: ['partnerCapabilities', activePartnerId],
       });
       toast({ title: 'Property deleted' });
+      setShowDeletePropertyConfirm(false);
+      setDeletePropertyConfirmText('');
       navigate('/hotel/dashboard');
     } catch (error: any) {
       toast({
@@ -236,6 +262,51 @@ export default function StayDashboard() {
             </TabsTrigger>
           </TabsList>
 
+          {/* Status Selector */}
+          <div className="flex items-center gap-2">
+            <Select
+              value={isActive ? 'active' : 'inactive'}
+              onValueChange={(v) => handleStatusChange(v as 'active' | 'inactive')}
+              disabled={statusUpdating}
+            >
+              <SelectTrigger
+                className={cn(
+                  'h-9 min-w-[120px] border-0 bg-[rgba(242,241,238,0.6)]',
+                  isActive && 'bg-success/10 text-success border-success/20',
+                  !isActive && 'bg-warning/10 text-warning border-warning/20'
+                )}
+              >
+                <SelectValue>
+                  <span className="flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        'w-2 h-2 rounded-full',
+                        isActive && 'bg-success',
+                        !isActive && 'bg-warning'
+                      )}
+                    />
+                    <span>{isActive ? 'Active' : 'Inactive'}</span>
+                    {statusUpdating && <Loader2 className="w-3 h-3 animate-spin ml-1" />}
+                  </span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-success" />
+                    <span>Active</span>
+                  </span>
+                </SelectItem>
+                <SelectItem value="inactive">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-warning" />
+                    <span>Inactive</span>
+                  </span>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Save Status */}
           {saveStatus !== 'idle' && (
             <div className="flex items-center gap-1.5">
@@ -273,34 +344,12 @@ export default function StayDashboard() {
                 />
               </div>
 
-              {/* Slug */}
-              <div className="space-y-2">
-                <Label htmlFor="slug" className="text-sm">
-                  URL Slug
-                </Label>
-                <Input
-                  id="slug"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="auto-generated-from-name"
-                  className="h-8 font-mono text-sm"
-                />
+              {hotelConfig?.slug && (
                 <p className="text-xs text-muted-foreground">
-                  Your widget will be available at:{' '}
-                  <span className="font-mono">book.traverum.com/{slug || '...'}</span>
+                  Widget URL:{' '}
+                  <span className="font-mono">book.traverum.com/{hotelConfig.slug}</span>
                 </p>
-              </div>
-
-              {/* Active Toggle */}
-              <div className="flex items-center justify-between pt-2 border-t border-border">
-                <div>
-                  <Label className="text-sm">Active</Label>
-                  <p className="text-xs text-muted-foreground">
-                    When active, your widget is publicly accessible
-                  </p>
-                </div>
-                <Switch checked={isActive} onCheckedChange={handleToggleActive} />
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -325,34 +374,38 @@ export default function StayDashboard() {
         <TabsContent value="settings">
           <Card className="border-[#B8866B]/30">
             <CardContent className="pt-4 space-y-6">
-              {/* Delete Property */}
               <div className="space-y-2">
-                <h3 className="text-sm font-medium text-foreground">Danger Zone</h3>
-                <p className="text-xs text-muted-foreground">
-                  Deleting this property will remove all its settings and widget
-                  configurations. This action cannot be undone.
-                </p>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <button className="flex items-center gap-2 h-8 px-3 text-sm font-medium rounded-[3px] text-destructive border border-destructive/30 hover:bg-destructive/10 transition-colors">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Delete Property
-                    </button>
-                  </AlertDialogTrigger>
+                <h3 className="text-sm font-medium text-foreground">Delete Property</h3>
+                <AlertDialog open={showDeletePropertyConfirm} onOpenChange={(open) => { setShowDeletePropertyConfirm(open); if (!open) setDeletePropertyConfirmText(''); }}>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 h-8 px-3 text-sm font-medium rounded-[3px] text-destructive border border-destructive/30 hover:bg-destructive/10 transition-colors"
+                    onClick={() => setShowDeletePropertyConfirm(true)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete Property
+                  </button>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Delete "{displayName}"?</AlertDialogTitle>
+                      <AlertDialogTitle>Delete &quot;{displayName}&quot;?</AlertDialogTitle>
                       <AlertDialogDescription>
                         This will permanently delete this property and all its widget
-                        settings. This action cannot be undone.
+                        settings. This action cannot be undone. Type <strong>delete</strong> below to confirm.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <Input
+                      placeholder="Type delete to confirm"
+                      value={deletePropertyConfirmText}
+                      onChange={(e) => setDeletePropertyConfirmText(e.target.value)}
+                      className="mt-2"
+                      autoComplete="off"
+                    />
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
                         onClick={handleDelete}
                         className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        disabled={deleting}
+                        disabled={deleting || deletePropertyConfirmText !== 'delete'}
                       >
                         {deleting ? 'Deleting...' : 'Delete'}
                       </AlertDialogAction>

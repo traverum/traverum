@@ -1,7 +1,6 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useSearchParams } from 'next/navigation'
 import { formatPrice, formatDate, formatTime } from '@/lib/utils'
 
 interface DemoSuccessOverlayProps {
@@ -15,6 +14,7 @@ interface DemoSuccessOverlayProps {
   hotelSlug: string
   isRequest?: boolean
   onClose: () => void
+  returnUrl?: string | null
 }
 
 export function DemoSuccessOverlay({
@@ -28,10 +28,8 @@ export function DemoSuccessOverlay({
   hotelSlug,
   isRequest = false,
   onClose,
+  returnUrl,
 }: DemoSuccessOverlayProps) {
-  const searchParams = useSearchParams()
-  const returnUrl = searchParams.get('returnUrl')
-
   const handleBrowseMore = () => {
     const next = returnUrl
       ? `/${hotelSlug}?returnUrl=${encodeURIComponent(returnUrl)}`

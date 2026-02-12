@@ -72,7 +72,7 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
   const hotel = hotelData as any
 
   // Fetch distributions for this hotel with experiences
-  // hotel_config_id added via migration, not yet in generated types
+  // distributions.hotel_id references partners.id (the hotel partner)
   const { data: distributionsData, error: distError } = await (supabase
     .from('distributions') as any)
     .select(`
@@ -88,7 +88,7 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
         )
       )
     `)
-    .eq('hotel_config_id', hotel.id)
+    .eq('hotel_id', hotel.partner_id)
     .eq('is_active', true)
   
   if (distError || !distributionsData) {
@@ -162,7 +162,7 @@ export async function getExperienceForHotel(
   const hotel = hotelData as any
 
   // Get all distributions for this hotel and find the one with matching experience slug
-  // hotel_config_id added via migration, not yet in generated types
+  // distributions.hotel_id references partners.id (the hotel partner)
   const { data: allDistData } = await (supabase
     .from('distributions') as any)
     .select(`
@@ -178,7 +178,7 @@ export async function getExperienceForHotel(
         )
       )
     `)
-    .eq('hotel_config_id', hotel.id)
+    .eq('hotel_id', hotel.partner_id)
     .eq('is_active', true)
   
   if (!allDistData || allDistData.length === 0) return null

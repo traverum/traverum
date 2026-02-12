@@ -47,7 +47,7 @@ export async function GET() {
       .from('experiences')
       .select(`
         *,
-        partner:partners!experiences_partner_id_fkey (
+        partner:partners!experiences_partner_fk (
           id,
           name
         )

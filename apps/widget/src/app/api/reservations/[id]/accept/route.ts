@@ -10,54 +10,81 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { id } = await params
-  const { searchParams } = new URL(request.url)
-  const token = searchParams.get('token')
-  
-  const appUrl = getAppUrl()
-  
-  // Verify token
-  if (!token) {
-    return createErrorResponse('Missing token', appUrl)
-  }
-  
+// Shared accept logic - returns { success: true } or { error: string }
+async function processAccept(id: string, token: string): Promise<{ success: boolean; error?: string }> {
   const payload = verifyToken(token)
   
   if (!payload) {
-    return createErrorResponse('Invalid or expired token', appUrl)
+    return { success: false, error: 'Invalid or expired token' }
   }
   
-  if (payload.id !== id || payload.action !== 'accept') {
-    return createErrorResponse('Invalid token', appUrl)
+  if (payload.id !== id || (payload.action !== 'accept' && payload.action !== 'manage')) {
+    return { success: false, error: 'Invalid token' }
   }
-  
+
+  // Use token's id (verified) - URL id can be mangled by some email clients
+  const reservationId = payload.id
   const supabase = createAdminClient()
-  
-  // Get reservation with related data
-  const { data: reservationData } = await supabase
+  const appUrl = getAppUrl()
+
+  // Get reservation with related data (use simpler query - complex joins can fail with wrong FK names)
+  let reservationData: any = null
+  let reservation: any = null
+
+  const { data: fullData } = await supabase
     .from('reservations')
     .select(`
       *,
-      experience:experiences(
-        *,
-        supplier:partners!experiences_partner_id_fkey(*)
-      ),
+      experience:experiences(*, supplier:partners!experiences_partner_fk(*)),
       session:experience_sessions(*),
-      hotel:partners!reservations_hotel_id_fkey(*)
+      hotel:partners!reservations_hotel_fk(*)
     `)
-    .eq('id', id)
+    .eq('id', reservationId)
     .single()
-  
-  if (!reservationData) {
-    return createErrorResponse('Reservation not found', appUrl)
+
+  if (fullData) {
+    reservationData = fullData
+  } else {
+    // Fallback: fetch reservation only, then experience/hotel separately
+    const { data: res } = await supabase.from('reservations').select('*').eq('id', reservationId).single()
+    if (res) {
+      const { data: exp } = await supabase
+        .from('experiences')
+        .select('*, supplier:partners(*)')
+        .eq('id', res.experience_id)
+        .single()
+      const { data: hotel } = await supabase.from('partners').select('*').eq('id', res.hotel_id).single()
+      const { data: session } = res.session_id
+        ? await supabase.from('experience_sessions').select('*').eq('id', res.session_id).single()
+        : { data: null }
+      reservationData = {
+        ...res,
+        experience: exp,
+        session: session?.data ?? null,
+        hotel,
+      }
+    }
   }
-  
-  const reservation = reservationData as any
-  
+
+  if (!reservationData) {
+    console.error('[accept] Reservation not found:', { reservationId })
+    return {
+      success: false,
+      error:
+        'Reservation not found. The request may have expired, or the link may point to a different environment. Try using your dashboard to manage requests.',
+    }
+  }
+
+  reservation = reservationData as any
+
+  if (!reservation.experience || !reservation.experience.supplier) {
+    console.error('[accept] Missing experience/supplier:', { reservationId })
+    return { success: false, error: 'Reservation data is incomplete. Please contact support.' }
+  }
+
   // Check if already processed
   if (reservation.reservation_status !== 'pending') {
-    return createAlreadyProcessedResponse(reservation.reservation_status, appUrl)
+    return { success: false, error: `This booking has already been ${reservation.reservation_status}.` }
   }
   
   const experience = reservation.experience
@@ -65,10 +92,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   
   // Check if supplier has Stripe onboarding complete
   if (!supplier.stripe_onboarding_complete) {
-    return createErrorResponse(
-      'You need to complete Stripe onboarding before accepting bookings. Please contact support.',
-      appUrl
-    )
+    return { success: false, error: 'You need to complete Stripe onboarding before accepting bookings. Please contact support.' }
   }
   
   // Get hotel config for redirect URL
@@ -80,160 +104,191 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   
   const hotelSlug = (hotelConfig as any)?.slug || 'default'
   
-  try {
-    // If this is a request-based reservation without a session, create one
-    let sessionId = reservation.session_id
-    
-    if (reservation.is_request && !sessionId && reservation.requested_date && reservation.requested_time) {
-      // First check if a session already exists for this date/time
-      const { data: existingSession } = await supabase
-        .from('experience_sessions')
-        .select('id, spots_available')
-        .eq('experience_id', experience.id)
-        .eq('session_date', reservation.requested_date)
-        .eq('start_time', reservation.requested_time)
-        .single()
-      
-      if (existingSession) {
-        // Use existing session and update spots
-        const session = existingSession as any
-        sessionId = session.id
-        const newSpotsAvailable = session.spots_available - reservation.participants
-        
-        if (newSpotsAvailable < 0) {
-          return createErrorResponse('Not enough spots available in this session.', appUrl)
-        }
-        
-        await (supabase
-          .from('experience_sessions') as any)
-          .update({
-            spots_available: newSpotsAvailable,
-            session_status: newSpotsAvailable === 0 ? 'full' : 'available',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', sessionId)
-        
-        console.log(`Using existing session ${sessionId}, updated spots_available to ${newSpotsAvailable}`)
-      } else {
-        // Create new session for this date/time
-        const { data: newSession, error: sessionError } = await (supabase
-          .from('experience_sessions') as any)
-          .insert({
-            experience_id: experience.id,
-            session_date: reservation.requested_date,
-            start_time: reservation.requested_time,
-            spots_total: experience.max_participants,
-            spots_available: experience.max_participants - reservation.participants,
-            session_status: 'available',
-          })
-          .select()
-          .single()
-        
-        if (sessionError || !newSession) {
-          console.error('Failed to create session:', sessionError)
-          return createErrorResponse('Failed to create session for this booking.', appUrl)
-        }
-        
-        sessionId = newSession.id
-        console.log(`Created new session ${sessionId} for ${reservation.requested_date} at ${reservation.requested_time}`)
-      }
-      
-      // Update reservation with session_id
-      await (supabase
-        .from('reservations') as any)
-        .update({ 
-          session_id: sessionId, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', reservation.id)
+  // For requests: accept as-is — we need guest's requested date and time (supplier cannot change)
+  if (reservation.is_request && (!reservation.requested_date || !reservation.requested_time)) {
+    return {
+      success: false,
+      error: 'This request has no specific time. Please decline and suggest alternative times from your dashboard.',
     }
-    
-    // Create Stripe Payment Link
-    const paymentLink = await createPaymentLink({
-      reservationId: reservation.id,
-      experienceTitle: experience.title,
-      amountCents: reservation.total_cents,
-      currency: experience.currency,
-      successUrl: `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`,
-      cancelUrl: `${appUrl}/${hotelSlug}/reservation/${reservation.id}`,
-    })
-    
-    // Update reservation
-    const paymentDeadline = addHours(new Date(), 24)
-    
-    await (supabase
-      .from('reservations') as any)
-      .update({
-        reservation_status: 'approved',
-        payment_deadline: paymentDeadline.toISOString(),
-        stripe_payment_link_id: paymentLink.id,
-        stripe_payment_link_url: paymentLink.url,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', reservation.id)
-    
-    // Get date and time
-    const date = reservation.session?.session_date || reservation.requested_date || ''
-    const time = reservation.session?.start_time || reservation.requested_time || ''
-    
-    // Send email to guest
-    const emailHtml = guestBookingApproved({
-      experienceTitle: experience.title,
-      guestName: reservation.guest_name,
-      date,
-      time,
-      participants: reservation.participants,
-      totalCents: reservation.total_cents,
-      currency: experience.currency,
-      paymentUrl: paymentLink.url!,
-      meetingPoint: experience.meeting_point,
-      paymentDeadline: paymentDeadline.toISOString(),
-    })
-    
-    await sendEmail({
-      to: reservation.guest_email,
-      subject: `Your booking is approved! Complete payment - ${experience.title}`,
-      html: emailHtml,
-    })
-    
-    // Return success page
-    return new NextResponse(
-      generateSuccessHtml('Booking Accepted', 'The guest has been notified and sent a payment link.'),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'text/html' },
-      }
-    )
-  } catch (error) {
-    console.error('Accept reservation error:', error)
-    return createErrorResponse('Failed to process acceptance. Please try again.', appUrl)
-  }
-}
-
-function createErrorResponse(message: string, appUrl: string) {
-  return new NextResponse(
-    generateErrorHtml('Error', message),
-    {
-      status: 400,
-      headers: { 'Content-Type': 'text/html' },
-    }
-  )
-}
-
-function createAlreadyProcessedResponse(status: string, appUrl: string) {
-  const messages: Record<string, string> = {
-    approved: 'This booking has already been accepted.',
-    declined: 'This booking has already been declined.',
-    expired: 'This booking request has expired.',
   }
   
-  return new NextResponse(
-    generateInfoHtml('Already Processed', messages[status] || 'This booking has already been processed.'),
-    {
-      status: 200,
-      headers: { 'Content-Type': 'text/html' },
+  // If this is a request-based reservation without a session, create one
+  let sessionId = reservation.session_id
+  
+  if (reservation.is_request && !sessionId && reservation.requested_date && reservation.requested_time) {
+    // First check if a session already exists for this date/time
+    const { data: existingSession } = await supabase
+      .from('experience_sessions')
+      .select('id, spots_available')
+      .eq('experience_id', experience.id)
+      .eq('session_date', reservation.requested_date)
+      .eq('start_time', reservation.requested_time)
+      .single()
+    
+    if (existingSession) {
+      // Use existing session and update spots
+      const session = existingSession as any
+      sessionId = session.id
+      const newSpotsAvailable = session.spots_available - reservation.participants
+      
+      if (newSpotsAvailable < 0) {
+        return { success: false, error: 'Not enough spots available in this session.' }
+      }
+      
+      await (supabase
+        .from('experience_sessions') as any)
+        .update({
+          spots_available: newSpotsAvailable,
+          session_status: newSpotsAvailable === 0 ? 'full' : 'available',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', sessionId)
+      
+      console.log(`Using existing session ${sessionId}, updated spots_available to ${newSpotsAvailable}`)
+    } else {
+      // Create new session for this date/time
+      const { data: newSession, error: sessionError } = await (supabase
+        .from('experience_sessions') as any)
+        .insert({
+          experience_id: experience.id,
+          session_date: reservation.requested_date,
+          start_time: reservation.requested_time,
+          spots_total: experience.max_participants,
+          spots_available: experience.max_participants - reservation.participants,
+          session_status: 'available',
+        })
+        .select()
+        .single()
+      
+      if (sessionError || !newSession) {
+        console.error('Failed to create session:', sessionError)
+        return { success: false, error: 'Failed to create session for this booking.' }
+      }
+      
+      sessionId = newSession.id
+      console.log(`Created new session ${sessionId} for ${reservation.requested_date} at ${reservation.requested_time}`)
     }
-  )
+    
+    // Update reservation with session_id
+    await (supabase
+      .from('reservations') as any)
+      .update({ 
+        session_id: sessionId, 
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', reservation.id)
+  }
+  
+  // Create Stripe Payment Link
+  const paymentLink = await createPaymentLink({
+    reservationId: reservation.id,
+    experienceTitle: experience.title,
+    amountCents: reservation.total_cents,
+    currency: experience.currency,
+    successUrl: `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`,
+    cancelUrl: `${appUrl}/${hotelSlug}/reservation/${reservation.id}`,
+  })
+  
+  // Update reservation
+  const paymentDeadline = addHours(new Date(), 24)
+  
+  await (supabase
+    .from('reservations') as any)
+    .update({
+      reservation_status: 'approved',
+      payment_deadline: paymentDeadline.toISOString(),
+      stripe_payment_link_id: paymentLink.id,
+      stripe_payment_link_url: paymentLink.url,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', reservation.id)
+  
+  // Get date and time
+  const date = reservation.session?.session_date || reservation.requested_date || ''
+  const time = reservation.session?.start_time || reservation.requested_time || ''
+  
+  // Send email to guest
+  const emailHtml = guestBookingApproved({
+    experienceTitle: experience.title,
+    guestName: reservation.guest_name,
+    date,
+    time,
+    participants: reservation.participants,
+    totalCents: reservation.total_cents,
+    currency: experience.currency,
+    paymentUrl: paymentLink.url!,
+    meetingPoint: experience.meeting_point,
+    paymentDeadline: paymentDeadline.toISOString(),
+  })
+  
+  await sendEmail({
+    to: reservation.guest_email,
+    subject: `Your booking is approved! Complete payment - ${experience.title}`,
+    html: emailHtml,
+  })
+  
+  return { success: true }
+}
+
+// GET: One-click accept from email (returns HTML)
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params
+  const { searchParams } = new URL(request.url)
+  const token = searchParams.get('token')
+  
+  if (!token) {
+    return new NextResponse(generateErrorHtml('Error', 'Missing token'), {
+      status: 400,
+      headers: { 'Content-Type': 'text/html' },
+    })
+  }
+  
+  try {
+    const result = await processAccept(id, token)
+    
+    if (result.success) {
+      return new NextResponse(
+        generateSuccessHtml('Booking Accepted', 'The guest has been notified and sent a payment link.'),
+        { status: 200, headers: { 'Content-Type': 'text/html' } }
+      )
+    } else {
+      return new NextResponse(
+        generateErrorHtml('Error', result.error || 'Failed to process.'),
+        { status: 400, headers: { 'Content-Type': 'text/html' } }
+      )
+    }
+  } catch (error) {
+    console.error('Accept reservation error:', error)
+    return new NextResponse(
+      generateErrorHtml('Error', 'Failed to process acceptance. Please try again.'),
+      { status: 500, headers: { 'Content-Type': 'text/html' } }
+    )
+  }
+}
+
+// POST: Accept from manage page (returns JSON)
+export async function POST(request: NextRequest, { params }: RouteParams) {
+  const { id } = await params
+  
+  try {
+    const body = await request.json().catch(() => ({}))
+    const token: string | undefined = body.token
+    
+    if (!token) {
+      return NextResponse.json({ error: 'Missing token' }, { status: 400 })
+    }
+    
+    const result = await processAccept(id, token)
+    
+    if (result.success) {
+      return NextResponse.json({ success: true })
+    } else {
+      return NextResponse.json({ error: result.error }, { status: 400 })
+    }
+  } catch (error) {
+    console.error('Accept reservation POST error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
 }
 
 function generateSuccessHtml(title: string, message: string) {
@@ -290,38 +345,6 @@ function generateErrorHtml(title: string, message: string) {
         <div class="icon">
           <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </div>
-        <h1>${title}</h1>
-        <p>${message}</p>
-      </div>
-    </body>
-    </html>
-  `
-}
-
-function generateInfoHtml(title: string, message: string) {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>${title}</title>
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
-        .card { background: white; padding: 48px; border-radius: 16px; text-align: center; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .icon { width: 64px; height: 64px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
-        .icon svg { width: 32px; height: 32px; color: #d97706; }
-        h1 { margin: 0 0 12px; font-size: 24px; color: #111; }
-        p { margin: 0; color: #666; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <div class="icon">
-          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
         <h1>${title}</h1>

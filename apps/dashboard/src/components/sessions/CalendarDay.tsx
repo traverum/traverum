@@ -1,8 +1,10 @@
 import { cn } from '@/lib/utils';
 import { SessionPill } from './SessionPill';
-import { isToday, isPast, startOfDay, isSameMonth } from 'date-fns';
+import { isToday, isPast, startOfDay, isSameMonth, format } from 'date-fns';
 import { AvailabilityRule, isDateAvailable, getUnavailableReason } from '@/lib/availability';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { isSessionUpcoming } from '@/lib/date-utils';
+import type { CalendarRequest } from '@/hooks/useCalendarRequests';
 
 interface CalendarDayProps {
   date: Date;
@@ -19,6 +21,7 @@ interface CalendarDayProps {
       title: string;
     };
   }>;
+  requests?: CalendarRequest[];
   totalSessionCount?: number;
   currentMonth: Date;
   onAddSession: (date: Date) => void;
@@ -26,11 +29,13 @@ interface CalendarDayProps {
   showExperienceTitle?: boolean;
   availabilityRules?: AvailabilityRule[];
   onSessionClick?: (sessionId: string, position: { x: number; y: number }) => void;
+  onRequestBadgeClick?: (dateKey: string, position: { x: number; y: number }) => void;
 }
 
 export function CalendarDay({ 
   date, 
-  sessions, 
+  sessions,
+  requests = [],
   totalSessionCount,
   currentMonth, 
   onAddSession,
@@ -38,12 +43,14 @@ export function CalendarDay({
   showExperienceTitle = false,
   availabilityRules = [],
   onSessionClick,
+  onRequestBadgeClick,
 }: CalendarDayProps) {
   const displayedSessions = sessions.slice(0, 3);
   const actualTotal = totalSessionCount ?? sessions.length;
   const today = isToday(date);
   const pastDate = isPast(startOfDay(date)) && !today;
   const inCurrentMonth = isSameMonth(date, currentMonth);
+  const dateKey = format(date, 'yyyy-MM-dd');
 
   // Check availability
   const isAvailable = availabilityRules.length === 0 || isDateAvailable(date, availabilityRules);
@@ -82,17 +89,37 @@ export function CalendarDay({
         )}
       </div>
 
-      {/* Sessions for this day */}
+      {/* Sessions and requests for this day */}
       <div className="space-y-1 mt-2">
         {displayedSessions.map((session) => (
           <SessionPill
             key={session.id}
             session={session}
             showExperienceTitle={showExperienceTitle}
+            isPast={!isSessionUpcoming(dateKey, session.start_time)}
             onSessionClick={onSessionClick}
           />
         ))}
-        {actualTotal > 3 && (
+        {requests.length > 0 && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onRequestBadgeClick) {
+                const rect = (e.target as HTMLElement).getBoundingClientRect();
+                onRequestBadgeClick(dateKey, { x: rect.left, y: rect.bottom + 4 });
+              }
+            }}
+            className={cn(
+              'w-full text-left px-1.5 py-0.5 rounded text-[11px] font-medium truncate',
+              'bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors',
+              'dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50'
+            )}
+          >
+            {requests.length} {requests.length === 1 ? 'request' : 'requests'}
+          </button>
+        )}
+        {actualTotal > 3 && displayedSessions.length >= 3 && (
           <div className="text-xs text-muted-foreground mt-1">
             +{actualTotal - 3} more
           </div>

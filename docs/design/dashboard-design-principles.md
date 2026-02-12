@@ -23,7 +23,7 @@
 - **Lucide icons only** - Use `lucide-react` for all icons
 - **NO EMOJIS EVER** - Especially not ✨ or any other emoji
 - **Professional appearance** - Icons maintain consistent style and sizing
-- **Empty states:** Use Lucide icons (e.g., `Inbox`, `Package`, `Search`) not emojis
+- **Empty states:** Minimal cognitive load. Text only — no icons for passive/negative empty states (e.g., "No X yet"). Icons draw attention; avoid them when nothing requires action.
 
 ### 3. Warm White Background (Unified)
 - **Background:** `#FEFCF9` (HSL: 40 20% 99%) - warm white, almost pure white
@@ -350,6 +350,7 @@ When building any component:
 13. ✅ **Container:** `container max-w-6xl mx-auto px-4 py-6` for main content
 14. ✅ **Autosave:** Fixed position, backdrop blur, subtle border, `rounded-md`
 15. ✅ **NO EMOJIS:** Use Lucide icons only - absolutely no emojis, especially not ✨
+16. ✅ **Empty states:** Minimal cognitive load — text only for passive/negative states. No icons (they draw attention). No subtitles.
 
 ---
 
@@ -403,11 +404,10 @@ When building any component:
 - **Format:** `{count}/50` or similar
 
 ### Empty States
+- **Minimal cognitive load** — for passive/negative states (e.g., "No X yet"), use text only. No icons — they draw attention when nothing requires action.
 - **Card:** `border border-border`
-- **Content:** `p-6` or `p-12 text-center`
-- **Icon:** Lucide icon (NOT emojis)
-- **Text:** `text-sm text-secondary` or `text-muted-foreground`
-- **NO EMOJIS** - Use Lucide icons only
+- **Content:** `p-6 text-center`
+- **Text:** `text-sm text-muted-foreground` — single short phrase only
 
 ---
 

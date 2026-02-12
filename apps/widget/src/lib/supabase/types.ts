@@ -186,12 +186,14 @@ export type Database = {
         Row: {
           allows_requests: boolean | null
           base_price_cents: number
+          cancellation_policy: string | null
           created_at: string | null
           currency: string
           description: string
           duration_minutes: number
           experience_status: string
           extra_person_cents: number
+          force_majeure_refund: boolean | null
           id: string
           image_url: string | null
           included_participants: number
@@ -209,12 +211,14 @@ export type Database = {
         Insert: {
           allows_requests?: boolean | null
           base_price_cents?: number
+          cancellation_policy?: string | null
           created_at?: string | null
           currency?: string
           description: string
           duration_minutes: number
           experience_status?: string
           extra_person_cents?: number
+          force_majeure_refund?: boolean | null
           id?: string
           image_url?: string | null
           included_participants?: number
@@ -232,12 +236,14 @@ export type Database = {
         Update: {
           allows_requests?: boolean | null
           base_price_cents?: number
+          cancellation_policy?: string | null
           created_at?: string | null
           currency?: string
           description?: string
           duration_minutes?: number
           experience_status?: string
           extra_person_cents?: number
+          force_majeure_refund?: boolean | null
           id?: string
           image_url?: string | null
           included_participants?: number
@@ -467,6 +473,7 @@ export type Database = {
           reservation_status: string
           response_deadline: string
           session_id: string | null
+          time_preference: string | null
           stripe_payment_link_id: string | null
           stripe_payment_link_url: string | null
           total_cents: number
@@ -490,6 +497,7 @@ export type Database = {
           session_id?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
+          time_preference?: string | null
           total_cents: number
           updated_at?: string | null
         }
@@ -511,6 +519,7 @@ export type Database = {
           session_id?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
+          time_preference?: string | null
           total_cents?: number
           updated_at?: string | null
         }

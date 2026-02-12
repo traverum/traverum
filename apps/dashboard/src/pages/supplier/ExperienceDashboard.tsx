@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,7 @@ import { AvailabilityEditor } from '@/components/experience/AvailabilityEditor';
 import { CancellationPolicySelector } from '@/components/experience/CancellationPolicySelector';
 import { PricingType } from '@/lib/pricing';
 import { CancellationPolicy, DEFAULT_WEEKDAYS, DEFAULT_START_TIME, DEFAULT_END_TIME } from '@/lib/availability';
+import { validateExperienceForActivation } from '@/lib/experienceActivation';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Check, HelpCircle, Loader2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -89,6 +90,8 @@ function ExperienceDashboardInner() {
   const [activeTab, setActiveTab] = useState('basic');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteExperienceConfirm, setShowDeleteExperienceConfirm] = useState(false);
+  const [deleteExperienceConfirmText, setDeleteExperienceConfirmText] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
   const hasInitialized = useRef(false);
   const hasAvailabilityInitialized = useRef(false);
@@ -581,6 +584,37 @@ function ExperienceDashboardInner() {
   const handleStatusChange = async (newStatus: string) => {
     if (!experienceId) return;
     
+    // Validate before allowing 'active' status
+    if (newStatus === 'active') {
+      const validation = validateExperienceForActivation({
+        title,
+        description,
+        durationMinutes,
+        maxParticipants,
+        minParticipants,
+        hasImage: images.length > 0 || !!(exp?.image_url),
+        pricingType,
+        basePriceCents,
+        extraPersonCents,
+        includedParticipants,
+        minDays,
+        allowsRequests,
+        weekdays,
+        startTime,
+        endTime,
+        cancellationPolicy,
+      });
+
+      if (!validation.valid) {
+        toast({
+          title: 'Cannot publish yet',
+          description: `Please complete: ${validation.errors.join(', ')}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    
     setStatusUpdating(true);
     try {
       const { error } = await supabase
@@ -609,10 +643,32 @@ function ExperienceDashboardInner() {
 
   const handleDelete = async () => {
     if (!experienceId) return;
-    
+
     setDeleting(true);
 
     try {
+      // Block delete if any session still has reservations (guests must be refunded first)
+      const { data: sessionIds } = await supabase
+        .from('experience_sessions')
+        .select('id')
+        .eq('experience_id', experienceId);
+      const ids = sessionIds?.map((s) => s.id) ?? [];
+      if (ids.length > 0) {
+        const { count } = await supabase
+          .from('reservations')
+          .select('*', { count: 'exact', head: true })
+          .in('session_id', ids);
+        if (count && count > 0) {
+          toast({
+            title: 'Cannot delete experience',
+            description: 'Some sessions still have bookings. Cancel those sessions and refund guests first, then delete sessions with 0 bookings.',
+            variant: 'destructive',
+          });
+          setDeleting(false);
+          return;
+        }
+      }
+
       const { data: mediaData } = await supabase
         .from('media')
         .select('storage_path')
@@ -633,14 +689,16 @@ function ExperienceDashboardInner() {
         .from('experiences')
         .delete()
         .eq('id', experienceId);
-      
+
       if (error) throw error;
-      
+
       toast({
         title: 'Experience deleted',
         description: 'The experience has been removed.',
       });
 
+      setShowDeleteExperienceConfirm(false);
+      setDeleteExperienceConfirmText('');
       await refetchExperiences();
       navigate('/supplier/experiences');
     } catch (error: any) {
@@ -653,24 +711,6 @@ function ExperienceDashboardInner() {
       setDeleting(false);
     }
   };
-
-  // Completion checks
-  const isBasicInfoComplete = title.length >= 3 && description.length >= 50 && durationMinutes && maxParticipants;
-  const isPricingComplete = useMemo(() => {
-    const maxP = parseInt(maxParticipants) || 0;
-    const baseP = Math.round((parseFloat(basePriceCents) || 0) * 100);
-    const extraP = Math.round((parseFloat(extraPersonCents) || 0) * 100);
-    const inclP = parseInt(includedParticipants) || 0;
-    const minD = parseInt(minDays) || 0;
-
-    if (pricingType === 'per_person') return extraP >= 100 && maxP >= 1;
-    if (pricingType === 'flat_rate') return baseP >= 100 && maxP >= 1;
-    if (pricingType === 'base_plus_extra') return baseP >= 100 && inclP >= 1 && maxP >= 1;
-    if (pricingType === 'per_day') return extraP >= 100 && minD >= 1;
-    return false;
-  }, [pricingType, basePriceCents, extraPersonCents, includedParticipants, maxParticipants, minDays]);
-  const isAvailabilityComplete = weekdays.length > 0;
-  const isPoliciesComplete = true;
 
   // Handle location selection from autocomplete (with coordinates)
   const handleLocationChange = (address: string, lat: number, lng: number) => {
@@ -930,7 +970,7 @@ function ExperienceDashboardInner() {
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
                   {pricingType !== 'per_day' && (
                     <div className="space-y-2">
-                      <Label htmlFor="minParticipants" className="text-sm">Min Participants *</Label>
+                      <Label htmlFor="minParticipants" className="text-sm">Min to Run *</Label>
                       <Input
                         id="minParticipants"
                         type="number"
@@ -939,6 +979,9 @@ function ExperienceDashboardInner() {
                         onChange={(e) => setMinParticipants(e.target.value)}
                         className="h-8"
                       />
+                      <p className="text-[11px] text-muted-foreground">
+                        Session only proceeds if this many people book. Set to 1 to allow any booking.
+                      </p>
                     </div>
                   )}
                   <div className="space-y-2">
@@ -1116,9 +1159,16 @@ function ExperienceDashboardInner() {
 
                 <div className="pt-4 border-t border-border">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="allowsRequests" className="text-sm font-medium">
-                      Accept booking requests
-                    </Label>
+                    <div>
+                      <Label htmlFor="allowsRequests" className="text-sm font-medium">
+                        Accept booking requests
+                      </Label>
+                      {allowsRequests && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          When on, you must set operating days and hours in the Availability tab.
+                        </p>
+                      )}
+                    </div>
                     <Switch
                       id="allowsRequests"
                       checked={allowsRequests}
@@ -1143,29 +1193,36 @@ function ExperienceDashboardInner() {
                         <HelpCircle className="w-3 h-3 text-muted-foreground" />
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="text-xs">Permanently delete this experience and all its data. This action cannot be undone.</p>
+                        <p className="text-xs">Permanently delete this experience and all its data. Sessions must have 0 bookings first. This action cannot be undone.</p>
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" disabled={deleting} className="h-9 px-4">
-                        {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete Experience'}
-                      </Button>
-                    </AlertDialogTrigger>
+                  <AlertDialog open={showDeleteExperienceConfirm} onOpenChange={(open) => { setShowDeleteExperienceConfirm(open); if (!open) setDeleteExperienceConfirmText(''); }}>
+                    <Button variant="destructive" disabled={deleting} className="h-9 px-4" onClick={() => setShowDeleteExperienceConfirm(true)}>
+                      {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Delete Experience'}
+                    </Button>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Delete Experience?</AlertDialogTitle>
                         <AlertDialogDescription>
                           This action cannot be undone. This will permanently delete the
-                          experience and remove it from any hotel partnerships.
+                          experience and remove it from any hotel partnerships. All sessions must have no bookings first.
+                          Type <strong>delete</strong> below to confirm.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
+                      <Input
+                        placeholder="Type delete to confirm"
+                        value={deleteExperienceConfirmText}
+                        onChange={(e) => setDeleteExperienceConfirmText(e.target.value)}
+                        className="mt-2"
+                        autoComplete="off"
+                      />
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction 
                           onClick={handleDelete}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          disabled={deleting || deleteExperienceConfirmText !== 'delete'}
                         >
                           {deleting ? 'Deleting...' : 'Delete'}
                         </AlertDialogAction>

@@ -463,11 +463,6 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
                 onAddressChange={handleAddressChange}
                 placeholder="Search for your property address..."
               />
-              {!hasLocation && (
-                <p className="text-xs text-muted-foreground">
-                  Set your property address to show nearby experiences
-                </p>
-              )}
             </div>
 
             {/* Radius slider — always visible */}

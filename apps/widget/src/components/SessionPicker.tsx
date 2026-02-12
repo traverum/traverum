@@ -1,32 +1,33 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
-import { Check, Mail } from 'lucide-react'
-import { format, isSameDay } from 'date-fns'
-import { Calendar } from '@/components/ui/calendar'
+import { format } from 'date-fns'
 import { formatTime, cn } from '@/lib/utils'
-import {
-  isDateAvailable,
-  getOperatingHours,
-  generateTimeSlots,
-  groupTimeSlots,
-  DEFAULT_TIME_GROUPS,
-} from '@/lib/availability'
+import { isDateAvailable, getOperatingHours, generateTimeSlots, DEFAULT_TIME_GROUPS } from '@/lib/availability'
 import type { AvailabilityRule } from '@/lib/availability'
 import type { ExperienceSession } from '@/lib/supabase/types'
+
+// Dynamic import of Calendar to avoid MUI Emotion SSR hydration mismatch
+const Calendar = dynamic(
+  () => import('@/components/ui/calendar').then(mod => ({ default: mod.Calendar })),
+  { ssr: false, loading: () => <div className="w-full h-[320px] rounded-lg border border-border animate-pulse bg-muted/30" /> }
+)
 
 interface SessionPickerProps {
   sessions: ExperienceSession[]
   selectedSessionId: string | null
   isCustomRequest: boolean
   customDate: string
-  customTime: string
+  requestTime: string
   onSessionSelect: (sessionId: string | null, isCustom: boolean) => void
   onCustomDateChange: (date: string) => void
-  onCustomTimeChange: (time: string) => void
+  onRequestTimeChange: (time: string) => void
   participants: number
   availabilityRules?: AvailabilityRule[]
+  /** Minimum total participants for a session to run (experience.min_participants). Default 1 = no threshold. */
+  minParticipants?: number
 }
 
 // Animation variants with reduced motion support
@@ -45,12 +46,13 @@ export function SessionPicker({
   selectedSessionId,
   isCustomRequest,
   customDate,
-  customTime,
+  requestTime,
   onSessionSelect,
   onCustomDateChange,
-  onCustomTimeChange,
+  onRequestTimeChange,
   participants,
   availabilityRules = [],
+  minParticipants = 1,
 }: SessionPickerProps) {
   const shouldReduceMotion = useReducedMotion()
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(
@@ -91,21 +93,6 @@ export function SessionPicker({
     return sessionsByDate[dateKey] || []
   }, [selectedCalendarDate, sessionsByDate])
 
-  // Generate dynamic time groups based on availability rules for the selected date
-  const timeGroups = useMemo(() => {
-    if (!selectedCalendarDate || availabilityRules.length === 0) {
-      return DEFAULT_TIME_GROUPS
-    }
-
-    const hours = getOperatingHours(selectedCalendarDate, availabilityRules)
-    if (!hours) {
-      return DEFAULT_TIME_GROUPS
-    }
-
-    const slots = generateTimeSlots(hours.start, hours.end)
-    return groupTimeSlots(slots)
-  }, [selectedCalendarDate, availabilityRules])
-
   // Check if a date should be disabled (past or not available per rules)
   const isDateDisabled = useMemo(() => {
     return (date: Date): boolean => {
@@ -131,34 +118,49 @@ export function SessionPicker({
       if (dateHasSessions(date)) {
         // Date has sessions - clear custom request, user will select a session
         onSessionSelect(null, false)
-        onCustomTimeChange('')
+        onRequestTimeChange('')
       } else {
         // Date has no sessions - this is a request
         onSessionSelect(null, true)
+        onRequestTimeChange('')
       }
     } else {
       // Date cleared
       onCustomDateChange('')
-      onCustomTimeChange('')
+      onRequestTimeChange('')
       onSessionSelect(null, false)
     }
-  }
-
-  // Handle time selection for custom request
-  const handleTimeSelect = (time: string) => {
-    onCustomTimeChange(time)
-    onSessionSelect(null, true)
   }
 
   // Handle selecting a confirmed session
   const handleSessionSelect = (sessionId: string) => {
     onSessionSelect(sessionId, false)
-    // Clear custom request when selecting a session
-    onCustomTimeChange('')
+    // Clear request time when selecting a session
+    onRequestTimeChange('')
   }
 
-  // Check if there are any time slots to show
-  const hasTimeSlots = timeGroups.morning.length > 0 || timeGroups.afternoon.length > 0 || timeGroups.evening.length > 0
+  // Handle selecting a time slot for a request
+  const handleRequestTimeSelect = (time: string) => {
+    onRequestTimeChange(time)
+    onSessionSelect(null, true)
+  }
+
+  // Generate available time slots for a request date
+  const requestTimeSlots = useMemo(() => {
+    if (!selectedCalendarDate || selectedDateSessions.length > 0) return []
+    
+    const hours = getOperatingHours(selectedCalendarDate, availabilityRules)
+    if (hours) {
+      return generateTimeSlots(hours.start, hours.end)
+    }
+    
+    // No availability rules - use defaults
+    return [
+      ...DEFAULT_TIME_GROUPS.morning,
+      ...DEFAULT_TIME_GROUPS.afternoon,
+      ...DEFAULT_TIME_GROUPS.evening,
+    ]
+  }, [selectedCalendarDate, selectedDateSessions, availabilityRules])
 
   return (
     <div className="font-body">
@@ -211,14 +213,20 @@ export function SessionPicker({
                       >
                         {isSelected && (
                           <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-accent flex items-center justify-center">
-                            <Check className="w-2.5 h-2.5 text-accent-foreground" aria-hidden="true" />
+                            <svg className="w-2.5 h-2.5 text-accent-foreground" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" /></svg>
                           </div>
                         )}
                         <div className="text-sm font-medium text-foreground mb-0.5">
                           {formatTime(session.start_time)}
                         </div>
                         <div className="text-[10px] text-muted-foreground tabular-nums">
-                          {session.spots_available} {session.spots_available === 1 ? 'spot' : 'spots'} left
+                          {(() => {
+                            const booked = session.spots_total - session.spots_available
+                            if (minParticipants > 1 && booked < minParticipants) {
+                              return `${booked}/${minParticipants} min. booked`
+                            }
+                            return `${session.spots_available} ${session.spots_available === 1 ? 'spot' : 'spots'} left`
+                          })()}
                         </div>
                       </button>
                     )
@@ -228,7 +236,7 @@ export function SessionPicker({
             )}
           </AnimatePresence>
 
-          {/* Show time picker if date has no sessions (request flow) */}
+          {/* Show time slots for request if date has no sessions */}
           <AnimatePresence mode="wait">
             {selectedCalendarDate && selectedDateSessions.length === 0 && (
               <motion.div
@@ -243,114 +251,46 @@ export function SessionPicker({
                     {format(selectedCalendarDate, 'EEEE, d MMMM')}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    No sessions available. Request your preferred time.
+                    No sessions yet. Pick a time to send a request.
                   </p>
                 </div>
 
                 {/* How it works */}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
-                  <Mail className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
-                  <span>Provider confirms within 48h → You pay after approval</span>
+                  <svg className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect width="20" height="16" x="2" y="4" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+                  <span>Provider responds within 48h. You pay after they approve.</span>
                 </div>
-                  
-                {hasTimeSlots ? (
-                  <fieldset className="space-y-3">
-                    <legend className="sr-only">Select a time</legend>
-                    
-                    {/* Morning */}
-                    {timeGroups.morning.length > 0 && (
-                      <div>
-                        <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Morning</p>
-                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Morning times">
-                          {timeGroups.morning.map((time) => {
-                            const isSelected = customTime === time && isCustomRequest
-                            return (
-                              <button
-                                key={time}
-                                type="button"
-                                onClick={() => handleTimeSelect(time)}
-                                aria-pressed={isSelected}
-                                className={cn(
-                                  'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
-                                  'transition-colors duration-150',
-                                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
-                                  isSelected
-                                    ? 'border-accent bg-accent/10 text-accent font-semibold'
-                                    : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
-                                )}
-                              >
-                                {time}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
 
-                    {/* Afternoon */}
-                    {timeGroups.afternoon.length > 0 && (
-                      <div>
-                        <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Afternoon</p>
-                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Afternoon times">
-                          {timeGroups.afternoon.map((time) => {
-                            const isSelected = customTime === time && isCustomRequest
-                            return (
-                              <button
-                                key={time}
-                                type="button"
-                                onClick={() => handleTimeSelect(time)}
-                                aria-pressed={isSelected}
-                                className={cn(
-                                  'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
-                                  'transition-colors duration-150',
-                                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
-                                  isSelected
-                                    ? 'border-accent bg-accent/10 text-accent font-semibold'
-                                    : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
-                                )}
-                              >
-                                {time}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Evening */}
-                    {timeGroups.evening.length > 0 && (
-                      <div>
-                        <p className="text-[10px] text-muted-foreground mb-1.5 uppercase tracking-wider font-medium">Evening</p>
-                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Evening times">
-                          {timeGroups.evening.map((time) => {
-                            const isSelected = customTime === time && isCustomRequest
-                            return (
-                              <button
-                                key={time}
-                                type="button"
-                                onClick={() => handleTimeSelect(time)}
-                                aria-pressed={isSelected}
-                                className={cn(
-                                  'px-3 py-1.5 text-xs rounded-button border touch-manipulation',
-                                  'transition-colors duration-150',
-                                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
-                                  isSelected
-                                    ? 'border-accent bg-accent/10 text-accent font-semibold'
-                                    : 'border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground'
-                                )}
-                              >
-                                {time}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </fieldset>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    No time slots available for this date.
-                  </p>
+                {/* Time slot grid */}
+                {requestTimeSlots.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-foreground mb-1.5">
+                      Select a time
+                    </p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {requestTimeSlots.map((slot) => {
+                        const isSelected = requestTime === slot && isCustomRequest
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            onClick={() => handleRequestTimeSelect(slot)}
+                            className={cn(
+                              'px-3 py-2.5 rounded-lg border text-center touch-manipulation',
+                              'transition-colors duration-150',
+                              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1',
+                              isSelected
+                                ? 'border-accent bg-accent/10 ring-1 ring-accent/30'
+                                : 'border-border hover:border-accent/50 hover:bg-muted/30 bg-background'
+                            )}
+                            aria-pressed={isSelected}
+                          >
+                            <span className="text-sm font-medium text-foreground">{slot}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
                 )}
               </motion.div>
             )}

@@ -18,6 +18,16 @@ import { SortableImage } from './SortableImage';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { optimizeCoverImage, optimizeGalleryImage } from '@/lib/image-optimization';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export interface MediaItem {
   id: string;
@@ -42,6 +52,7 @@ export function ImageUploader({
   maxImages = 10,
 }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
+  const [imageToDeleteId, setImageToDeleteId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -183,6 +194,8 @@ export function ImageUploader({
     const imageToDelete = images.find(img => img.id === imageId);
     if (!imageToDelete) return;
 
+    setImageToDeleteId(null);
+
     try {
       // Delete from storage
       const { error } = await supabase.storage
@@ -212,6 +225,10 @@ export function ImageUploader({
         variant: 'destructive',
       });
     }
+  };
+
+  const confirmDeleteImage = () => {
+    if (imageToDeleteId) handleDeleteImage(imageToDeleteId);
   };
 
   return (
@@ -246,7 +263,7 @@ export function ImageUploader({
                   key={image.id}
                   image={image}
                   isCover={index === 0}
-                  onDelete={() => handleDeleteImage(image.id)}
+                  onDelete={() => setImageToDeleteId(image.id)}
                 />
               ))}
               {images.length < maxImages && (
@@ -268,6 +285,23 @@ export function ImageUploader({
           </SortableContext>
         </DndContext>
       )}
+
+      <AlertDialog open={!!imageToDeleteId} onOpenChange={(open) => !open && setImageToDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove image?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the image from this experience. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteImage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         .from('experiences')
         .select('partner_id')
         .eq('id', experience_id)
-        .single()
+        .single() as { data: { partner_id: string } | null }
 
       const isSelfOwned = experienceData?.partner_id === partner_id
 

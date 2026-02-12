@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAllSessions } from '@/hooks/useAllSessions';
+import { useCalendarRequests } from '@/hooks/useCalendarRequests';
 import { SessionsCalendar } from '@/components/sessions/SessionsCalendar';
 import { SessionsListView } from '@/components/sessions/SessionsListView';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -40,6 +41,7 @@ export default function SupplierSessions() {
     currentMonth,
     experienceId: null 
   });
+  const { requestsByDate, refetch: refetchRequests } = useCalendarRequests(currentMonth);
 
   const handleCreateSession = async (data: SessionData | RecurringData) => {
     const experienceId = data.experienceId;
@@ -165,6 +167,7 @@ export default function SupplierSessions() {
           <SessionsCalendar
             sessions={sessions}
             sessionsByDate={formattedSessionsByDate}
+            requestsByDate={requestsByDate}
             experience={null}
             experiences={allExperiences.map(e => ({
               id: e.id,
@@ -182,6 +185,10 @@ export default function SupplierSessions() {
               // Session clicks handled by SessionsCalendar's internal quick-edit popup
             }}
             onSessionUpdate={refetch}
+            onRequestAction={() => {
+              refetchRequests();
+              refetch();
+            }}
           />
         )}
       </main>

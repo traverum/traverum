@@ -63,16 +63,21 @@ export function getOperatingHours(
 /**
  * Generate hourly time slots within operating hours.
  * Returns time strings in HH:MM format.
+ * If endTime has non-zero minutes (e.g. 20:30), that hour is included as a valid start.
  */
 export function generateTimeSlots(
   startTime: string,
   endTime: string
 ): string[] {
   const [startH] = startTime.split(':').map(Number)
-  const [endH] = endTime.split(':').map(Number)
+  const [endH, endM = 0] = endTime.split(':').map(Number)
+
+  // Include the end hour if there are remaining minutes
+  // e.g. end 20:30 → slots up to 20:00 are valid (session starts before cutoff)
+  const effectiveEnd = endM > 0 ? endH + 1 : endH
 
   const slots: string[] = []
-  for (let h = startH; h < endH; h++) {
+  for (let h = startH; h < effectiveEnd; h++) {
     slots.push(`${h.toString().padStart(2, '0')}:00`)
   }
   return slots
@@ -113,4 +118,69 @@ export const DEFAULT_TIME_GROUPS = {
 
 function formatDateForComparison(date: Date): string {
   return date.toISOString().split('T')[0]
+}
+
+// Cancellation policy (matches dashboard/availability.ts)
+export type CancellationPolicy = 'flexible' | 'moderate' | 'strict' | 'non_refundable'
+
+export const CANCELLATION_POLICIES: {
+  value: CancellationPolicy
+  label: string
+  description: string
+  minDaysBeforeCancel: number // minimum days before experience to allow free cancellation
+}[] = [
+  { value: 'flexible', label: 'Flexible', description: 'Free cancellation up to 24 hours before', minDaysBeforeCancel: 1 },
+  { value: 'moderate', label: 'Moderate', description: 'Free cancellation up to 7 days before', minDaysBeforeCancel: 7 },
+  { value: 'strict', label: 'Strict', description: 'No refunds after booking is confirmed', minDaysBeforeCancel: 0 },
+  { value: 'non_refundable', label: 'Non-refundable', description: 'No refunds for guest cancellations', minDaysBeforeCancel: 0 },
+]
+
+/**
+ * Generate display text for cancellation policy (+ force majeure note if applicable)
+ */
+export function getCancellationPolicyText(
+  policy: CancellationPolicy | string | null | undefined,
+  forceMajeureRefund?: boolean
+): string {
+  const p = (policy || 'moderate') as CancellationPolicy
+  const info = CANCELLATION_POLICIES.find((x) => x.value === p)
+  let text = info?.description ?? 'Free cancellation up to 7 days before.'
+  if (forceMajeureRefund) {
+    text += ' Full refund if cancelled by supplier due to weather or emergency.'
+  }
+  return text
+}
+
+/**
+ * Check if guest can cancel for refund based on policy and days until experience.
+ * Returns { canCancel: boolean, message: string }
+ */
+export function canGuestCancel(
+  policy: CancellationPolicy | string | null | undefined,
+  daysUntilExperience: number
+): { canCancel: boolean; message: string } {
+  const p = (policy || 'moderate') as CancellationPolicy
+  const info = CANCELLATION_POLICIES.find((x) => x.value === p)
+  const minDays = info?.minDaysBeforeCancel ?? 7
+
+  if (minDays === 0) {
+    return {
+      canCancel: false,
+      message: p === 'strict'
+        ? 'Cancellation is not available. No refunds after booking is confirmed.'
+        : 'Cancellation is not available. This booking is non-refundable.',
+    }
+  }
+
+  if (daysUntilExperience < minDays) {
+    return {
+      canCancel: false,
+      message: `Cancellation is no longer available. You can only cancel up to ${minDays} ${minDays === 1 ? 'day' : 'days'} before the experience. (${daysUntilExperience} ${daysUntilExperience === 1 ? 'day' : 'days'} remaining)`,
+    }
+  }
+
+  return {
+    canCancel: true,
+    message: 'Your booking has been cancelled and a refund has been initiated.',
+  }
 }

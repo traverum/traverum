@@ -29,8 +29,8 @@ export default async function ReservationPage({ params, searchParams }: Reservat
     .from('reservations')
     .select(`
       *,
-      experience:experiences(title, slug, duration_minutes, meeting_point, currency),
-      session:experience_sessions(session_date, start_time)
+      experience:experiences(title, slug, duration_minutes, meeting_point, currency, min_participants),
+      session:experience_sessions(session_date, start_time, spots_total, spots_available)
     `)
     .eq('id', id)
     .single()
@@ -61,11 +61,12 @@ export default async function ReservationPage({ params, searchParams }: Reservat
             <div className={cn(
               'w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center',
               reservation.reservation_status === 'pending' && 'bg-warning/10',
+              reservation.reservation_status === 'pending_minimum' && 'bg-warning/10',
               reservation.reservation_status === 'approved' && 'bg-success/10',
               reservation.reservation_status === 'declined' && 'bg-destructive/10',
-              reservation.reservation_status === 'expired' && 'bg-muted',
+              (reservation.reservation_status === 'expired' || reservation.reservation_status === 'cancelled_minimum') && 'bg-muted',
             )}>
-              {reservation.reservation_status === 'pending' && (
+              {(reservation.reservation_status === 'pending' || reservation.reservation_status === 'pending_minimum') && (
                 <svg className="w-10 h-10 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -80,7 +81,7 @@ export default async function ReservationPage({ params, searchParams }: Reservat
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               )}
-              {reservation.reservation_status === 'expired' && (
+              {(reservation.reservation_status === 'expired' || reservation.reservation_status === 'cancelled_minimum') && (
                 <svg className="w-10 h-10 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -90,9 +91,11 @@ export default async function ReservationPage({ params, searchParams }: Reservat
             {/* Status title */}
             <h1 className="text-3xl text-card-foreground mb-3">
               {reservation.reservation_status === 'pending' && (reservation.is_request ? 'Request Sent!' : 'Booking Processing!')}
+              {reservation.reservation_status === 'pending_minimum' && 'Spot Reserved!'}
               {reservation.reservation_status === 'approved' && 'Booking Approved!'}
               {reservation.reservation_status === 'declined' && 'Booking Unavailable'}
               {reservation.reservation_status === 'expired' && (reservation.is_request ? 'Request Expired' : 'Booking Expired')}
+              {reservation.reservation_status === 'cancelled_minimum' && 'Reservation Cancelled'}
             </h1>
             
             {/* Status message */}
@@ -101,6 +104,13 @@ export default async function ReservationPage({ params, searchParams }: Reservat
                 'Your booking request has been sent to the experience provider. They will respond within 48 hours.'}
               {reservation.reservation_status === 'pending' && !reservation.is_request && 
                 'Your booking is being processed. You will be redirected to payment shortly.'}
+              {reservation.reservation_status === 'pending_minimum' && (() => {
+                const minP = experience?.min_participants || 2
+                const session = reservation.session
+                const booked = session ? session.spots_total - session.spots_available : 0
+                const remaining = Math.max(0, minP - booked)
+                return `Your spot is held! This experience needs at least ${minP} participants to run. Currently ${booked} of ${minP} are booked${remaining > 0 ? ` — ${remaining} more needed` : ''}. You'll receive a payment link once the minimum is reached. No payment is required until then.`
+              })()}
               {reservation.reservation_status === 'approved' && 
                 'Great news! Your booking has been approved. Check your email for the payment link.'}
               {reservation.reservation_status === 'declined' && 
@@ -109,6 +119,8 @@ export default async function ReservationPage({ params, searchParams }: Reservat
                 'This booking request has expired. The provider did not respond in time.'}
               {reservation.reservation_status === 'expired' && !reservation.is_request && 
                 'This booking has expired. The payment window has closed.'}
+              {reservation.reservation_status === 'cancelled_minimum' && 
+                'Unfortunately, this session did not reach the minimum number of participants. Your reservation has been cancelled. No payment was taken.'}
             </p>
             
             {/* Booking details */}

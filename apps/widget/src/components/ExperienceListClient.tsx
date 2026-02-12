@@ -12,9 +12,10 @@ interface ExperienceListClientProps {
   experiences: ExperienceWithMedia[]
   hotelSlug: string
   embedMode: EmbedMode
+  returnUrl?: string | null
 }
 
-export function ExperienceListClient({ experiences, hotelSlug, embedMode }: ExperienceListClientProps) {
+export function ExperienceListClient({ experiences, hotelSlug, embedMode, returnUrl }: ExperienceListClientProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   // Extract unique categories from all experiences (first tag element is the category)
@@ -108,6 +109,7 @@ export function ExperienceListClient({ experiences, hotelSlug, embedMode }: Expe
                   experience={experience}
                   hotelSlug={hotelSlug}
                   embedMode={embedMode}
+                  returnUrl={returnUrl}
                 />
               </motion.div>
             ))

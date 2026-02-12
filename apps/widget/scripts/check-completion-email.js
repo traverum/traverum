@@ -48,7 +48,7 @@ async function checkBookings() {
         requested_date,
         experience:experiences(
           title,
-          supplier:partners!experiences_partner_id_fkey(
+          supplier:partners!experiences_partner_fk(
             name,
             email
           )

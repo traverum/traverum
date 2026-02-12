@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useCallback } from 'react'
-import { X } from 'lucide-react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { SessionPicker } from './SessionPicker'
 import type { ExperienceSession } from '@/lib/supabase/types'
@@ -14,13 +13,14 @@ interface DatePickerDrawerProps {
   selectedSessionId: string | null
   isCustomRequest: boolean
   customDate: string
-  customTime: string
+  requestTime: string
   onSessionSelect: (sessionId: string | null, isCustom: boolean) => void
   onCustomDateChange: (date: string) => void
-  onCustomTimeChange: (time: string) => void
+  onRequestTimeChange: (time: string) => void
   onConfirm: () => void
   participants: number
   availabilityRules?: AvailabilityRule[]
+  minParticipants?: number
 }
 
 export function DatePickerDrawer({
@@ -30,17 +30,18 @@ export function DatePickerDrawer({
   selectedSessionId,
   isCustomRequest,
   customDate,
-  customTime,
+  requestTime,
   onSessionSelect,
   onCustomDateChange,
-  onCustomTimeChange,
+  onRequestTimeChange,
   onConfirm,
   participants,
   availabilityRules = [],
+  minParticipants = 1,
 }: DatePickerDrawerProps) {
   const shouldReduceMotion = useReducedMotion()
   const hasSelection = isCustomRequest 
-    ? (customDate && customTime)
+    ? (customDate && requestTime)
     : selectedSessionId
 
   // Handle escape key
@@ -105,7 +106,7 @@ export function DatePickerDrawer({
                 className="p-2 -mr-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 aria-label="Close"
               >
-                <X className="w-5 h-5" aria-hidden="true" />
+                <svg className="w-5 h-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
             </div>
             
@@ -116,12 +117,13 @@ export function DatePickerDrawer({
                 selectedSessionId={selectedSessionId}
                 isCustomRequest={isCustomRequest}
                 customDate={customDate}
-                customTime={customTime}
+                requestTime={requestTime}
                 onSessionSelect={onSessionSelect}
                 onCustomDateChange={onCustomDateChange}
-                onCustomTimeChange={onCustomTimeChange}
+                onRequestTimeChange={onRequestTimeChange}
                 participants={participants}
                 availabilityRules={availabilityRules}
+                minParticipants={minParticipants}
               />
             </div>
             

@@ -56,7 +56,7 @@ export function BookingSummary({
           </div>
           
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Time</span>
+            <span className="text-muted-foreground">{isRequest ? 'Requested time' : 'Time'}</span>
             <span className="font-medium text-card-foreground">
               {time ? formatTime(time) : 'Not selected'}
             </span>

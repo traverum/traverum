@@ -3,7 +3,9 @@ import { getHotelBySlug, getExperienceForHotel } from '@/lib/hotels'
 import { getAvailableSessions } from '@/lib/sessions'
 import { getExperienceAvailability } from '@/lib/availability.server'
 import { getEmbedMode, formatDuration, cn } from '@/lib/utils'
+import { getCancellationPolicyText } from '@/lib/availability'
 import { Header } from '@/components/Header'
+import { EmbedResizer } from '@/components/EmbedResizer'
 import { ImageGallery } from '@/components/ImageGallery'
 import { BookingPanel } from '@/components/BookingPanel'
 import { ExperienceDetailClient } from '@/components/ExperienceDetailClient'
@@ -66,6 +68,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
           hotelSlug={hotelSlug}
           showBack={true}
           backTo={returnUrl ? `/${hotelSlug}?embed=full&returnUrl=${encodeURIComponent(returnUrl)}` : `/${hotelSlug}?embed=full`}
+          returnUrl={returnUrl}
         />
       )}
       
@@ -106,13 +109,13 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                   className="font-body text-foreground"
                   style={{ fontSize: 'var(--font-size-h3)' }}
                 >
-                  How it works
+                  Booking
                 </h3>
                 <p 
                   className="text-muted-foreground mt-0.5"
                   style={{ fontSize: 'var(--font-size-sm)' }}
                 >
-                  Reserve now — free and non-binding. Pay after provider confirms.
+                  Select a date and time. If a slot is available, pay now to confirm. Otherwise request a time; the provider responds within 48h and you pay after approval.
                 </p>
               </div>
               <div>
@@ -126,7 +129,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                   className="text-muted-foreground mt-0.5"
                   style={{ fontSize: 'var(--font-size-sm)' }}
                 >
-                  Free cancellation up to 7 days before.
+                  {getCancellationPolicyText(experience.cancellation_policy, experience.force_majeure_refund)}
                 </p>
               </div>
               {experience.meeting_point && (
@@ -156,6 +159,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                 sessions={sessions}
                 hotelSlug={hotelSlug}
                 availabilityRules={availabilityRules}
+                returnUrl={returnUrl}
               />
             </div>
           </div>
@@ -168,26 +172,11 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
         sessions={sessions}
         hotelSlug={hotelSlug}
         availabilityRules={availabilityRules}
+        returnUrl={returnUrl}
       />
       
-      {/* Embed mode resize script */}
-      {embedMode === 'section' && (
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                function sendHeight() {
-                  var height = document.body.scrollHeight;
-                  window.parent.postMessage({ type: 'traverum-resize', height: height }, '*');
-                }
-                sendHeight();
-                window.addEventListener('resize', sendHeight);
-                new MutationObserver(sendHeight).observe(document.body, { childList: true, subtree: true });
-              })();
-            `,
-          }}
-        />
-      )}
+      {/* Embed mode resize (client-only, after hydration) */}
+      {embedMode === 'section' && <EmbedResizer />}
     </div>
   )
 }

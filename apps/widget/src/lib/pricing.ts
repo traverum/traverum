@@ -14,12 +14,15 @@ export interface PriceCalculation {
  * Calculate total price based on experience pricing and participants
  * 
  * Pricing types:
- * - 'per_person': extra_person_cents per participant (enforces min_participants)
+ * - 'per_person': extra_person_cents per participant
  * - 'base_plus_extra': base_price_cents for included_participants, extra_person_cents for additional
  * - 'flat_rate': base_price_cents (constant, regardless of participants)
+ * 
+ * Note: min_participants is a session-level threshold (min to run), not a pricing floor.
+ * Each guest pays for exactly the number of people they bring.
  */
 export function calculatePrice(
-  experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants' | 'min_participants'>,
+  experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants'>,
   participants: number,
   session?: Pick<ExperienceSession, 'price_override_cents'> | null
 ): PriceCalculation {
@@ -36,8 +39,8 @@ export function calculatePrice(
     }
   }
 
-  // Enforce minimum participants
-  const effectiveParticipants = Math.max(participants, experience.min_participants || 1)
+  // Each guest pays for exactly the people they bring
+  const effectiveParticipants = participants
   
   switch (experience.pricing_type) {
     case 'per_person':

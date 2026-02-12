@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         experience:experiences(
           title,
           currency,
-          supplier:partners!experiences_partner_id_fkey(email, name, stripe_account_id)
+          supplier:partners!experiences_partner_fk(email, name, stripe_account_id)
         ),
         session:experience_sessions(session_date)
       )

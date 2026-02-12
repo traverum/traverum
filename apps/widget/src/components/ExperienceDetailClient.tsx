@@ -15,15 +15,16 @@ interface ExperienceDetailClientProps {
   sessions: ExperienceSession[]
   hotelSlug: string
   availabilityRules?: AvailabilityRule[]
+  returnUrl?: string | null
 }
 
-export function ExperienceDetailClient({ experience, sessions, hotelSlug, availabilityRules = [] }: ExperienceDetailClientProps) {
+export function ExperienceDetailClient({ experience, sessions, hotelSlug, availabilityRules = [], returnUrl }: ExperienceDetailClientProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
-  const [participants, setParticipants] = useState(experience.min_participants)
+  const [participants, setParticipants] = useState(1)
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [isCustomRequest, setIsCustomRequest] = useState(false)
   const [customDate, setCustomDate] = useState('')
-  const [customTime, setCustomTime] = useState('')
+  const [requestTime, setRequestTime] = useState('')
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId) || null
   const priceCalc = calculatePrice(experience, participants, selectedSession)
@@ -57,14 +58,15 @@ export function ExperienceDetailClient({ experience, sessions, hotelSlug, availa
         selectedSessionId={selectedSessionId}
         isCustomRequest={isCustomRequest}
         customDate={customDate}
-        customTime={customTime}
+        requestTime={requestTime}
         participants={participants}
         onSessionSelect={handleSessionSelect}
         onCustomDateChange={setCustomDate}
-        onCustomTimeChange={setCustomTime}
+        onRequestTimeChange={setRequestTime}
         onParticipantsChange={setParticipants}
         hotelSlug={hotelSlug}
         availabilityRules={availabilityRules}
+        returnUrl={returnUrl}
       />
     </>
   )

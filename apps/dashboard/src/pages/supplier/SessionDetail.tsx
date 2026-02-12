@@ -31,12 +31,15 @@ export default function SessionDetail() {
     experience,
     guests,
     bookingsCount,
+    pendingMinimumCount,
+    pendingMinimumParticipants,
     isLoading,
     isLoadingGuests,
     error,
     updateSession,
     deleteSession,
     cancelSession,
+    confirmSession,
   } = useSessionDetail(sessionId || '');
 
   // Edit states
@@ -50,7 +53,9 @@ export default function SessionDetail() {
   // Confirmation dialogs
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showConfirmSessionDialog, setShowConfirmSessionDialog] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<SessionUpdate | null>(null);
 
   if (isLoading) {
@@ -78,6 +83,22 @@ export default function SessionDetail() {
   const hasCustomPrice = session.price_override_cents !== null;
   const currentPrice = hasCustomPrice ? session.price_override_cents! : experience.price_cents;
   const isCancelled = session.session_status === 'cancelled';
+  const minToRun = experience.min_participants || 1;
+  const showMinimumProgress = minToRun > 1 && pendingMinimumCount > 0;
+
+  const handleConfirmSession = async () => {
+    try {
+      await confirmSession.mutateAsync();
+      toast({ title: 'Session confirmed', description: `${pendingMinimumCount} guest(s) will receive payment links.` });
+      setShowConfirmSessionDialog(false);
+    } catch (error: any) {
+      toast({
+        title: 'Error confirming session',
+        description: error?.message || 'Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const getStatusBadge = () => {
     switch (session.session_status) {
@@ -170,10 +191,10 @@ export default function SessionDetail() {
       await deleteSession.mutateAsync();
       toast({ title: 'Session deleted' });
       navigate(`/supplier/experiences/${session.experience_id}`);
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Error deleting session',
-        description: 'Please try again.',
+        description: error?.message || 'Cannot delete. Refund guests and remove all bookings first.',
         variant: 'destructive',
       });
     }
@@ -310,6 +331,50 @@ export default function SessionDetail() {
           </CardContent>
         </Card>
 
+        {/* Minimum to Run Card */}
+        {showMinimumProgress && (
+          <Card className="border-warning/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+                Minimum to Run
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Progress</span>
+                  <span className="text-2xl font-semibold">
+                    {pendingMinimumParticipants} / {minToRun}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className="bg-warning h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(100, (pendingMinimumParticipants / minToRun) * 100)}%` }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {pendingMinimumCount} guest{pendingMinimumCount !== 1 ? 's' : ''} waiting for the minimum to be reached.
+                  {pendingMinimumParticipants >= minToRun
+                    ? ' Minimum reached — guests will be approved automatically.'
+                    : ` ${minToRun - pendingMinimumParticipants} more participant${minToRun - pendingMinimumParticipants !== 1 ? 's' : ''} needed.`}
+                </p>
+                <Button
+                  className="w-full"
+                  variant="default"
+                  onClick={() => setShowConfirmSessionDialog(true)}
+                  disabled={confirmSession.isPending}
+                >
+                  Confirm Session Early
+                </Button>
+                <p className="text-xs text-muted-foreground text-center">
+                  Send payment links to all waiting guests, even below the minimum.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Pricing Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -441,6 +506,10 @@ export default function SessionDetail() {
                             {formatPrice(guest.booking.amount_cents)}
                           </p>
                         </>
+                      ) : guest.reservation_status === 'pending_minimum' ? (
+                        <Badge className="bg-warning/10 text-warning hover:bg-warning/20">
+                          Waiting for min.
+                        </Badge>
                       ) : (
                         <Badge variant="outline">{guest.reservation_status}</Badge>
                       )}
@@ -522,20 +591,28 @@ export default function SessionDetail() {
       </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => { setShowDeleteConfirm(open); if (!open) setDeleteConfirmText(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete session?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently remove this session. This action cannot be undone.
+              Type <strong>delete</strong> below to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <Input
+            placeholder="Type delete to confirm"
+            value={deleteConfirmText}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
+            className="mt-2"
+            autoComplete="off"
+          />
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteSession.isPending}
+              disabled={deleteSession.isPending || deleteConfirmText !== 'delete'}
             >
               {deleteSession.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
@@ -559,6 +636,27 @@ export default function SessionDetail() {
               disabled={cancelSession.isPending}
             >
               {cancelSession.isPending ? 'Cancelling...' : 'Cancel Session'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Session Dialog (approve pending_minimum guests early) */}
+      <AlertDialog open={showConfirmSessionDialog} onOpenChange={setShowConfirmSessionDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm session early?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will send payment links to {pendingMinimumCount} waiting guest{pendingMinimumCount !== 1 ? 's' : ''} ({pendingMinimumParticipants} participant{pendingMinimumParticipants !== 1 ? 's' : ''}), even though the minimum of {minToRun} has not been reached. Guests will have 24 hours to complete payment.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmSession}
+              disabled={confirmSession.isPending}
+            >
+              {confirmSession.isPending ? 'Confirming...' : 'Confirm & Send Payment Links'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

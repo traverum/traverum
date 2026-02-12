@@ -12,6 +12,7 @@ import {
   adminAccountStatusChanged
 } from '@/lib/email/templates'
 import { generateCancelToken } from '@/lib/tokens'
+import { getCancellationPolicyText, CANCELLATION_POLICIES } from '@/lib/availability'
 import type Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
@@ -433,7 +434,7 @@ async function handleTransferCreated(transfer: Stripe.Transfer) {
         *,
         experience:experiences(
           *,
-          supplier:partners!experiences_partner_id_fkey(*)
+          supplier:partners!experiences_partner_fk(*)
         ),
         session:experience_sessions(*)
       )
@@ -514,7 +515,7 @@ async function createBookingFromPayment(
       *,
       experience:experiences(
         *,
-        supplier:partners!experiences_partner_id_fkey(*)
+        supplier:partners!experiences_partner_fk(*)
       ),
       session:experience_sessions(*),
       hotel:partners!reservations_hotel_id_fkey(*)
@@ -607,6 +608,11 @@ async function createBookingFromPayment(
   // Generate cancel token
   const cancelToken = generateCancelToken(booking.id, new Date(date))
   const cancelUrl = `${appUrl}/api/bookings/${booking.id}/cancel?token=${cancelToken}`
+
+  const cancellationPolicy = experience.cancellation_policy || 'moderate'
+  const minDays = CANCELLATION_POLICIES.find((p) => p.value === cancellationPolicy)?.minDaysBeforeCancel ?? 0
+  const cancellationPolicyText = getCancellationPolicyText(cancellationPolicy, experience.force_majeure_refund)
+  const allowCancel = minDays > 0
   
   // Send confirmation email to guest
   const guestEmailHtml = guestPaymentConfirmed({
@@ -621,6 +627,8 @@ async function createBookingFromPayment(
     meetingPoint: experience.meeting_point,
     cancelUrl,
     supplierName: supplier.name,
+    cancellationPolicyText,
+    allowCancel,
   })
   
   await sendEmail({

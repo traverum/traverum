@@ -24,8 +24,8 @@ export default function StaysList() {
   };
 
   return (
-    <div className="p-6">
-      <div className="max-w-6xl mx-auto">
+    <div className="container max-w-6xl mx-auto px-4 py-6">
+      <div>
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-foreground">All Properties</h1>
@@ -34,16 +34,8 @@ export default function StaysList() {
         {/* Properties List */}
         {hotelConfigs.length === 0 ? (
           <Card className="border border-border">
-            <CardContent className="p-12 text-center">
-              <div className="mb-4">
-                <span className="text-4xl">🏨</span>
-              </div>
-              <h3 className="text-lg font-medium text-foreground mb-2">
-                No properties yet
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Add your first property to start managing your stays.
-              </p>
+            <CardContent className="p-6 text-center">
+              <span className="text-sm text-muted-foreground">No properties yet</span>
             </CardContent>
           </Card>
         ) : (

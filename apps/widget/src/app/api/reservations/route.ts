@@ -3,13 +3,15 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { generateAcceptToken, generateDeclineToken } from '@/lib/tokens'
 import { sendEmail, getAppUrl } from '@/lib/email/index'
 import { 
-  guestRequestReceived, 
   supplierNewRequest,
   guestInstantBooking,
   supplierNewBooking,
+  guestSpotReserved,
+  supplierNewReservation,
 } from '@/lib/email/templates'
 import { calculatePrice } from '@/lib/pricing'
 import { createPaymentLink } from '@/lib/stripe'
+import { autoApprovePendingMinimum } from '@/lib/auto-approve'
 import { addHours } from 'date-fns'
 
 export async function POST(request: NextRequest) {
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
     // Get hotel config
     const { data: hotelData } = await supabase
       .from('hotel_configs')
-      .select('*, partner:partners!hotel_configs_partner_id_fkey(*)')
+      .select('*, partner:partners!hotel_configs_partner_fk(*)')
       .eq('slug', hotelSlug)
       .eq('is_active', true)
       .single()
@@ -60,7 +62,7 @@ export async function POST(request: NextRequest) {
     // Get experience with supplier
     const { data: experienceData } = await supabase
       .from('experiences')
-      .select('*, supplier:partners!experiences_partner_id_fkey(*)')
+      .select('*, supplier:partners!experiences_partner_fk(*)')
       .eq('id', experienceId)
       .single()
     
@@ -74,9 +76,10 @@ export async function POST(request: NextRequest) {
     const experience = experienceData as any
     
     // Validate participants against experience limits
-    if (participants < experience.min_participants || participants > experience.max_participants) {
+    // min_participants is a session-level threshold (min to run), not a per-booking limit
+    if (participants < 1 || participants > experience.max_participants) {
       return NextResponse.json(
-        { error: `Participants must be between ${experience.min_participants} and ${experience.max_participants}` },
+        { error: `Participants must be between 1 and ${experience.max_participants}` },
         { status: 400 }
       )
     }
@@ -84,7 +87,7 @@ export async function POST(request: NextRequest) {
     // If session-based, verify session availability
     let sessionData = null
     let date = requestDate
-    let time = requestTime
+    let time: string | null = null
     
     if (sessionId) {
       const { data: sessionResult } = await supabase
@@ -129,11 +132,17 @@ export async function POST(request: NextRequest) {
     const appUrl = getAppUrl()
     
     // =========================================================================
-    // SESSION-BASED BOOKING: Guest picked existing session, pay immediately
-    // Direct payment flow - no reservation step shown to user
+    // SESSION-BASED BOOKING: Guest picked existing session
+    // If min_participants > 1 and threshold not yet met, create pending_minimum
+    // reservation (no payment). Otherwise, direct payment flow.
     // =========================================================================
     if (!isRequest && sessionId && sessionData) {
-      // Hold spots by deducting them immediately (will be released if payment fails)
+      const minToRun = experience.min_participants || 1
+      const bookedSoFar = sessionData.spots_total - sessionData.spots_available
+      const bookedAfter = bookedSoFar + participants
+      const thresholdMet = minToRun <= 1 || bookedAfter >= minToRun
+
+      // Hold spots by deducting them immediately (will be released if payment fails or min not met)
       const newSpotsAvailable = sessionData.spots_available - participants
       
       await (supabase
@@ -144,9 +153,102 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', sessionId)
-      
-      // Create minimal reservation for data integrity (user doesn't see this)
-      // Status is 'approved' since payment is immediate
+
+      // -----------------------------------------------------------------------
+      // BELOW THRESHOLD: Reserve spot without payment (pending_minimum)
+      // -----------------------------------------------------------------------
+      if (!thresholdMet) {
+        const responseDeadline = addHours(new Date(), 48) // placeholder for required field
+        
+        const { data: reservation, error: reservationError } = await (supabase
+          .from('reservations') as any)
+          .insert({
+            experience_id: experienceId,
+            hotel_id: hotel.partner_id,
+            session_id: sessionId,
+            guest_name: guestName,
+            guest_email: guestEmail,
+            guest_phone: guestPhone || null,
+            participants,
+            total_cents: expectedTotal,
+            is_request: false,
+            reservation_status: 'pending_minimum',
+            response_deadline: responseDeadline.toISOString(),
+          })
+          .select()
+          .single()
+        
+        if (reservationError || !reservation) {
+          console.error('Failed to create pending_minimum reservation:', reservationError)
+          // Rollback spots deduction
+          await (supabase
+            .from('experience_sessions') as any)
+            .update({
+              spots_available: sessionData.spots_available,
+              session_status: sessionData.session_status,
+            })
+            .eq('id', sessionId)
+          return NextResponse.json(
+            { error: 'Failed to create reservation' },
+            { status: 500 }
+          )
+        }
+
+        // Email guest: "spot reserved, waiting for minimum"
+        const guestEmailHtml = guestSpotReserved({
+          experienceTitle: experience.title,
+          guestName,
+          date: date || '',
+          time,
+          participants,
+          totalCents: expectedTotal,
+          currency: experience.currency,
+          minParticipants: minToRun,
+          bookedSoFar: bookedAfter,
+          reservationPageUrl: `${appUrl}/${hotelSlug}/reservation/${reservation.id}`,
+        })
+
+        await sendEmail({
+          to: guestEmail,
+          subject: `Spot reserved — ${experience.title}`,
+          html: guestEmailHtml,
+        })
+
+        // Email supplier: "new reservation toward minimum"
+        const dashboardUrl = 'https://dashboard.traverum.com/supplier/sessions'
+        const supplierEmailHtml = supplierNewReservation({
+          experienceTitle: experience.title,
+          guestName,
+          guestEmail,
+          guestPhone,
+          date: date || '',
+          time,
+          participants,
+          totalCents: expectedTotal,
+          currency: experience.currency,
+          minParticipants: minToRun,
+          bookedSoFar: bookedAfter,
+          hotelName: hotel.display_name,
+          dashboardUrl,
+        })
+
+        await sendEmail({
+          to: experience.supplier.email,
+          subject: `New reservation (${bookedAfter}/${minToRun} min) — ${experience.title}`,
+          html: supplierEmailHtml,
+          replyTo: guestEmail,
+        })
+
+        return NextResponse.json({
+          success: true,
+          reservationId: reservation.id,
+          pendingMinimum: true,
+        })
+      }
+
+      // -----------------------------------------------------------------------
+      // THRESHOLD MET: Normal payment flow for this guest
+      // -----------------------------------------------------------------------
       const paymentDeadline = addHours(new Date(), 24)
       
       const { data: reservation, error: reservationError } = await (supabase
@@ -154,7 +256,6 @@ export async function POST(request: NextRequest) {
         .insert({
           experience_id: experienceId,
           hotel_id: hotel.partner_id,
-          hotel_config_id: hotel.id,
           session_id: sessionId,
           guest_name: guestName,
           guest_email: guestEmail,
@@ -204,6 +305,16 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         })
         .eq('id', reservation.id)
+
+      // If this booking tipped the threshold, auto-approve any pending_minimum reservations
+      if (minToRun > 1 && bookedSoFar < minToRun) {
+        // There were pending_minimum reservations before this one tipped the balance
+        const result = await autoApprovePendingMinimum(sessionId)
+        console.log(`Auto-approved ${result.approved} pending_minimum reservations for session ${sessionId}`)
+        if (result.errors.length > 0) {
+          console.error('Auto-approve errors:', result.errors)
+        }
+      }
       
       // Return payment URL for immediate redirect (user never sees reservation page)
       return NextResponse.json({
@@ -223,7 +334,6 @@ export async function POST(request: NextRequest) {
       .insert({
         experience_id: experienceId,
         hotel_id: hotel.partner_id,
-        hotel_config_id: hotel.id,
         session_id: sessionId || null,
         guest_name: guestName,
         guest_email: guestEmail,
@@ -232,7 +342,8 @@ export async function POST(request: NextRequest) {
         total_cents: expectedTotal,
         is_request: true,
         requested_date: requestDate || null,
-        requested_time: requestTime || null,
+        requested_time: requestTime ? (requestTime.length === 5 ? `${requestTime}:00` : requestTime) : null,
+        time_preference: null,
         reservation_status: 'pending',
         response_deadline: responseDeadline.toISOString(),
       })
@@ -254,38 +365,28 @@ export async function POST(request: NextRequest) {
     const acceptUrl = `${appUrl}/api/reservations/${reservation.id}/accept?token=${acceptToken}`
     const declineUrl = `${appUrl}/api/reservations/${reservation.id}/decline?token=${declineToken}`
     
-    // Send email to guest (waiting for confirmation)
-    const guestEmailHtml = guestRequestReceived({
-      experienceTitle: experience.title,
-      guestName,
-      date: date || '',
-      time: time || '',
-      participants,
-      totalCents: expectedTotal,
-      currency: experience.currency,
-      hotelName: hotel.display_name,
-    })
-    
-    await sendEmail({
-      to: guestEmail,
-      subject: `Booking request received - ${experience.title}`,
-      html: guestEmailHtml,
-    })
+    // NOTE: No guest email sent before payment (Phase 2 decision - no emails before payment)
     
     // Send email to supplier (with accept/decline buttons)
+    const dashboardUrl = 'https://dashboard.traverum.com/supplier/sessions'
+    // Build manage page URL for the supplier
+    const manageUrl = `${appUrl}/request/${reservation.id}/respond?at=${acceptToken}&dt=${declineToken}`
+
     const supplierEmailHtml = supplierNewRequest({
       experienceTitle: experience.title,
       guestName,
       guestEmail,
       guestPhone,
       date: date || '',
-      time: time || '',
+      time: requestTime || null,
       participants,
       totalCents: expectedTotal,
       currency: experience.currency,
       acceptUrl,
       declineUrl,
+      manageUrl,
       hotelName: hotel.display_name,
+      dashboardUrl,
     })
     
     await sendEmail({

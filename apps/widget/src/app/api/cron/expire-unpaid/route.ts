@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
       experience:experiences(
         title, 
         currency,
-        supplier:partners!experiences_partner_id_fkey(email, name)
+        supplier:partners!experiences_partner_fk(email, name)
       )
     `)
     .eq('reservation_status', 'approved')

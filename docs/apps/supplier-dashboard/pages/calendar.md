@@ -19,7 +19,7 @@
 - Today button
 - Month/Year display
 
-**Mobile:** Shows list view instead of calendar
+**Mobile:** Shows list view instead of calendar grid
 
 ---
 
@@ -31,36 +31,36 @@
 - **Days:** Click day to switch to day view
 - **Sessions:** Shown as pills on days (up to 3 visible, then "+X more" indicator)
 - **Today:** Highlighted with primary color background
-- **Closed days:** Shows "Closed" indicator if outside availability rules
+- **Past dates and sessions:** Dimmed with reduced opacity
 
 ### Week View
 
 - **Grid:** 7 columns (days), time slots (7am-11pm)
 - **Sessions:** Positioned by time, shows experience title and time
-- **Sessions:** Can be dragged to change time (drag and drop)
-- **Time slots:** Click to add session at that time
+- **Sessions:** Can be dragged to change time (snaps to 15-minute intervals)
+- **Time slots:** Click hour slot to add session at that time
 - **Current time:** Red line indicator (only on today's column)
 
 ### Day View
 
-- **Timeline:** Single day, time slots (7am-11pm)
-- **Sessions:** Listed by time with experience title
-- **Sessions:** Can be dragged to change time (drag and drop)
-- **Time slots:** Click to add session at that time
+- **Timeline:** Single day, time slots
+- **Sessions:** Positioned by time with experience title
+- **Sessions:** Can be dragged to change time (snaps to 15-minute intervals)
+- **Time slots:** Click hour slot to add session at that time
 - **Current time:** Red line indicator (only if viewing today)
 
 ---
 
 ## Add Session
 
-**One way to add:**
-- **Session Create Popup:** Click time slot in Week or Day view (opens popup at click position)
+**How to add:**
+- Click time slot in Week or Day view → opens Session Create Popup at click position
 
 ### Session Create Popup
 
 **Basic Fields:**
 - **Experience** (dropdown, required)
-- **Date** (date picker, required)
+- **Date** (date picker, required, prevents past dates)
 - **Start time** (time picker, required)
 - **End time** (time picker, required, auto-calculated from experience duration)
 - **Repeat toggle** (button)
@@ -69,6 +69,9 @@
 **Advanced Options** (expandable):
 - **Spots** (number, default: experience max_participants)
 - **Custom price** (EUR per person, optional, shows experience default as placeholder)
+
+**Validation:**
+- Prevents creating sessions in the past (date and time checked)
 
 **Recurring Sessions:**
 - When Repeat is enabled:
@@ -81,19 +84,20 @@
 ## Session Actions
 
 - **Click session:** Opens quick-edit popup (no page redirect)
-- **Drag session** (Week/Day view): Drag to change time
+- **Drag session** (Week/Day view): Drag to change time (saves automatically)
 
 ### Session Quick-Edit Popup
 
-Opens at click position (same pattern as Session Create Popup). Shows:
+Opens at click position. Shows:
 
-- **Summary:** Experience name, date, time, duration
-- **Capacity:** Bookings count / spots total (editable)
+- **Summary:** Experience name, date, time
+- **Capacity:** Bookings count / spots total (editable inline)
+- **Price:** Current price per person (editable inline)
 - **Status badge:** Available / Full / Cancelled
 - **Quick actions:**
-  - "Cancel Session" button (with confirmation)
-  - "Delete Session" button (only if no bookings)
-- **"View Full Details"** button → navigates to Booking Management page filtered to that session (`/supplier/bookings?session=<id>`)
+  - "View Full Details" button → navigates to Booking Management page filtered to that session
+  - "Cancel Session" button (with confirmation, only if has bookings)
+  - "Delete Session" button (with confirmation, only if no bookings)
 
 ---
 
@@ -101,9 +105,8 @@ Opens at click position (same pattern as Session Create Popup). Shows:
 
 **Session pill shows:**
 - Time (start time, e.g., "09:00")
-- Experience title (if showExperienceTitle is enabled, shown as "· Title")
+- Experience title (if enabled, shown as "· Title")
 - Bookings count (format: "X/Y" where X = bookings, Y = total spots)
-- Price note (if custom price with note exists)
 
 **Colors:**
 - Available: Success color (green tint)

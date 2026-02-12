@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { SessionWithExperience } from '@/hooks/useAllSessions';
+import { isSessionUpcoming } from '@/lib/date-utils';
 
 interface TimeSlotSessionProps {
   session: SessionWithExperience;
@@ -33,6 +34,7 @@ export function TimeSlotSession({
   const bookingsCount = session.spots_total - session.spots_available;
   const isFull = session.spots_available === 0;
   const isCancelled = session.session_status === 'cancelled';
+  const isPast = !isSessionUpcoming(session.session_date, session.start_time);
   
   // Minimum heights for content display
   const minHeight = 28;
@@ -104,6 +106,7 @@ export function TimeSlotSession({
         getBackgroundColor(),
         getBorderColor(),
         isCancelled && 'opacity-70',
+        !isCancelled && isPast && 'opacity-50',
         isBeingDragged && 'shadow-xl z-50 ring-2 ring-primary/50 scale-[1.02]',
         isDragging && !isBeingDragged && 'opacity-30',
         !isCancelled && 'cursor-grab active:cursor-grabbing'

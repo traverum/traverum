@@ -45,7 +45,8 @@ export function formatEmailDate(date: string): string {
   })
 }
 
-export function formatEmailTime(time: string): string {
+export function formatEmailTime(time: string | null | undefined): string {
+  if (!time) return 'Flexible'
   const [hours, minutes] = time.split(':')
   return `${hours}:${minutes}`
 }

@@ -108,6 +108,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
           hotelSlug={hotelSlug}
           showBack={true}
           backTo={returnUrl ? `/${hotelSlug}?embed=full&returnUrl=${encodeURIComponent(returnUrl)}` : `/${hotelSlug}?embed=full`}
+          returnUrl={returnUrl}
         />
       )}
       
@@ -153,6 +154,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
                 sessionDate={sessionDate}
                 sessionTime={sessionTime}
                 isDemo={isDemo}
+                returnUrl={returnUrl}
               />
             </div>
           </div>

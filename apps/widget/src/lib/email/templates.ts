@@ -4,13 +4,13 @@ interface BaseEmailData {
   experienceTitle: string
   guestName: string
   date: string
-  time: string
+  time: string | null | undefined
   participants: number
   totalCents: number
   currency?: string
 }
 
-// Base template wrapper
+// Base template wrapper - follows dashboard design principles (warm white, muted palette, no emojis)
 function baseTemplate(content: string, title: string) {
   return `
 <!DOCTYPE html>
@@ -20,25 +20,25 @@ function baseTemplate(content: string, title: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .card { background: white; border-radius: 12px; padding: 32px; margin: 20px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: rgba(55, 53, 47, 0.9); margin: 0; padding: 0; background-color: #FEFCF9; }
+    .container { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
+    .card { background: #FEFCF9; border-radius: 4px; padding: 32px; margin: 24px 0; border: 1px solid rgba(55, 53, 47, 0.09); }
     .header { text-align: center; margin-bottom: 24px; }
-    .header h1 { margin: 0; font-size: 24px; color: #111; }
-    .info-box { background: #f8f9fa; border-radius: 8px; padding: 16px; margin: 20px 0; }
-    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .header h1 { margin: 0; font-size: 20px; font-weight: 600; color: rgba(55, 53, 47, 0.95); }
+    .info-box { background: rgba(242, 241, 238, 0.6); border-radius: 4px; padding: 16px; margin: 20px 0; border: 1px solid rgba(55, 53, 47, 0.06); }
+    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(55, 53, 47, 0.06); }
     .info-row:last-child { border-bottom: none; }
-    .info-label { color: #666; }
-    .info-value { font-weight: 600; color: #111; }
-    .btn { display: inline-block; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 8px 4px; }
-    .btn-primary { background: #2563eb; color: white; }
-    .btn-danger { background: #dc2626; color: white; }
-    .btn-success { background: #16a34a; color: white; }
-    .btn-secondary { background: #6b7280; color: white; }
-    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 24px; }
+    .info-label { color: rgba(55, 53, 47, 0.5); font-size: 14px; }
+    .info-value { font-weight: 600; color: rgba(55, 53, 47, 0.9); font-size: 14px; }
+    .btn { display: inline-block; padding: 12px 24px; border-radius: 3px; text-decoration: none; font-weight: 600; font-size: 14px; margin: 8px 4px; }
+    .btn-primary { background: #0D9488; color: white; }
+    .btn-success { background: #6B8E6B; color: white; }
+    .btn-danger { background: #B8866B; color: white; }
+    .btn-secondary { background: rgba(55, 53, 47, 0.4); color: white; }
+    .footer { text-align: center; color: rgba(55, 53, 47, 0.4); font-size: 12px; margin-top: 32px; }
     .text-center { text-align: center; }
     .mt-4 { margin-top: 16px; }
-    .text-muted { color: #666; font-size: 14px; }
+    .text-muted { color: rgba(55, 53, 47, 0.5); font-size: 14px; }
   </style>
 </head>
 <body>
@@ -53,45 +53,6 @@ function baseTemplate(content: string, title: string) {
 `
 }
 
-// Guest: Request received
-export function guestRequestReceived(data: BaseEmailData & { hotelName: string }) {
-  const content = `
-    <div class="card">
-      <div class="header">
-        <h1>Request Received!</h1>
-      </div>
-      <p>Hi ${data.guestName},</p>
-      <p>Thank you for your booking request through ${data.hotelName}. The experience provider will review your request and respond within 48 hours.</p>
-      
-      <div class="info-box">
-        <div class="info-row">
-          <span class="info-label">Experience</span>
-          <span class="info-value">${data.experienceTitle}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Date</span>
-          <span class="info-value">${formatEmailDate(data.date)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Time</span>
-          <span class="info-value">${formatEmailTime(data.time)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Participants</span>
-          <span class="info-value">${data.participants}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Total</span>
-          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
-        </div>
-      </div>
-      
-      <p class="text-muted">We'll send you an email as soon as the provider responds to your request.</p>
-    </div>
-  `
-  return baseTemplate(content, 'Request Received')
-}
-
 // Guest: Booking approved
 export function guestBookingApproved(data: BaseEmailData & { 
   paymentUrl: string
@@ -101,7 +62,7 @@ export function guestBookingApproved(data: BaseEmailData & {
   const content = `
     <div class="card">
       <div class="header">
-        <h1>Booking Approved! 🎉</h1>
+        <h1>Booking Approved</h1>
       </div>
       <p>Hi ${data.guestName},</p>
       <p>Great news! Your booking request has been approved. Please complete your payment to confirm the booking.</p>
@@ -142,7 +103,10 @@ export function guestBookingApproved(data: BaseEmailData & {
 }
 
 // Guest: Request declined
-export function guestRequestDeclined(data: BaseEmailData) {
+export function guestRequestDeclined(data: BaseEmailData & { 
+  experienceUrl?: string
+  supplierMessage?: string 
+}) {
   const content = `
     <div class="card">
       <div class="header">
@@ -162,7 +126,20 @@ export function guestRequestDeclined(data: BaseEmailData) {
         </div>
       </div>
       
-      <p>Feel free to try booking a different date or time. We hope to see you soon!</p>
+      ${data.supplierMessage ? `
+      <div style="background: rgba(201, 169, 97, 0.12); border-radius: 4px; padding: 16px; margin: 20px 0; border: 1px solid rgba(201, 169, 97, 0.3);">
+        <p style="margin: 0 0 4px; font-weight: 600; color: #8B7355; font-size: 14px;">Message from the provider:</p>
+        <p style="margin: 0; color: rgba(55, 53, 47, 0.8); font-size: 14px;">${data.supplierMessage}</p>
+      </div>
+      ` : ''}
+      
+      <p>There may be other available sessions for this experience.</p>
+      
+      <div class="text-center mt-4">
+        <a href="${data.experienceUrl || '#'}" class="btn btn-primary">View Available Sessions</a>
+      </div>
+      
+      <p class="text-muted text-center mt-4">Browse the latest availability and book a time that works for you.</p>
     </div>
   `
   return baseTemplate(content, 'Booking Unavailable')
@@ -174,11 +151,24 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
   meetingPoint?: string | null
   cancelUrl: string
   supplierName: string
+  /** Cancellation policy text from experience (e.g. "Free cancellation up to 7 days before."). If allowCancel is false, use policy text like "This booking is non-refundable." */
+  cancellationPolicyText: string
+  /** Whether guest can cancel for refund (flexible/moderate = true; strict/non_refundable = false) */
+  allowCancel: boolean
 }) {
+  const cancelSection = data.allowCancel
+    ? `
+      <p class="text-muted">Need to cancel? ${data.cancellationPolicyText}</p>
+      <div class="text-center mt-4">
+        <a href="${data.cancelUrl}" class="btn btn-secondary">Cancel Booking</a>
+      </div>
+    `
+    : `<p class="text-muted">${data.cancellationPolicyText}</p>`
+
   const content = `
     <div class="card">
       <div class="header">
-        <h1>Booking Confirmed! ✅</h1>
+        <h1>Booking Confirmed</h1>
       </div>
       <p>Hi ${data.guestName},</p>
       <p>Your payment has been received and your booking is now confirmed!</p>
@@ -220,14 +210,210 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
         </div>
       </div>
       
-      <p class="text-muted">Need to cancel? Free cancellation is available up to 7 days before the experience.</p>
-      
-      <div class="text-center mt-4">
-        <a href="${data.cancelUrl}" class="btn btn-secondary">Cancel Booking</a>
-      </div>
+      ${cancelSection}
     </div>
   `
   return baseTemplate(content, 'Booking Confirmed')
+}
+
+// Guest: Spot reserved (session below minimum to run, no payment yet)
+export function guestSpotReserved(data: BaseEmailData & {
+  minParticipants: number
+  bookedSoFar: number
+  reservationPageUrl: string
+}) {
+  const remaining = data.minParticipants - data.bookedSoFar
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Spot Reserved</h1>
+      </div>
+      <p>Hi ${data.guestName},</p>
+      <p>Your spot has been reserved! This experience needs at least ${data.minParticipants} participants to run. Currently ${data.bookedSoFar} of ${data.minParticipants} spots are booked${remaining > 0 ? ` &mdash; ${remaining} more needed` : ''}.</p>
+      <p>Once the minimum is reached, you'll receive a payment link to confirm your booking. No payment is required until then.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Your Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Expected Total</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Progress</span>
+          <span class="info-value">${data.bookedSoFar} / ${data.minParticipants} minimum</span>
+        </div>
+      </div>
+      
+      <div class="text-center mt-4">
+        <a href="${data.reservationPageUrl}" class="btn btn-primary">View Reservation</a>
+      </div>
+      
+      <p class="text-muted text-center mt-4">If the minimum isn't reached before the session, your reservation will be cancelled automatically and no payment will be taken.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Spot Reserved')
+}
+
+// Supplier: New reservation toward minimum
+export function supplierNewReservation(data: BaseEmailData & {
+  guestEmail: string
+  guestPhone?: string | null
+  minParticipants: number
+  bookedSoFar: number
+  hotelName: string
+  dashboardUrl?: string
+}) {
+  const remaining = data.minParticipants - data.bookedSoFar
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>New Reservation</h1>
+      </div>
+      <p>A guest has reserved a spot for your experience via ${data.hotelName}.</p>
+      <p>Session progress: <strong>${data.bookedSoFar} / ${data.minParticipants} minimum</strong>${remaining > 0 ? ` &mdash; ${remaining} more needed to confirm.` : ' &mdash; minimum reached!'}</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Guest Name</span>
+          <span class="info-value">${data.guestName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Guest Email</span>
+          <span class="info-value">${data.guestEmail}</span>
+        </div>
+        ${data.guestPhone ? `
+        <div class="info-row">
+          <span class="info-label">Guest Phone</span>
+          <span class="info-value">${data.guestPhone}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+      </div>
+      
+      ${data.dashboardUrl ? `
+      <div class="text-center mt-4">
+        <a href="${data.dashboardUrl}" class="btn btn-primary">View on Dashboard</a>
+      </div>
+      ` : ''}
+      
+      <p class="text-muted text-center mt-4">Once the minimum is reached, all guests will be sent payment links automatically. You can also confirm the session early from your dashboard.</p>
+    </div>
+  `
+  return baseTemplate(content, 'New Reservation')
+}
+
+// Guest: Minimum not reached — reservation cancelled (no payment was taken)
+export function guestMinimumNotReached(data: BaseEmailData & {
+  minParticipants: number
+  bookedSoFar: number
+  experienceUrl?: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Reservation Cancelled</h1>
+      </div>
+      <p>Hi ${data.guestName},</p>
+      <p>Unfortunately, the session for ${data.experienceTitle} on ${formatEmailDate(data.date)} did not reach the minimum of ${data.minParticipants} participants (${data.bookedSoFar} were booked). Your reservation has been cancelled.</p>
+      <p><strong>No payment was taken.</strong></p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+      </div>
+      
+      ${data.experienceUrl ? `
+      <p>There may be other sessions available:</p>
+      <div class="text-center mt-4">
+        <a href="${data.experienceUrl}" class="btn btn-primary">View Other Sessions</a>
+      </div>
+      ` : ''}
+    </div>
+  `
+  return baseTemplate(content, 'Reservation Cancelled')
+}
+
+// Supplier: Session cancelled — minimum not reached
+export function supplierMinimumNotReached(data: {
+  experienceTitle: string
+  date: string
+  time: string | null | undefined
+  minParticipants: number
+  bookedSoFar: number
+  dashboardUrl?: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Session Cancelled</h1>
+      </div>
+      <p>The session for ${data.experienceTitle} on ${formatEmailDate(data.date)} did not reach the minimum of ${data.minParticipants} participants (${data.bookedSoFar} were booked). All guest reservations have been cancelled.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Progress</span>
+          <span class="info-value">${data.bookedSoFar} / ${data.minParticipants} minimum</span>
+        </div>
+      </div>
+      
+      ${data.dashboardUrl ? `
+      <div class="text-center mt-4">
+        <a href="${data.dashboardUrl}" class="btn btn-primary">Go to Dashboard</a>
+      </div>
+      ` : ''}
+      
+      <p class="text-muted text-center mt-4">No payments were collected, so no refunds are needed.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Session Cancelled — Minimum Not Reached')
 }
 
 // Guest: Instant booking (session-based, can pay immediately)
@@ -240,7 +426,7 @@ export function guestInstantBooking(data: BaseEmailData & {
   const content = `
     <div class="card">
       <div class="header">
-        <h1>Complete Your Booking! 🎉</h1>
+        <h1>Complete Your Booking</h1>
       </div>
       <p>Hi ${data.guestName},</p>
       <p>Great choice! Your spot is reserved. Complete your payment to confirm the booking.</p>
@@ -346,7 +532,9 @@ export function supplierNewRequest(data: BaseEmailData & {
   guestPhone?: string | null
   acceptUrl: string
   declineUrl: string
+  manageUrl?: string
   hotelName: string
+  dashboardUrl?: string
 }) {
   const content = `
     <div class="card">
@@ -397,6 +585,12 @@ export function supplierNewRequest(data: BaseEmailData & {
         <a href="${data.declineUrl}" class="btn btn-danger">Decline</a>
       </div>
       
+      ${data.manageUrl ? `
+      <div class="text-center mt-4">
+        <a href="${data.manageUrl}" style="color: rgba(55, 53, 47, 0.5); font-size: 14px; text-decoration: underline;">Decline &amp; suggest other times</a>
+      </div>
+      ` : ''}
+      
       <p class="text-muted text-center mt-4">Please respond within 48 hours. If you don't respond, the request will expire automatically.</p>
     </div>
   `
@@ -412,7 +606,7 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
   const content = `
     <div class="card">
       <div class="header">
-        <h1>Payment Received! 💰</h1>
+        <h1>Payment Received</h1>
       </div>
       <p>Great news! Your guest has completed payment and the booking is now confirmed.</p>
       
@@ -508,7 +702,7 @@ export function guestPaymentFailed(data: BaseEmailData & {
   const content = `
     <div class="card">
       <div class="header">
-        <h1>Payment Failed ❌</h1>
+        <h1>Payment Failed</h1>
       </div>
       <p>Hi ${data.guestName},</p>
       <p>Unfortunately, your payment for the following experience could not be processed.</p>
@@ -558,7 +752,7 @@ export function guestRefundProcessed(data: BaseEmailData & {
   const content = `
     <div class="card">
       <div class="header">
-        <h1>Refund Processed 💳</h1>
+        <h1>Refund Processed</h1>
       </div>
       <p>Hi ${data.guestName},</p>
       <p>Your refund has been processed successfully. The funds will be returned to your original payment method within 5-10 business days.</p>
@@ -600,7 +794,7 @@ export function supplierPayoutSent(data: {
   const content = `
     <div class="card">
       <div class="header">
-        <h1>Payment Sent! 🎉</h1>
+        <h1>Payment Sent</h1>
       </div>
       <p>Great news! Your payout has been initiated and is on its way to your bank account.</p>
       
@@ -633,59 +827,6 @@ export function supplierPayoutSent(data: {
   return baseTemplate(content, 'Payment Sent')
 }
 
-// Guest: Time proposed by supplier (1-3 alternative slots)
-export function guestTimeProposed(data: {
-  experienceTitle: string
-  guestName: string
-  originalDate: string
-  originalTime: string
-  proposedTimes: Array<{ date: string; time: string }>
-  participants: number
-  totalCents: number
-  currency?: string
-  acceptUrl: string
-  declineUrl: string
-}) {
-  const slotsHtml = data.proposedTimes.map((slot, index) => `
-    <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px 16px; margin: 8px 0; text-align: center;">
-      <strong>Option ${index + 1}:</strong> ${formatEmailDate(slot.date)} at ${formatEmailTime(slot.time)}
-      <br/>
-      <a href="${data.acceptUrl}&slot=${index}" class="btn btn-success" style="margin-top: 8px; padding: 10px 20px; font-size: 14px;">Accept this time</a>
-    </div>
-  `).join('')
-
-  const content = `
-    <div class="card">
-      <div class="header">
-        <h1>New Time Proposed</h1>
-      </div>
-      <p>Hi ${data.guestName},</p>
-      <p>The experience provider reviewed your request for <strong>${data.experienceTitle}</strong> on ${formatEmailDate(data.originalDate)} at ${formatEmailTime(data.originalTime)}, but that time isn't available.</p>
-      <p>They've proposed the following alternative${data.proposedTimes.length > 1 ? 's' : ''}:</p>
-      
-      ${slotsHtml}
-      
-      <div class="info-box">
-        <div class="info-row">
-          <span class="info-label">Participants</span>
-          <span class="info-value">${data.participants}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Total</span>
-          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
-        </div>
-      </div>
-      
-      <div class="text-center mt-4">
-        <a href="${data.declineUrl}" class="btn btn-secondary">None of these work</a>
-      </div>
-      
-      <p class="text-muted text-center mt-4">Please respond within 48 hours. If you don't respond, the request will expire automatically.</p>
-    </div>
-  `
-  return baseTemplate(content, 'New Time Proposed')
-}
-
 // Admin: Stripe account updated
 export function adminAccountStatusChanged(data: {
   partnerName: string
@@ -696,11 +837,10 @@ export function adminAccountStatusChanged(data: {
   chargesEnabled: boolean
   payoutsEnabled: boolean
 }) {
-  const statusIcon = data.isOnboardingComplete ? '✅' : '⚠️'
   const content = `
     <div class="card">
       <div class="header">
-        <h1>Stripe Account Update ${statusIcon}</h1>
+        <h1>Stripe Account Update</h1>
       </div>
       <p>A partner's Stripe account status has changed:</p>
       
@@ -723,15 +863,15 @@ export function adminAccountStatusChanged(data: {
         </div>
         <div class="info-row">
           <span class="info-label">Onboarding Complete</span>
-          <span class="info-value">${data.isOnboardingComplete ? 'Yes ✅' : 'No ❌'}</span>
+          <span class="info-value">${data.isOnboardingComplete ? 'Yes' : 'No'}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Charges Enabled</span>
-          <span class="info-value">${data.chargesEnabled ? 'Yes ✅' : 'No ❌'}</span>
+          <span class="info-value">${data.chargesEnabled ? 'Yes' : 'No'}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Payouts Enabled</span>
-          <span class="info-value">${data.payoutsEnabled ? 'Yes ✅' : 'No ❌'}</span>
+          <span class="info-value">${data.payoutsEnabled ? 'Yes' : 'No'}</span>
         </div>
       </div>
       

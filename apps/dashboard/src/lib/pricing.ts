@@ -26,7 +26,8 @@ export interface PriceCalculation {
  * - base_plus_extra: Base price includes X people, then extra per additional person
  * - per_day: Time-based pricing for rentals (price_per_day × days × quantity)
  * 
- * Min participants enforces a "price floor" - if fewer book, they pay for minimum
+ * Note: min_participants is a session-level threshold (min to run), not a pricing floor.
+ * Each guest pays for exactly the number of people they bring.
  */
 export function calculateTotalPrice(
   participants: number,
@@ -36,8 +37,8 @@ export function calculateTotalPrice(
 ): PriceCalculation {
   const { pricing_type, base_price_cents, included_participants, extra_person_cents, min_participants, min_days } = pricing;
   
-  // Apply minimum participants (price floor)
-  const effective_participants = Math.max(participants, min_participants);
+  // Each guest pays for exactly the people they bring
+  const effective_participants = participants;
   
   let total_cents: number;
   let breakdown: string;
@@ -52,11 +53,7 @@ export function calculateTotalPrice(
   switch (pricing_type) {
     case 'per_person':
       total_cents = extra_person_cents * effective_participants;
-      if (participants < min_participants) {
-        breakdown = `${formatPrice(extra_person_cents)} × ${min_participants} (minimum) = ${formatPrice(total_cents)}`;
-      } else {
-        breakdown = `${formatPrice(extra_person_cents)} × ${participants} = ${formatPrice(total_cents)}`;
-      }
+      breakdown = `${formatPrice(extra_person_cents)} × ${participants} = ${formatPrice(total_cents)}`;
       break;
 
     case 'flat_rate':
@@ -107,7 +104,7 @@ export function getPricingSummary(pricing: PricingConfig): string {
   switch (pricing_type) {
     case 'per_person':
       if (min_participants > 1) {
-        return `${formatPrice(extra_person_cents)} per person (min. ${min_participants})`;
+        return `${formatPrice(extra_person_cents)} per person (${min_participants} min. to run)`;
       }
       return `${formatPrice(extra_person_cents)} per person`;
 
@@ -137,10 +134,10 @@ export function getPriceExamples(pricing: PricingConfig): { participants: number
   const examples: { participants: number; price: string }[] = [];
   const { min_participants, max_participants } = pricing;
   
-  // Show min, middle, and max examples
+  // Show 1, middle, and max examples
   const points = [
-    min_participants,
-    Math.ceil((min_participants + max_participants) / 2),
+    1,
+    Math.ceil((1 + max_participants) / 2),
     max_participants
   ].filter((v, i, a) => a.indexOf(v) === i); // Remove duplicates
   
