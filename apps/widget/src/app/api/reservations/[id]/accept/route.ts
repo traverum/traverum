@@ -60,7 +60,7 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
       reservationData = {
         ...res,
         experience: exp,
-        session: session?.data ?? null,
+        session: session ?? null,
         hotel,
       }
     }
