@@ -140,7 +140,7 @@ export const CANCELLATION_POLICIES: {
  */
 export function getCancellationPolicyText(
   policy: CancellationPolicy | string | null | undefined,
-  forceMajeureRefund?: boolean
+  forceMajeureRefund?: boolean | null
 ): string {
   const p = (policy || 'moderate') as CancellationPolicy
   const info = CANCELLATION_POLICIES.find((x) => x.value === p)
