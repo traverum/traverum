@@ -46,7 +46,7 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
     reservationData = fullData
   } else {
     // Fallback: fetch reservation only, then experience/hotel separately
-    const { data: res } = await supabase.from('reservations').select('*').eq('id', reservationId).single()
+    const { data: res } = await supabase.from('reservations').select('*').eq('id', reservationId).single() as { data: any }
     if (res) {
       const { data: exp } = await supabase
         .from('experiences')
