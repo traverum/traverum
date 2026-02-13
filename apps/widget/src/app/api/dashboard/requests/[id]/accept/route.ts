@@ -71,7 +71,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from('users')
       .select('id')
       .eq('auth_id', user.id)
-      .single()
+      .single() as { data: { id: string } | null }
 
     if (!appUser) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 403 })
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .select('id')
       .eq('user_id', appUser.id)
       .eq('partner_id', supplier.id)
-      .single()
+      .single() as { data: { id: string } | null }
 
     if (!userPartner) {
       return NextResponse.json({ error: 'Forbidden: you do not own this experience' }, { status: 403 })
