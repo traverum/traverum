@@ -85,6 +85,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
+    // This route handles custom request acceptance
+    // Session-based bookings are auto-approved and should not reach this endpoint
+    if (!reservation.is_request) {
+      return NextResponse.json(
+        { error: 'This is not a custom request. Session-based bookings are handled automatically.' },
+        { status: 400 }
+      )
+    }
+
     // Accept as-is: use guest's requested date and time (supplier cannot change them)
     if (!reservation.requested_date || !reservation.requested_time) {
       return NextResponse.json(
@@ -111,53 +120,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     let sessionId = reservation.session_id
 
     if (!sessionId) {
-      // Check if session already exists
-      const { data: existingSession } = await supabase
-        .from('experience_sessions')
-        .select('id, spots_available')
-        .eq('experience_id', experience.id)
-        .eq('session_date', reservation.requested_date)
-        .eq('start_time', formattedTime)
+      // Create a private session for this booking (status 'booked' — not visible in widget)
+      const { data: newSession, error: sessionError } = await (supabase
+        .from('experience_sessions') as any)
+        .insert({
+          experience_id: experience.id,
+          session_date: reservation.requested_date,
+          start_time: formattedTime,
+          spots_total: experience.max_participants,
+          spots_available: 0,
+          session_status: 'booked', // Private: not shown in widget
+        })
+        .select()
         .single()
 
-      if (existingSession) {
-        const session = existingSession as any
-        sessionId = session.id
-        const newSpotsAvailable = session.spots_available - reservation.participants
-
-        if (newSpotsAvailable < 0) {
-          return NextResponse.json({ error: 'Not enough spots available' }, { status: 400 })
-        }
-
-        await (supabase.from('experience_sessions') as any)
-          .update({
-            spots_available: newSpotsAvailable,
-            session_status: newSpotsAvailable === 0 ? 'full' : 'available',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', sessionId)
-      } else {
-        // Create new session
-        const { data: newSession, error: sessionError } = await (supabase
-          .from('experience_sessions') as any)
-          .insert({
-            experience_id: experience.id,
-            session_date: reservation.requested_date,
-            start_time: formattedTime,
-            spots_total: experience.max_participants,
-            spots_available: experience.max_participants - reservation.participants,
-            session_status: 'available',
-          })
-          .select()
-          .single()
-
-        if (sessionError || !newSession) {
-          console.error('Failed to create session:', sessionError)
-          return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
-        }
-
-        sessionId = newSession.id
+      if (sessionError || !newSession) {
+        console.error('Failed to create session:', sessionError)
+        return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
       }
+
+      sessionId = newSession.id
 
       // Update reservation with session_id
       await (supabase.from('reservations') as any)

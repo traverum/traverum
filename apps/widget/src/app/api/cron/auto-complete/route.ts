@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
               <p>A booking has been automatically marked as completed (7 days after the experience date with no response).</p>
               <p><strong>Experience:</strong> ${experience.title}</p>
               <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
-              <p><strong>Amount transferred:</strong> €${(booking.supplier_amount_cents / 100).toFixed(2)}</p>
+              <p><strong>Amount transferred:</strong> ${new Intl.NumberFormat('en', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</p>
               <p style="color: #666; margin-top: 20px;">If the experience did not happen, please contact support.</p>
             </div>
           `,

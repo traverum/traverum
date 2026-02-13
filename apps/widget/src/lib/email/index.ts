@@ -40,7 +40,10 @@ export function getAppUrl() {
 }
 
 export function formatEmailDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-GB', {
+  if (!date) return 'Flexible date'
+  const parsed = new Date(date)
+  if (isNaN(parsed.getTime())) return 'Flexible date'
+  return parsed.toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',

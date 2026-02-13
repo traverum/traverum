@@ -26,8 +26,6 @@ interface SessionPickerProps {
   onRequestTimeChange: (time: string) => void
   participants: number
   availabilityRules?: AvailabilityRule[]
-  /** Minimum total participants for a session to run (experience.min_participants). Default 1 = no threshold. */
-  minParticipants?: number
 }
 
 // Animation variants with reduced motion support
@@ -52,7 +50,6 @@ export function SessionPicker({
   onRequestTimeChange,
   participants,
   availabilityRules = [],
-  minParticipants = 1,
 }: SessionPickerProps) {
   const shouldReduceMotion = useReducedMotion()
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<Date | undefined>(
@@ -62,10 +59,8 @@ export function SessionPicker({
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  // Filter sessions based on participants
-  const availableSessions = useMemo(() => {
-    return sessions.filter(session => session.spots_available >= participants)
-  }, [sessions, participants])
+  // All sessions passed to this component are already available (filtered by session_status)
+  const availableSessions = sessions
 
   // Group sessions by date (YYYY-MM-DD format)
   const sessionsByDate = useMemo(() => {
@@ -220,13 +215,7 @@ export function SessionPicker({
                           {formatTime(session.start_time)}
                         </div>
                         <div className="text-[10px] text-muted-foreground tabular-nums">
-                          {(() => {
-                            const booked = session.spots_total - session.spots_available
-                            if (minParticipants > 1 && booked < minParticipants) {
-                              return `${booked}/${minParticipants} min. booked`
-                            }
-                            return `${session.spots_available} ${session.spots_available === 1 ? 'spot' : 'spots'} left`
-                          })()}
+                          Available
                         </div>
                       </button>
                     )

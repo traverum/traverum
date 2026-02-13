@@ -8,7 +8,6 @@ interface ParticipantSelectorProps {
   onChange: (value: number) => void
   min: number
   max: number
-  availableSpots?: number
 }
 
 export function ParticipantSelector({ 
@@ -16,23 +15,21 @@ export function ParticipantSelector({
   onChange, 
   min, 
   max,
-  availableSpots 
 }: ParticipantSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const optionsRef = useRef<(HTMLButtonElement | null)[]>([])
-  const effectiveMax = availableSpots ? Math.min(max, availableSpots) : max
   
   // Generate array of valid participant counts
   const participantOptions = useMemo(() => {
     const options: number[] = []
-    for (let i = min; i <= effectiveMax; i++) {
+    for (let i = min; i <= max; i++) {
       options.push(i)
     }
     return options
-  }, [min, effectiveMax])
+  }, [min, max])
 
   // Find the current value index
   const currentIndex = participantOptions.indexOf(value)
@@ -112,11 +109,6 @@ export function ParticipantSelector({
     <div className="relative font-body" ref={dropdownRef}>
       <label id="participant-label" className="block">
         <span className="text-sm font-medium text-foreground">Participants</span>
-        {availableSpots && availableSpots < max && (
-          <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
-            {availableSpots} spots available
-          </p>
-        )}
       </label>
       
       {/* Dropdown button */}

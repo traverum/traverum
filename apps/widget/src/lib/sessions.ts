@@ -3,7 +3,10 @@ import type { ExperienceSession } from './supabase/types'
 import { startOfDay, addDays, format } from 'date-fns'
 
 /**
- * Fetch available sessions for an experience
+ * Fetch available sessions for an experience.
+ * Only sessions with status 'available' are shown in the widget.
+ * Sessions with status 'booked' (claimed by a group or created from accepted request)
+ * are not visible to other guests.
  */
 export async function getAvailableSessions(
   experienceId: string,
@@ -21,7 +24,6 @@ export async function getAvailableSessions(
     .eq('session_status', 'available')
     .gte('session_date', format(startDate, 'yyyy-MM-dd'))
     .lte('session_date', format(endDate, 'yyyy-MM-dd'))
-    .gt('spots_available', 0)
     .order('session_date', { ascending: true })
     .order('start_time', { ascending: true })
   
@@ -46,13 +48,6 @@ export function groupSessionsByDate(sessions: ExperienceSession[]): Map<string, 
   }
   
   return grouped
-}
-
-/**
- * Check if a session has enough spots
- */
-export function hasAvailableSpots(session: ExperienceSession, requestedSpots: number): boolean {
-  return session.spots_available >= requestedSpots
 }
 
 /**

@@ -11,8 +11,6 @@ interface CalendarDayProps {
   sessions: Array<{
     id: string;
     start_time: string;
-    spots_total: number;
-    spots_available: number;
     session_status: string;
     price_override_cents: number | null;
     price_note: string | null;

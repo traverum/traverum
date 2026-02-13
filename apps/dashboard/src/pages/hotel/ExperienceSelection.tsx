@@ -326,7 +326,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
             commission_hotel: commissionRates.hotel,
             commission_platform: commissionRates.platform,
             is_active: true,
-          } as any);
+          });
         if (error) throw error;
       }
     },

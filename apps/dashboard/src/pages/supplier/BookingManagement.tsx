@@ -190,24 +190,11 @@ function SessionCard({
     }
   };
 
-  const minToRun = session.experience?.min_participants || 1;
-  const hasPendingMinimum = session.pendingMinimumCount > 0;
-
   const getStatusBadge = () => {
     if (isCancelled) return <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Cancelled</Badge>;
     if (isPast) return <Badge variant="secondary" className="text-[10px] h-4 px-1.5 text-muted-foreground">Past</Badge>;
-    if (session.spots_available === 0) return <Badge className="bg-warning/10 text-warning text-[10px] h-4 px-1.5">Full</Badge>;
+    if (session.session_status === 'booked') return <Badge className="bg-primary/10 text-primary text-[10px] h-4 px-1.5">Booked</Badge>;
     return <Badge className="bg-success/10 text-success text-[10px] h-4 px-1.5">Available</Badge>;
-  };
-
-  const getMinBadge = () => {
-    if (!hasPendingMinimum || isPast || isCancelled) return null;
-    const booked = session.spots_total - session.spots_available;
-    return (
-      <Badge className="bg-amber-100 text-amber-700 text-[10px] h-4 px-1.5">
-        {booked}/{minToRun} min
-      </Badge>
-    );
   };
 
   const getGuestStatusBadge = (guest: SessionGuest) => {
@@ -219,12 +206,6 @@ function SessionCard({
         const isRefunded = !!guest.booking.stripe_refund_id;
         return <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{isRefunded ? 'Refunded' : 'Cancelled'}</Badge>;
       }
-    }
-    if (guest.reservation_status === 'pending_minimum') {
-      return <Badge className="bg-warning/10 text-warning text-[10px] h-4 px-1.5">Waiting for min.</Badge>;
-    }
-    if (guest.reservation_status === 'cancelled_minimum') {
-      return <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Min. not reached</Badge>;
     }
     return <Badge variant="outline" className="text-[10px] h-4 px-1.5">{guest.reservation_status}</Badge>;
   };
@@ -261,10 +242,9 @@ function SessionCard({
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {getMinBadge()}
                 {getStatusBadge()}
                 <span className="text-xs text-muted-foreground">
-                  {session.bookingsCount}/{session.spots_total}
+                  {session.bookingsCount} booking{session.bookingsCount !== 1 ? 's' : ''}
                 </span>
               </div>
             </button>

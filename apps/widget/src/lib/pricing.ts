@@ -18,8 +18,8 @@ export interface PriceCalculation {
  * - 'base_plus_extra': base_price_cents for included_participants, extra_person_cents for additional
  * - 'flat_rate': base_price_cents (constant, regardless of participants)
  * 
- * Note: min_participants is a session-level threshold (min to run), not a pricing floor.
- * Each guest pays for exactly the number of people they bring.
+ * Note: min_participants is a pricing floor only — it does NOT gate session availability.
+ * Each guest pays for exactly the number of people they bring (min_participants is the minimum billable).
  */
 export function calculatePrice(
   experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants'>,

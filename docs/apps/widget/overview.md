@@ -1,5 +1,3 @@
-Updated by Elias on 07-02-2026
-
 # Booking Widget Overview
 
 ## Why This Exists
@@ -22,31 +20,27 @@ Two delivery modes, same app:
 | **Full-page** | `book.traverum.com/{hotelSlug}` | QR codes, email links, direct traffic |
 | **Section embed** | Shadow DOM widget on hotel site | Embedded on hotel website pages |
 
-See `widget-embed-architecture.md` for technical details on the embed system.
+See `widget-embed-architecture.md` for the embed system.
 
 ## Page Flow
 
-```
-Hotel Experience List → Experience Detail → Checkout → Confirmation / Reservation Status
-     /{hotelSlug}        /{hotelSlug}/{slug}    /checkout     /confirmation/{id}
-                                                              /reservation/{id}
-```
+`Experience List → Experience Detail → Checkout → Confirmation / Reservation Status`
 
 ## Key Behaviours
 
-- **Theming** — Every hotel gets custom colors, fonts, spacing. Widget adapts via `hotel_configs` table. See `widget-theming-onboarding.md`.
-- **Availability-aware** — Calendar respects experience availability rules (weekdays, operating hours, seasons). Unavailable days are disabled.
-- **Two booking paths** — Session-based (instant, pick existing session) and request-based (custom date/time, needs supplier approval).
-- **Demo mode** — `hotel-traverum` slug runs in demo mode (no real API calls on checkout).
-- **Responsive** — Desktop shows booking panel on the right. Mobile uses bottom sheet + sticky booking bar.
-- **Pricing** — Supports per-person, flat-rate, and base+extras pricing. Prices in cents, displayed as EUR (€).
+- **Theming** — Custom colors, fonts, spacing per hotel via `hotel_configs`. See `widget-theming-onboarding.md`.
+- **Two booking paths** — Session-based (instant, pick existing session, one group per session) and request-based (custom date/time, needs supplier approval).
+- **Availability-aware** — Calendar respects weekdays, operating hours, seasonal rules. Unavailable days disabled.
+- **Pricing** — Per-person, flat-rate, base+extras. Prices in cents, displayed as EUR (€).
+- **Demo mode** — `hotel-traverum` slug skips real API calls on checkout.
+- **Responsive** — Desktop: booking panel on right. Mobile: bottom sheet + sticky bar.
 
 ## Tech
 
-- **Framework:** Next.js 14 (App Router, server components + client components)
-- **Hosting:** Vercel (`apps/widget` root directory)
+- **Framework:** Next.js 14 (App Router)
+- **Hosting:** Vercel (`apps/widget`)
 - **Domain:** book.traverum.com
 - **Database:** Supabase (shared with dashboard)
 - **Payments:** Stripe Checkout
-- **UI:** Tailwind CSS, Framer Motion animations, shadcn/ui calendar
-- **Fonts:** Configurable per hotel (Google Fonts, injected at runtime)
+- **UI:** Tailwind CSS, Framer Motion, shadcn/ui
+- **Fonts:** Configurable per hotel (Google Fonts, runtime injection)

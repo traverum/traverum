@@ -42,15 +42,14 @@ export function SessionQuickEditPopup({
   const hasPositioned = useRef(false);
 
   // Edit state
-  const [editingField, setEditingField] = useState<'spots' | 'price' | null>(null);
-  const [editSpots, setEditSpots] = useState(0);
+  const [editingField, setEditingField] = useState<'price' | null>(null);
   const [editPrice, setEditPrice] = useState('');
   const [saving, setSaving] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  const bookingsCount = session ? session.spots_total - session.spots_available : 0;
+  const isBooked = session?.session_status === 'booked';
   const isCancelled = session?.session_status === 'cancelled';
   const experiencePrice = session?.experience?.price_cents || 0;
   const currentPrice = session?.price_override_cents !== null ? session?.price_override_cents : experiencePrice;
@@ -59,7 +58,6 @@ export function SessionQuickEditPopup({
   useEffect(() => {
     if (isOpen && session) {
       setEditingField(null);
-      setEditSpots(session.spots_available);
       setEditPrice(session.price_override_cents !== null ? (session.price_override_cents / 100).toString() : '');
     }
   }, [isOpen, session?.id]);
@@ -105,31 +103,6 @@ export function SessionQuickEditPopup({
   }, [isOpen, onClose]);
 
   if (!isOpen || !session) return null;
-
-  const handleSaveSpots = async () => {
-    setSaving(true);
-    try {
-      const newTotal = bookingsCount + editSpots;
-      const { error } = await supabase
-        .from('experience_sessions')
-        .update({
-          spots_total: newTotal,
-          spots_available: editSpots,
-          session_status: editSpots === 0 ? 'full' : 'available',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', session.id);
-
-      if (error) throw error;
-      toast({ title: 'Spots updated' });
-      setEditingField(null);
-      onSessionUpdate?.();
-    } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleSavePrice = async () => {
     setSaving(true);
@@ -198,8 +171,8 @@ export function SessionQuickEditPopup({
     switch (session.session_status) {
       case 'available':
         return <Badge className="bg-success/10 text-success hover:bg-success/20 text-[10px] h-5">Available</Badge>;
-      case 'full':
-        return <Badge className="bg-warning/10 text-warning hover:bg-warning/20 text-[10px] h-5">Full</Badge>;
+      case 'booked':
+        return <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-[10px] h-5">Booked</Badge>;
       case 'cancelled':
         return <Badge variant="secondary" className="text-[10px] h-5">Cancelled</Badge>;
       default:
@@ -248,47 +221,13 @@ export function SessionQuickEditPopup({
             <span className="text-muted-foreground ml-2">{session.start_time.slice(0, 5)}</span>
           </div>
 
-          {/* Capacity */}
+          {/* Booking Status */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
               <Users className="w-3.5 h-3.5 text-muted-foreground" />
-              {editingField === 'spots' ? (
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    min={0}
-                    value={editSpots}
-                    onChange={(e) => setEditSpots(parseInt(e.target.value) || 0)}
-                    className={cn(inputClass, "w-16 text-xs")}
-                    autoFocus
-                  />
-                  <span className="text-xs text-muted-foreground">avail</span>
-                  <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={handleSaveSpots} disabled={saving}>
-                    Save
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setEditingField(null)}>
-                    ×
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <span>
-                    <span className="font-medium">{bookingsCount}</span>
-                    <span className="text-muted-foreground">/{session.spots_total} booked</span>
-                  </span>
-                  {!isCancelled && (
-                    <button
-                      onClick={() => {
-                        setEditSpots(session.spots_available);
-                        setEditingField('spots');
-                      }}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Edit
-                    </button>
-                  )}
-                </>
-              )}
+              <span className="font-medium">
+                {isBooked ? 'Booked' : isCancelled ? 'Cancelled' : 'Available'}
+              </span>
             </div>
           </div>
 
@@ -353,7 +292,7 @@ export function SessionQuickEditPopup({
               Full Details
             </Button>
             {!isCancelled && (
-              bookingsCount > 0 ? (
+              isBooked ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -383,8 +322,7 @@ export function SessionQuickEditPopup({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel session?</AlertDialogTitle>
             <AlertDialogDescription>
-              This session has {bookingsCount} guest{bookingsCount !== 1 ? 's' : ''} booked.
-              They will be notified and refunded.
+              This session has a booking. The guest will be notified and refunded.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

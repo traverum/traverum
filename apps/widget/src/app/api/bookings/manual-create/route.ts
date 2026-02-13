@@ -217,12 +217,12 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', finalReservationId)
 
-    // Update session spots if session-based booking
+    // Mark session as booked if session-based booking
     if (reservation.session_id) {
       await (supabase
         .from('experience_sessions') as any)
         .update({
-          spots_available: session.spots_available - reservation.participants,
+          session_status: 'booked',
           updated_at: new Date().toISOString(),
         })
         .eq('id', reservation.session_id)

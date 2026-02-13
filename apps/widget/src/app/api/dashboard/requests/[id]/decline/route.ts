@@ -98,19 +98,31 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', reservation.id)
 
+    // Defensive: release session if one was claimed (shouldn't happen for requests, but safety net)
+    if (reservation.session_id) {
+      await (supabase.from('experience_sessions') as any)
+        .update({
+          session_status: 'available',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reservation.session_id)
+    }
+
     const date = reservation.requested_date || ''
     const time = reservation.requested_time || null
     const appUrl = getAppUrl()
 
     // Build experience URL for the "Browse Sessions" CTA
-    // Find hotel config for the URL
-    const { data: hotelConfig } = await supabase
-      .from('hotel_configs')
-      .select('slug')
-      .eq('partner_id', reservation.hotel_id)
-      .single()
-
-    const hotelSlug = (hotelConfig as any)?.slug || 'default'
+    // Find hotel config for the URL (hotel_id may be null for direct supplier requests)
+    let hotelSlug = 'default'
+    if (reservation.hotel_id) {
+      const { data: hotelConfig } = await supabase
+        .from('hotel_configs')
+        .select('slug')
+        .eq('partner_id', reservation.hotel_id)
+        .single()
+      hotelSlug = (hotelConfig as any)?.slug || 'default'
+    }
     const experienceUrl = `${appUrl}/${hotelSlug}/${experience.slug || experience.id}`
 
     // Send decline email to guest with Browse Sessions CTA

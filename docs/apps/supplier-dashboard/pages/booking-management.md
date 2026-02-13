@@ -11,7 +11,7 @@ Reviewed by Elias
 **Tabs:** Pending Requests | Upcoming Sessions | Past Sessions. URL `?session=<id>` opens that session (e.g. from calendar).
 
 - **Pending Requests:** Reservations `pending`.
-- **Upcoming Sessions:** By date; expand to see guests. Per session: date, time, experience, status (available/full/cancelled), bookings/spots. Per guest: name, participants, language, booking status, amount; email/phone only for paid (confirmed/completed). Actions: Copy all emails (paid only), Cancel session (refunds + confirm).
-- **Past Sessions:** Same guest list; refund/payout status. Refunding here too for cases where experiecne happened but the guest was not happy at all.
+- **Upcoming Sessions:** By date; expand to see guest details. Per session: date, time, experience, status (available/booked/cancelled). Per guest: name, participants, language, booking status, amount; email/phone only for paid (confirmed/completed). Actions: Copy all emails (paid only), Cancel session (refunds + confirm).
+- **Past Sessions:** Same guest list; refund/payout status. Refunding here too for cases where experience happened but the guest was not happy at all.
 
 **Privacy:** Name, participants, time, amount always visible. Email/phone only after payment. Copy emails only includes paid guests.

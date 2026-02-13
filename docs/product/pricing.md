@@ -29,7 +29,7 @@ All prices are stored in **cents** (integer) to avoid floating-point precision i
 | `extra_person_cents` | integer | Price per person in cents (used for `per_person` and as "extra" in `base_plus_extra`) |
 | `price_per_day_cents` | integer | Price per day in cents (used for `per_day` rentals) |
 | `included_participants` | integer | How many people are included in base price (for `base_plus_extra`) |
-| `min_participants` | integer | Minimum booking size - creates a "price floor" |
+| `min_participants` | integer | Minimum charge size — pricing floor only (e.g. 1 guest pays for 2 if min is 2). Does NOT gate session availability. |
 | `max_participants` | integer | Maximum capacity for the experience |
 | `min_days` | integer | Minimum rental period in days (for `per_day` rentals) |
 | `max_days` | integer | Maximum rental period in days (for `per_day` rentals, nullable) |
@@ -73,9 +73,10 @@ Where `effective_participants = max(participants, min_participants)`
 - 3 guests = 120€
 - 10 guests = 400€
 
-**With minimum participants**: If `min_participants = 2` and only 1 person books:
+**With minimum participants (pricing floor)**: If `min_participants = 2` and only 1 person books:
 - They pay for 2 people (80€) even though they're alone
 - This protects the supplier from unprofitable small bookings
+- Note: `min_participants` is a **pricing floor only** — it does not prevent the guest from booking or gate session availability
 
 ### Database Fields Used
 - `pricing_type = 'per_person'`
@@ -283,9 +284,10 @@ calculateTotalPrice(
 
 ### Key Behaviors
 
-1. **Minimum Enforcement**: `effective_participants = Math.max(participants, min_participants)`
+1. **Minimum Enforcement (Pricing Floor)**: `effective_participants = Math.max(participants, min_participants)`
    - Applies to `per_person` and `base_plus_extra` types
-   - Creates a price floor to protect suppliers
+   - Creates a price floor to protect suppliers from unprofitable small bookings
+   - This is a **pricing-only** concept — it does not affect session availability or block bookings
 
 2. **Session Override**: If a session has `price_override_cents`, it ignores all other pricing logic
 

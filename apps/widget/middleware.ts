@@ -1,8 +1,29 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+// CORS headers for dashboard API (cross-origin calls from dashboard app)
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Handle CORS for /api/dashboard/* routes (dashboard app calls cross-origin)
+  if (pathname.startsWith('/api/dashboard')) {
+    // Preflight OPTIONS → respond immediately
+    if (request.method === 'OPTIONS') {
+      return new NextResponse(null, { status: 204, headers: corsHeaders })
+    }
+    // Actual request → add CORS headers to response
+    const response = NextResponse.next()
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value)
+    })
+    return response
+  }
 
   // Only protect /dashboard routes (except /dashboard/login)
   if (!pathname.startsWith('/dashboard')) {
@@ -79,5 +100,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/api/dashboard/:path*'],
 }

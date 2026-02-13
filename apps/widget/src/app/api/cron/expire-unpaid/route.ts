@@ -63,23 +63,15 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', reservation.id)
       
-      // Release spots if session-based
+      // Release session — set back to available
       if (reservation.session_id) {
-        const { data: session } = await supabase
-          .from('experience_sessions')
-          .select('spots_available')
+        await (supabase
+          .from('experience_sessions') as any)
+          .update({
+            session_status: 'available',
+            updated_at: new Date().toISOString(),
+          })
           .eq('id', reservation.session_id)
-          .single()
-        
-        if (session) {
-          await (supabase
-            .from('experience_sessions') as any)
-            .update({
-              spots_available: (session as any).spots_available + reservation.participants,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', reservation.session_id)
-        }
       }
       
       const experience = reservation.experience as any

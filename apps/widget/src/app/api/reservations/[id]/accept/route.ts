@@ -116,58 +116,27 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
   let sessionId = reservation.session_id
   
   if (reservation.is_request && !sessionId && reservation.requested_date && reservation.requested_time) {
-    // First check if a session already exists for this date/time
-    const { data: existingSession } = await supabase
-      .from('experience_sessions')
-      .select('id, spots_available')
-      .eq('experience_id', experience.id)
-      .eq('session_date', reservation.requested_date)
-      .eq('start_time', reservation.requested_time)
+    // Create a private session for this booking (status 'booked' — not visible in widget)
+    const { data: newSession, error: sessionError } = await (supabase
+      .from('experience_sessions') as any)
+      .insert({
+        experience_id: experience.id,
+        session_date: reservation.requested_date,
+        start_time: reservation.requested_time,
+        spots_total: experience.max_participants,
+        spots_available: 0,
+        session_status: 'booked', // Private: not shown in widget
+      })
+      .select()
       .single()
     
-    if (existingSession) {
-      // Use existing session and update spots
-      const session = existingSession as any
-      sessionId = session.id
-      const newSpotsAvailable = session.spots_available - reservation.participants
-      
-      if (newSpotsAvailable < 0) {
-        return { success: false, error: 'Not enough spots available in this session.' }
-      }
-      
-      await (supabase
-        .from('experience_sessions') as any)
-        .update({
-          spots_available: newSpotsAvailable,
-          session_status: newSpotsAvailable === 0 ? 'full' : 'available',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId)
-      
-      console.log(`Using existing session ${sessionId}, updated spots_available to ${newSpotsAvailable}`)
-    } else {
-      // Create new session for this date/time
-      const { data: newSession, error: sessionError } = await (supabase
-        .from('experience_sessions') as any)
-        .insert({
-          experience_id: experience.id,
-          session_date: reservation.requested_date,
-          start_time: reservation.requested_time,
-          spots_total: experience.max_participants,
-          spots_available: experience.max_participants - reservation.participants,
-          session_status: 'available',
-        })
-        .select()
-        .single()
-      
-      if (sessionError || !newSession) {
-        console.error('Failed to create session:', sessionError)
-        return { success: false, error: 'Failed to create session for this booking.' }
-      }
-      
-      sessionId = newSession.id
-      console.log(`Created new session ${sessionId} for ${reservation.requested_date} at ${reservation.requested_time}`)
+    if (sessionError || !newSession) {
+      console.error('Failed to create session:', sessionError)
+      return { success: false, error: 'Failed to create session for this booking.' }
     }
+    
+    sessionId = newSession.id
+    console.log(`Created private session ${sessionId} for ${reservation.requested_date} at ${reservation.requested_time}`)
     
     // Update reservation with session_id
     await (supabase

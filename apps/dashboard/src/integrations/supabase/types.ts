@@ -93,6 +93,7 @@ export type Database = {
           commission_supplier: number
           created_at: string | null
           experience_id: string
+          hotel_config_id: string | null
           hotel_id: string
           id: string
           is_active: boolean | null
@@ -103,6 +104,7 @@ export type Database = {
           commission_supplier?: number
           created_at?: string | null
           experience_id: string
+          hotel_config_id?: string | null
           hotel_id: string
           id?: string
           is_active?: boolean | null
@@ -113,6 +115,7 @@ export type Database = {
           commission_supplier?: number
           created_at?: string | null
           experience_id?: string
+          hotel_config_id?: string | null
           hotel_id?: string
           id?: string
           is_active?: boolean | null
@@ -123,6 +126,13 @@ export type Database = {
             columns: ["experience_id"]
             isOneToOne: false
             referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distributions_hotel_config_id_fkey"
+            columns: ["hotel_config_id"]
+            isOneToOne: false
+            referencedRelation: "hotel_configs"
             referencedColumns: ["id"]
           },
           {
@@ -459,6 +469,7 @@ export type Database = {
           guest_email: string
           guest_name: string
           guest_phone: string | null
+          hotel_config_id: string | null
           hotel_id: string
           id: string
           is_request: boolean | null
@@ -482,6 +493,7 @@ export type Database = {
           guest_email: string
           guest_name: string
           guest_phone?: string | null
+          hotel_config_id?: string | null
           hotel_id: string
           id?: string
           is_request?: boolean | null
@@ -505,6 +517,7 @@ export type Database = {
           guest_email?: string
           guest_name?: string
           guest_phone?: string | null
+          hotel_config_id?: string | null
           hotel_id?: string
           id?: string
           is_request?: boolean | null
@@ -528,6 +541,13 @@ export type Database = {
             columns: ["experience_id"]
             isOneToOne: false
             referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reservations_hotel_config_id_fkey"
+            columns: ["hotel_config_id"]
+            isOneToOne: false
+            referencedRelation: "hotel_configs"
             referencedColumns: ["id"]
           },
           {

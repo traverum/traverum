@@ -173,55 +173,21 @@ export function useSessionDetail(sessionId: string) {
     },
   });
 
-  // Confirm session mutation (supplier triggers auto-approve for pending_minimum reservations)
-  const confirmSession = useMutation({
-    mutationFn: async () => {
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      if (!authSession?.access_token) throw new Error('Not authenticated');
 
-      const response = await fetch(`${WIDGET_BASE_URL}/api/dashboard/sessions/${sessionId}/confirm`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authSession.access_token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Failed to confirm session');
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['session-guests', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['sessions'] });
-      queryClient.invalidateQueries({ queryKey: ['upcoming-sessions'] });
-    },
-  });
-
-  const bookingsCount = session ? session.spots_total - session.spots_available : 0;
-  const pendingMinimumCount = guests.filter(g => g.reservation_status === 'pending_minimum').length;
-  const pendingMinimumParticipants = guests
-    .filter(g => g.reservation_status === 'pending_minimum')
-    .reduce((sum, g) => sum + g.participants, 0);
+  // Count bookings by looking at guests with booking records
+  const bookingsCount = guests.filter(g => g.booking).length;
 
   return {
     session,
     experience,
     guests,
     bookingsCount,
-    pendingMinimumCount,
-    pendingMinimumParticipants,
     isLoading: isLoadingSession || isLoadingExperience,
     isLoadingGuests,
     error: sessionError,
     updateSession,
     deleteSession,
     cancelSession,
-    confirmSession,
   };
 }
 

@@ -67,7 +67,6 @@
   - If enabled: Frequency (Daily/Weekly), End date, Session count preview
 
 **Advanced Options** (expandable):
-- **Spots** (number, default: experience max_participants)
 - **Custom price** (EUR per person, optional, shows experience default as placeholder)
 
 **Validation:**
@@ -91,12 +90,12 @@
 Opens at click position. Shows:
 
 - **Summary:** Experience name, date, time
-- **Capacity:** Bookings count / spots total (editable inline)
-- **Price:** Current price per person (editable inline)
-- **Status badge:** Available / Full / Cancelled
+- **Status badge:** Available / Booked / Cancelled
+- **Booking info:** If booked — guest name, participants count
+- **Price:** Current price per person (editable inline, only if available)
 - **Quick actions:**
   - "View Full Details" button → navigates to Booking Management page filtered to that session
-  - "Cancel Session" button (with confirmation, only if has bookings)
+  - "Cancel Session" button (with confirmation, triggers refund if has booking)
   - "Delete Session" button (with confirmation, only if no bookings)
 
 ---
@@ -106,9 +105,9 @@ Opens at click position. Shows:
 **Session pill shows:**
 - Time (start time, e.g., "09:00")
 - Experience title (if enabled, shown as "· Title")
-- Bookings count (format: "X/Y" where X = bookings, Y = total spots)
+- Status indicator: Available (no booking) or Booked (has booking)
 
 **Colors:**
 - Available: Success color (green tint)
-- Full: Warning color (yellow/orange tint)
+- Booked: Primary color (blue tint)
 - Cancelled: Muted color with strikethrough

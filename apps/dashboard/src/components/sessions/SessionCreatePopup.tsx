@@ -377,7 +377,7 @@ export function SessionCreatePopup({
             >
               <div className="overflow-hidden">
                 <div className="pt-2 space-y-2">
-                  {/* Spots */}
+                  {/* Max group size */}
                   <div className="flex items-center gap-2">
                     <Users className="w-3.5 h-3.5 text-muted-foreground" />
                     <Input
@@ -387,7 +387,7 @@ export function SessionCreatePopup({
                       onChange={(e) => setSpots(parseInt(e.target.value) || 1)}
                       className={cn(inputClass, "w-20 text-xs")}
                     />
-                    <span className="text-xs text-muted-foreground">spots</span>
+                    <span className="text-xs text-muted-foreground">max group</span>
                   </div>
                   
                   {/* Price override */}

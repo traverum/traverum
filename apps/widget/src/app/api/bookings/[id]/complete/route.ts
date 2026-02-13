@@ -114,7 +114,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #111;">Payment Transferred! 💰</h1>
             <p>Great job! The experience has been marked as completed.</p>
-            <p><strong>Amount transferred:</strong> €${(booking.supplier_amount_cents / 100).toFixed(2)}</p>
+            <p><strong>Amount transferred:</strong> ${new Intl.NumberFormat('en', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</p>
             <p><strong>Booking:</strong> ${experience.title}</p>
             <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
             <p style="color: #666; margin-top: 20px;">The funds will arrive in your connected Stripe account within 2-3 business days.</p>

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/index'
-import { guestMinimumNotReached, supplierMinimumNotReached } from '@/lib/email/templates'
 import { escapeHtml } from '@/lib/sanitize'
-import { addHours } from 'date-fns'
 
 // Verify cron secret to prevent unauthorized access
 function verifyCronSecret(request: NextRequest): boolean {
@@ -25,7 +23,6 @@ export async function POST(request: NextRequest) {
   // Track processing results
   let pendingProcessed = 0
   let unpaidProcessed = 0
-  let minimumCancelledProcessed = 0
   
   // ============================================
   // PART 1: Expire pending reservations (past response deadline)
@@ -54,6 +51,17 @@ export async function POST(request: NextRequest) {
             updated_at: new Date().toISOString(),
           })
           .eq('id', reservation.id)
+        
+        // Defensive: release session if one was claimed
+        if (reservation.session_id) {
+          await (supabase
+            .from('experience_sessions') as any)
+            .update({
+              session_status: 'available',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', reservation.session_id)
+        }
         
         // Send email to guest
         const experience = reservation.experience as any
@@ -123,23 +131,15 @@ export async function POST(request: NextRequest) {
           })
           .eq('id', reservation.id)
         
-        // Release spots if session-based
+        // Release session — set back to available
         if (reservation.session_id) {
-          const { data: session } = await supabase
-            .from('experience_sessions')
-            .select('spots_available')
+          await (supabase
+            .from('experience_sessions') as any)
+            .update({
+              session_status: 'available',
+              updated_at: new Date().toISOString(),
+            })
             .eq('id', reservation.session_id)
-            .single()
-          
-          if (session) {
-            await (supabase
-              .from('experience_sessions') as any)
-              .update({
-                spots_available: (session as any).spots_available + reservation.participants,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', reservation.session_id)
-          }
         }
         
         const experience = reservation.experience as any
@@ -183,127 +183,6 @@ export async function POST(request: NextRequest) {
       }
     }
   }
-  
-  // ============================================
-  // PART 3: Cancel pending_minimum reservations where session is < 48h away and min not met
-  // ============================================
-  const cutoff48h = addHours(new Date(), 48).toISOString().split('T')[0] // date string for comparison
-
-  // Find sessions with pending_minimum reservations that are within 48 hours
-  const { data: pendingMinReservations, error: pendingMinError } = await supabase
-    .from('reservations')
-    .select(`
-      *,
-      experience:experiences(title, currency, min_participants, slug, supplier:partners!experiences_partner_fk(email, name)),
-      session:experience_sessions(id, session_date, start_time, spots_total, spots_available)
-    `)
-    .eq('reservation_status', 'pending_minimum')
-
-  if (pendingMinError) {
-    console.error('Error fetching pending_minimum reservations:', pendingMinError)
-  } else {
-    const minResList = (pendingMinReservations || []) as any[]
-
-    // Group by session to determine if threshold is met
-    const sessionGroups = new Map<string, any[]>()
-    for (const res of minResList) {
-      if (!res.session?.id) continue
-      const existing = sessionGroups.get(res.session.id) || []
-      existing.push(res)
-      sessionGroups.set(res.session.id, existing)
-    }
-
-    for (const [sessionId, reservations] of Array.from(sessionGroups.entries())) {
-      const session = reservations[0].session
-      const experience = reservations[0].experience
-
-      // Check if session is within 48 hours
-      if (session.session_date > cutoff48h) continue
-
-      // Check if minimum is still not met
-      const minP = experience?.min_participants || 1
-      const booked = session.spots_total - session.spots_available
-      if (booked >= minP) continue // minimum met, don't cancel
-
-      // Cancel all pending_minimum reservations for this session
-      for (const reservation of reservations) {
-        try {
-          // Update status to cancelled_minimum
-          await (supabase
-            .from('reservations') as any)
-            .update({
-              reservation_status: 'cancelled_minimum',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', reservation.id)
-
-          // Release spots
-          if (reservation.session?.id) {
-            const { data: currentSession } = await supabase
-              .from('experience_sessions')
-              .select('spots_available')
-              .eq('id', reservation.session.id)
-              .single()
-
-            if (currentSession) {
-              await (supabase
-                .from('experience_sessions') as any)
-                .update({
-                  spots_available: (currentSession as any).spots_available + reservation.participants,
-                  updated_at: new Date().toISOString(),
-                })
-                .eq('id', reservation.session.id)
-            }
-          }
-
-          // Email guest
-          const guestEmailHtml = guestMinimumNotReached({
-            experienceTitle: experience.title,
-            guestName: reservation.guest_name,
-            date: session.session_date,
-            time: session.start_time,
-            participants: reservation.participants,
-            totalCents: reservation.total_cents,
-            currency: experience.currency,
-            minParticipants: minP,
-            bookedSoFar: booked,
-          })
-
-          await sendEmail({
-            to: reservation.guest_email,
-            subject: `Reservation cancelled — minimum not reached for ${experience.title}`,
-            html: guestEmailHtml,
-          })
-
-          minimumCancelledProcessed++
-        } catch (err) {
-          console.error(`Error cancelling pending_minimum reservation ${reservation.id}:`, err)
-        }
-      }
-
-      // Email supplier once per session
-      if (experience.supplier?.email) {
-        try {
-          const supplierEmailHtml = supplierMinimumNotReached({
-            experienceTitle: experience.title,
-            date: session.session_date,
-            time: session.start_time,
-            minParticipants: minP,
-            bookedSoFar: booked,
-            dashboardUrl: 'https://dashboard.traverum.com/supplier/sessions',
-          })
-
-          await sendEmail({
-            to: experience.supplier.email,
-            subject: `Session cancelled — minimum not reached for ${experience.title}`,
-            html: supplierEmailHtml,
-          })
-        } catch (err) {
-          console.error(`Error sending supplier minimum not reached email for session ${sessionId}:`, err)
-        }
-      }
-    }
-  }
 
   return NextResponse.json({
     success: true,
@@ -315,11 +194,7 @@ export async function POST(request: NextRequest) {
       processed: unpaidProcessed,
       message: `Expired ${unpaidProcessed} unpaid reservations`,
     },
-    minimumCancelled: {
-      processed: minimumCancelledProcessed,
-      message: `Cancelled ${minimumCancelledProcessed} pending_minimum reservations (session <48h, min not met)`,
-    },
-    total: pendingProcessed + unpaidProcessed + minimumCancelledProcessed,
+    total: pendingProcessed + unpaidProcessed,
   })
 }
 

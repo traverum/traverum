@@ -61,18 +61,14 @@ export interface SessionWithGuests {
   experience_id: string;
   session_date: string;
   start_time: string;
-  spots_total: number;
-  spots_available: number;
   session_status: string;
   experience: {
     id: string;
     title: string;
     price_cents: number;
-    min_participants?: number;
   };
   guests: SessionGuest[];
   bookingsCount: number;
-  pendingMinimumCount: number;
 }
 
 // --- Hook ---
@@ -87,7 +83,7 @@ export function useBookingManagement() {
     queryFn: async () => {
       const { data } = await supabase
         .from('experiences')
-        .select('id, title, price_cents, currency, min_participants')
+        .select('id, title, price_cents, currency')
         .eq('partner_id', partnerId!);
       return data || [];
     },
@@ -224,13 +220,10 @@ export function useBookingManagement() {
           experience_id: session.experience_id,
           session_date: session.session_date,
           start_time: session.start_time,
-          spots_total: session.spots_total,
-          spots_available: session.spots_available,
           session_status: session.session_status,
           experience: experienceMap.get(session.experience_id)!,
           guests,
-          bookingsCount: session.spots_total - session.spots_available,
-          pendingMinimumCount: guests.filter(g => g.reservation_status === 'pending_minimum').length,
+          bookingsCount: guests.filter(g => g.booking).length,
         } as SessionWithGuests;
       });
     },

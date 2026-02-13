@@ -31,22 +31,16 @@ export default function SessionDetail() {
     experience,
     guests,
     bookingsCount,
-    pendingMinimumCount,
-    pendingMinimumParticipants,
     isLoading,
     isLoadingGuests,
     error,
     updateSession,
     deleteSession,
     cancelSession,
-    confirmSession,
   } = useSessionDetail(sessionId || '');
 
   // Edit states
-  const [isEditingCapacity, setIsEditingCapacity] = useState(false);
   const [isEditingPricing, setIsEditingPricing] = useState(false);
-  const [editSpotsTotal, setEditSpotsTotal] = useState(0);
-  const [editSpotsAvailable, setEditSpotsAvailable] = useState(0);
   const [editPriceEuros, setEditPriceEuros] = useState('');
   const [editPriceNote, setEditPriceNote] = useState('');
 
@@ -55,7 +49,6 @@ export default function SessionDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [showConfirmSessionDialog, setShowConfirmSessionDialog] = useState(false);
   const [pendingUpdate, setPendingUpdate] = useState<SessionUpdate | null>(null);
 
   if (isLoading) {
@@ -83,54 +76,17 @@ export default function SessionDetail() {
   const hasCustomPrice = session.price_override_cents !== null;
   const currentPrice = hasCustomPrice ? session.price_override_cents! : experience.price_cents;
   const isCancelled = session.session_status === 'cancelled';
-  const minToRun = experience.min_participants || 1;
-  const showMinimumProgress = minToRun > 1 && pendingMinimumCount > 0;
-
-  const handleConfirmSession = async () => {
-    try {
-      await confirmSession.mutateAsync();
-      toast({ title: 'Session confirmed', description: `${pendingMinimumCount} guest(s) will receive payment links.` });
-      setShowConfirmSessionDialog(false);
-    } catch (error: any) {
-      toast({
-        title: 'Error confirming session',
-        description: error?.message || 'Please try again.',
-        variant: 'destructive',
-      });
-    }
-  };
 
   const getStatusBadge = () => {
     switch (session.session_status) {
       case 'available':
         return <Badge className="bg-success/10 text-success hover:bg-success/20">Available</Badge>;
-      case 'full':
-        return <Badge className="bg-warning/10 text-warning hover:bg-warning/20">Full</Badge>;
+      case 'booked':
+        return <Badge className="bg-primary/10 text-primary hover:bg-primary/20">Booked</Badge>;
       case 'cancelled':
         return <Badge variant="secondary">Cancelled</Badge>;
       default:
         return null;
-    }
-  };
-
-  // Capacity editing
-  const handleStartEditCapacity = () => {
-    setEditSpotsTotal(session.spots_total);
-    setEditSpotsAvailable(session.spots_available);
-    setIsEditingCapacity(true);
-  };
-
-  const handleSaveCapacity = () => {
-    const updates: SessionUpdate = {
-      spots_total: editSpotsTotal,
-      spots_available: editSpotsAvailable,
-    };
-
-    if (hasBookings) {
-      setPendingUpdate(updates);
-      setShowSaveConfirm(true);
-    } else {
-      confirmUpdate(updates);
     }
   };
 
@@ -248,132 +204,28 @@ export default function SessionDetail() {
             <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
               Capacity
             </CardTitle>
-            {!isCancelled && !isEditingCapacity && (
-              <Button variant="ghost" size="sm" onClick={handleStartEditCapacity}>
-                Edit
-              </Button>
-            )}
           </CardHeader>
           <CardContent>
-            {isEditingCapacity ? (
-              <div className="space-y-4">
-                {hasBookings && (
-                  <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
-                    <p className="text-sm text-warning">
-                      This session has {bookingsCount} booking{bookingsCount !== 1 ? 's' : ''}. 
-                      Changes will affect capacity but not existing bookings.
-                    </p>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="spotsTotal">Total spots</Label>
-                    <Input
-                      id="spotsTotal"
-                      type="number"
-                      min={bookingsCount}
-                      value={editSpotsTotal}
-                      onChange={(e) => {
-                        const newTotal = parseInt(e.target.value) || 0;
-                        setEditSpotsTotal(newTotal);
-                        // Adjust spots available if needed
-                        const maxAvailable = newTotal - bookingsCount;
-                        if (editSpotsAvailable > maxAvailable) {
-                          setEditSpotsAvailable(maxAvailable);
-                        }
-                      }}
-                      className="mt-1.5"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="spotsAvailable">Spots to sell</Label>
-                    <Input
-                      id="spotsAvailable"
-                      type="number"
-                      min={0}
-                      max={editSpotsTotal - bookingsCount}
-                      value={editSpotsAvailable}
-                      onChange={(e) => setEditSpotsAvailable(parseInt(e.target.value) || 0)}
-                      className="mt-1.5"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {bookingsCount} spot{bookingsCount !== 1 ? 's' : ''} booked
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={handleSaveCapacity} disabled={updateSession.isPending}>
-                    {updateSession.isPending ? 'Saving...' : 'Save'}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setIsEditingCapacity(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Bookings</span>
                   <span className="text-2xl font-semibold">{bookingsCount}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Spots to sell</span>
-                  <span className="text-2xl font-semibold text-success">{session.spots_available}</span>
+                  <span className="text-muted-foreground">Status</span>
+                  <span className="text-lg font-semibold">
+                    {session.session_status === 'booked' ? 'Booked' : session.session_status === 'cancelled' ? 'Cancelled' : 'Available'}
+                  </span>
                 </div>
                 <div className="pt-3 border-t border-border">
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Total capacity</span>
-                    <span>{session.spots_total}</span>
+                    <span>Max participants</span>
+                    <span>{experience.max_participants}</span>
                   </div>
                 </div>
               </div>
-            )}
           </CardContent>
         </Card>
-
-        {/* Minimum to Run Card */}
-        {showMinimumProgress && (
-          <Card className="border-warning/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                Minimum to Run
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="text-2xl font-semibold">
-                    {pendingMinimumParticipants} / {minToRun}
-                  </span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div
-                    className="bg-warning h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${Math.min(100, (pendingMinimumParticipants / minToRun) * 100)}%` }}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {pendingMinimumCount} guest{pendingMinimumCount !== 1 ? 's' : ''} waiting for the minimum to be reached.
-                  {pendingMinimumParticipants >= minToRun
-                    ? ' Minimum reached — guests will be approved automatically.'
-                    : ` ${minToRun - pendingMinimumParticipants} more participant${minToRun - pendingMinimumParticipants !== 1 ? 's' : ''} needed.`}
-                </p>
-                <Button
-                  className="w-full"
-                  variant="default"
-                  onClick={() => setShowConfirmSessionDialog(true)}
-                  disabled={confirmSession.isPending}
-                >
-                  Confirm Session Early
-                </Button>
-                <p className="text-xs text-muted-foreground text-center">
-                  Send payment links to all waiting guests, even below the minimum.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Pricing Card */}
         <Card>
@@ -506,10 +358,6 @@ export default function SessionDetail() {
                             {formatPrice(guest.booking.amount_cents)}
                           </p>
                         </>
-                      ) : guest.reservation_status === 'pending_minimum' ? (
-                        <Badge className="bg-warning/10 text-warning hover:bg-warning/20">
-                          Waiting for min.
-                        </Badge>
                       ) : (
                         <Badge variant="outline">{guest.reservation_status}</Badge>
                       )}
@@ -641,26 +489,6 @@ export default function SessionDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Confirm Session Dialog (approve pending_minimum guests early) */}
-      <AlertDialog open={showConfirmSessionDialog} onOpenChange={setShowConfirmSessionDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirm session early?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will send payment links to {pendingMinimumCount} waiting guest{pendingMinimumCount !== 1 ? 's' : ''} ({pendingMinimumParticipants} participant{pendingMinimumParticipants !== 1 ? 's' : ''}), even though the minimum of {minToRun} has not been reached. Guests will have 24 hours to complete payment.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmSession}
-              disabled={confirmSession.isPending}
-            >
-              {confirmSession.isPending ? 'Confirming...' : 'Confirm & Send Payment Links'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

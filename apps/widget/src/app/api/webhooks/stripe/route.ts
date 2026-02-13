@@ -215,18 +215,17 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
   const experience = reservation.experience
   const session = reservation.session
   
-  // Release spots if this was a session-based booking
-  if (reservation.session_id && session) {
+  // Release session — set back to available
+  if (reservation.session_id) {
     await (supabase
       .from('experience_sessions') as any)
       .update({
-        spots_available: (session as any).spots_available + reservation.participants,
         session_status: 'available',
         updated_at: new Date().toISOString(),
       })
       .eq('id', reservation.session_id)
     
-    console.log(`Released ${reservation.participants} spots for session ${reservation.session_id} due to payment failure`)
+    console.log(`Released session ${reservation.session_id} due to payment failure`)
   }
   
   // Get error message from the payment intent
@@ -268,7 +267,8 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
       *,
       reservation:reservations(
         *,
-        experience:experiences(*)
+        experience:experiences(*),
+        session:experience_sessions(*)
       )
     `)
     .eq('stripe_charge_id', charge.id)
@@ -299,23 +299,15 @@ async function handleChargeRefunded(charge: Stripe.Charge) {
       })
       .eq('id', booking.id)
     
-    // Release session spots if applicable
+    // Release session — set back to available
     if (booking.session_id) {
-      const { data: session } = await supabase
-        .from('experience_sessions')
-        .select('spots_available')
+      await (supabase
+        .from('experience_sessions') as any)
+        .update({
+          session_status: 'available',
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', booking.session_id)
-        .single()
-      
-      if (session) {
-        await (supabase
-          .from('experience_sessions') as any)
-          .update({
-            spots_available: (session as any).spots_available + reservation.participants,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', booking.session_id)
-      }
     }
   } else {
     // Just update the refund ID for audit trail
@@ -591,8 +583,8 @@ async function createBookingFromPayment(
     })
     .eq('id', reservationId)
   
-  // Note: Spots were already deducted when reservation was created for session-based bookings
-  // No need to deduct again here - spots are already held
+  // Note: Session status was already set to 'booked' when reservation was created
+  // No further status change needed here
   
   // Get hotel config for URLs
   const { data: hotelConfig } = await supabase

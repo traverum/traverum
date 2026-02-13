@@ -31,8 +31,7 @@ export function TimeSlotSession({
   dragPreviewTime,
   onDragStart,
 }: TimeSlotSessionProps) {
-  const bookingsCount = session.spots_total - session.spots_available;
-  const isFull = session.spots_available === 0;
+  const isBooked = session.session_status === 'booked';
   const isCancelled = session.session_status === 'cancelled';
   const isPast = !isSessionUpcoming(session.session_date, session.start_time);
   
@@ -45,19 +44,19 @@ export function TimeSlotSession({
   // Session colors - softer, Google Calendar-like
   const getBackgroundColor = () => {
     if (isCancelled) return 'bg-neutral-200 dark:bg-neutral-700';
-    if (isFull) return 'bg-amber-100 dark:bg-amber-900/40';
+    if (isBooked) return 'bg-blue-100 dark:bg-blue-900/40';
     return 'bg-teal-100 dark:bg-teal-900/40';
   };
 
   const getBorderColor = () => {
     if (isCancelled) return 'border-l-neutral-400';
-    if (isFull) return 'border-l-amber-500';
+    if (isBooked) return 'border-l-blue-500';
     return 'border-l-teal-600';
   };
 
   const getTextColor = () => {
     if (isCancelled) return 'text-neutral-500 dark:text-neutral-400';
-    if (isFull) return 'text-amber-800 dark:text-amber-200';
+    if (isBooked) return 'text-blue-800 dark:text-blue-200';
     return 'text-teal-800 dark:text-teal-200';
   };
 
@@ -153,11 +152,9 @@ export function TimeSlotSession({
             getTextColor(),
             'opacity-70'
           )}>
-            {isFull ? (
-              <span className="font-medium">Full</span>
-            ) : (
-              <span>{bookingsCount}/{session.spots_total} booked</span>
-            )}
+            <span className="font-medium">
+              {isBooked ? 'Booked' : 'Available'}
+            </span>
           </div>
         )}
 
@@ -168,7 +165,7 @@ export function TimeSlotSession({
             getTextColor(),
             'opacity-70'
           )}>
-            {bookingsCount}/{session.spots_total}
+            {isBooked ? 'Booked' : 'Open'}
           </div>
         )}
       </div>

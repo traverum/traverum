@@ -86,23 +86,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', id)
     
-    // Release spots if session-based
+    // Release session — set back to available
     if (reservation.session_id) {
-      const { data: currentSession } = await updateClient
-        .from('experience_sessions')
-        .select('spots_available')
+      await (updateClient
+        .from('experience_sessions') as any)
+        .update({
+          session_status: 'available',
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', reservation.session_id)
-        .single()
-      
-      if (currentSession) {
-        await (updateClient
-          .from('experience_sessions') as any)
-          .update({
-            spots_available: (currentSession as any).spots_available + reservation.participants,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', reservation.session_id)
-      }
     }
     
     // Send confirmation email

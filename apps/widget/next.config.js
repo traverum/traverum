@@ -42,6 +42,15 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Headers', value: 'Content-Type' },
         ],
       },
+      // CORS for dashboard API (dashboard app calls widget API cross-origin)
+      {
+        source: '/api/dashboard/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+        ],
+      },
       // Prevent caching on hotel pages to ensure fresh config is always loaded
       {
         source: '/:hotelSlug((?!api|_next|favicon|embed).*)',

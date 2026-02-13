@@ -31,12 +31,6 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
   const priceCalc = calculatePrice(experience, participants, selectedSession)
   const displayPrice = getDisplayPrice(experience)
   
-  // Check if session is below minimum-to-run threshold
-  const minToRun = experience.min_participants || 1
-  const sessionBelowMin = selectedSession && minToRun > 1
-    ? (selectedSession.spots_total - selectedSession.spots_available + participants) < minToRun
-    : false
-  
   const hasDateSelection = isCustomRequest 
     ? (customDate && requestTime)
     : selectedSessionId
@@ -73,13 +67,8 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
   }
 
   const handleContinue = () => {
-    // Validate participants (min_participants is session threshold, not per-booking)
+    // Validate participants
     if (participants < 1 || participants > experience.max_participants) {
-      return
-    }
-    
-    // Validate session availability if session-based
-    if (selectedSession && selectedSession.spots_available < participants) {
       return
     }
     
@@ -134,7 +123,6 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
             onChange={setParticipants}
             min={1}
             max={experience.max_participants}
-            availableSpots={selectedSession?.spots_available}
           />
         </div>
 
@@ -147,20 +135,13 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
             </div>
           </div>
 
-          {/* Minimum-to-run info */}
-          {sessionBelowMin && selectedSession && (
-            <p className="text-xs text-muted-foreground mb-3">
-              This session needs {minToRun} participants to run ({selectedSession.spots_total - selectedSession.spots_available} booked so far). Your spot will be reserved — no payment until the minimum is reached.
-            </p>
-          )}
-          
           <button
             type="button"
             onClick={handleContinue}
             disabled={!hasDateSelection}
             className="w-full py-3.5 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
-            {isCustomRequest ? 'Send Request' : sessionBelowMin ? 'Reserve Spot' : 'Book Now'}
+            {isCustomRequest ? 'Send Request' : 'Book Now'}
           </button>
         </div>
       </div>
@@ -180,7 +161,6 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
         onConfirm={() => setDateDrawerOpen(false)}
         participants={participants}
         availabilityRules={availabilityRules}
-        minParticipants={minToRun}
       />
     </>
   )

@@ -4,8 +4,6 @@ interface SessionPillProps {
   session: {
     id: string;
     start_time: string;
-    spots_total: number;
-    spots_available: number;
     session_status: string;
     price_override_cents: number | null;
     price_note: string | null;
@@ -19,8 +17,8 @@ interface SessionPillProps {
 }
 
 export function SessionPill({ session, showExperienceTitle = false, isPast = false, onSessionClick }: SessionPillProps) {
-  const bookingsCount = session.spots_total - session.spots_available;
   const hasCustomPrice = session.price_override_cents !== null;
+  const isBooked = session.session_status === 'booked';
   
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -35,7 +33,7 @@ export function SessionPill({ session, showExperienceTitle = false, isPast = fal
       className={cn(
         'w-full text-left px-2 py-1 rounded text-xs transition-colors cursor-pointer',
         session.session_status === 'available' && 'bg-success/10 hover:bg-success/20 text-success',
-        session.session_status === 'full' && 'bg-warning/10 hover:bg-warning/20 text-warning',
+        session.session_status === 'booked' && 'bg-primary/10 hover:bg-primary/20 text-primary',
         session.session_status === 'cancelled' && 'bg-muted/50 hover:bg-muted text-muted-foreground line-through',
         isPast && session.session_status !== 'cancelled' && 'opacity-50'
       )}
@@ -48,7 +46,7 @@ export function SessionPill({ session, showExperienceTitle = false, isPast = fal
           )}
         </span>
         <span className="text-[10px] opacity-80">
-          {bookingsCount}/{session.spots_total}
+          {isBooked ? 'Booked' : session.session_status === 'cancelled' ? 'X' : ''}
         </span>
       </div>
       {hasCustomPrice && session.price_note && (

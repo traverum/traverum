@@ -27,10 +27,9 @@ export function UpcomingSessions({
   };
 
   const getBookingStatus = (session: Session) => {
-    const booked = session.spots_total - session.spots_available;
-    if (booked === 0) return { text: `${session.spots_total} spots`, variant: 'available' as const };
-    if (session.spots_available === 0) return { text: 'Full', variant: 'full' as const };
-    return { text: `${booked}/${session.spots_total} booked`, variant: 'partial' as const };
+    if (session.session_status === 'booked') return { text: 'Booked', variant: 'booked' as const };
+    if (session.session_status === 'cancelled') return { text: 'Cancelled', variant: 'cancelled' as const };
+    return { text: 'Available', variant: 'available' as const };
   };
 
   if (isLoading) {
@@ -99,16 +98,14 @@ export function UpcomingSessions({
                     <div className="flex items-center justify-between pt-1">
                       <span 
                         className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          isCancelled
+                          status.variant === 'cancelled'
                             ? 'bg-muted text-muted-foreground'
-                            : status.variant === 'available'
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                            : status.variant === 'full'
-                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            : status.variant === 'booked'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                         }`}
                       >
-                        {isCancelled ? 'Cancelled' : status.text}
+                        {status.text}
                       </span>
                     </div>
                   </div>

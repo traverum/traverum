@@ -74,23 +74,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', id)
     
-    // Release spots if session-based
+    // Release session — set back to available
     if (reservation.session_id) {
-      const { data: session } = await updateClient
-        .from('experience_sessions')
-        .select('spots_available')
+      await (updateClient
+        .from('experience_sessions') as any)
+        .update({
+          session_status: 'available',
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', reservation.session_id)
-        .single()
-      
-      if (session) {
-        await (updateClient
-          .from('experience_sessions') as any)
-          .update({
-            spots_available: (session as any).spots_available + reservation.participants,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', reservation.session_id)
-      }
     }
     
     // Send refund email to guest
@@ -102,7 +94,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           <h1 style="color: #111;">Refund Processed</h1>
           <p>Hi ${escapeHtml(reservation.guest_name)},</p>
           <p>The experience provider has reported that the experience did not take place. We have processed a full refund.</p>
-          <p><strong>Amount refunded:</strong> €${(booking.amount_cents / 100).toFixed(2)}</p>
+          <p><strong>Amount refunded:</strong> ${new Intl.NumberFormat('en', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.amount_cents / 100)}</p>
           <p><strong>Experience:</strong> ${experience.title}</p>
           <p style="color: #666; margin-top: 20px;">The refund will appear on your statement within 5-10 business days.</p>
           <p>We apologize for any inconvenience and hope to serve you again soon.</p>

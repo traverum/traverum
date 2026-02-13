@@ -47,8 +47,8 @@ export async function GET(
 
   const hotel = hotelData as any
 
-  // Fetch distributions for this hotel with experiences
-  // distributions.hotel_id references partners.id (the hotel partner)
+  // Fetch distributions for this hotel config with experiences
+  // Scope by hotel_config_id for multi-property support
   const { data: distributionsData, error: distError } = await (supabase
     .from('distributions') as any)
     .select(`
@@ -70,7 +70,7 @@ export async function GET(
         tags
       )
     `)
-    .eq('hotel_id', hotel.partner_id)
+    .eq('hotel_config_id', hotel.id)
     .eq('is_active', true)
 
   if (distError) {
