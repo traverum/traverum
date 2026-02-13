@@ -1,0 +1,55 @@
+---
+description: Supabase type safety rules for widget and dashboard API routes
+globs: apps/widget/src/app/api/**/*.ts, apps/dashboard/src/**/*.ts
+alwaysApply: false
+---
+
+# Supabase Type Safety
+
+The generated types in `lib/supabase/types.ts` may not cover all tables (e.g. `user_partners` is missing). This causes TypeScript to infer query results as `never`, which silently passes in dev but **breaks `next build` on Vercel**.
+
+## Rules
+
+1. **Always add type assertions** when querying tables not in the generated types (`users`, `user_partners`, or any table that shows `never` on `.data`):
+
+```typescript
+// ❌ BAD — compiles locally, breaks on Vercel build
+const { data: appUser } = await supabase
+  .from('users')
+  .select('id')
+  .eq('auth_id', user.id)
+  .single()
+
+// ✅ GOOD — explicit type assertion
+const { data: appUser } = await supabase
+  .from('users')
+  .select('id')
+  .eq('auth_id', user.id)
+  .single() as { data: { id: string } | null }
+```
+
+2. **Auth ID vs App User ID**: Supabase Auth `user.id` is NOT the same as `users.id`. Always resolve via `auth_id` first:
+
+```typescript
+// Step 1: Resolve auth UUID → app user ID
+const { data: appUser } = await supabase
+  .from('users')
+  .select('id')
+  .eq('auth_id', user.id)
+  .single() as { data: { id: string } | null }
+
+// Step 2: Use appUser.id (not user.id) for user_partners
+const { data: userPartner } = await supabase
+  .from('user_partners')
+  .select('id')
+  .eq('user_id', appUser.id)
+  .eq('partner_id', partnerId)
+  .single() as { data: { id: string } | null }
+```
+
+Reference implementation: `apps/widget/src/app/api/dashboard/distributions/route.ts`
+
+3. **Run typecheck before pushing** widget changes: `pnpm --filter @traverum/widget typecheck`
+
+4. **When adding new DB tables**, regenerate types so casts become unnecessary:
+   `npx supabase gen types typescript --project-id <id> > apps/widget/src/lib/supabase/types.ts`

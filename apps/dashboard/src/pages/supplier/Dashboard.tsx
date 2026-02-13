@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { format, parseISO, isToday, isTomorrow } from 'date-fns';
+import { format, parseISO, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
 import { ChevronRight, Compass, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -159,13 +159,9 @@ export default function SupplierDashboard() {
           ) : (
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
               {pendingRequests.slice(0, 6).map((request) => {
-                const day = request.requested_date ?? (request.session ? (Array.isArray(request.session) ? request.session[0]?.session_date : request.session.session_date) : null);
-                const dayLabel = day ? (() => {
-                  const d = parseISO(day);
-                  if (isToday(d)) return 'Today';
-                  if (isTomorrow(d)) return 'Tomorrow';
-                  return format(d, 'dd.MM');
-                })() : '—';
+                const requestedAgo = request.created_at
+                  ? formatDistanceToNow(parseISO(request.created_at), { addSuffix: true })
+                  : '—';
                 return (
                   <Card
                     key={request.id}
@@ -176,7 +172,7 @@ export default function SupplierDashboard() {
                       <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
                         {request.experience.title}
                       </h3>
-                      <p className="text-xs text-secondary">{dayLabel}</p>
+                      <p className="text-xs text-secondary">{requestedAgo}</p>
                     </CardContent>
                   </Card>
                 );

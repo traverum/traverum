@@ -52,7 +52,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           supplier:partners!experiences_partner_fk(*)
         ),
         session:experience_sessions(*),
-        hotel:partners!reservations_hotel_id_fkey(*)
+        hotel:partners!reservations_hotel_fk(*)
       `)
       .eq('id', id)
       .single()

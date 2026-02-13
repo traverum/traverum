@@ -69,10 +69,21 @@ function PendingRequestCard({
             <div className="min-w-0">
               <h4 className="text-sm font-medium truncate">{request.experience.title}</h4>
               <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                <span>Requested {formatDistanceToNow(parseISO(request.created_at), { addSuffix: true })}</span>
+                {request.requested_date && (
+                  <span className="font-medium text-foreground">{format(parseISO(request.requested_date), 'dd.MM.yyyy')}</span>
+                )}
+                {request.requested_time && (
+                  <>
+                    <span>·</span>
+                    <span className="font-medium text-foreground">{request.requested_time.slice(0, 5)}</span>
+                  </>
+                )}
                 <span>·</span>
                 <span>{request.participants} {request.participants === 1 ? 'person' : 'people'}</span>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Requested {formatDistanceToNow(parseISO(request.created_at), { addSuffix: true })}
+              </p>
             </div>
             {isUrgent && (
               <Badge variant="destructive" className="text-[10px] h-4 px-1.5 flex-shrink-0">
