@@ -12,9 +12,23 @@ import {
 import { calculatePrice } from '@/lib/pricing'
 import { createPaymentLink } from '@/lib/stripe'
 import { autoApprovePendingMinimum } from '@/lib/auto-approve'
+import { sanitizeGuestText, sanitizeGuestEmail } from '@/lib/sanitize'
+import { reservationLimiter, getClientIp } from '@/lib/rate-limit'
 import { addHours } from 'date-fns'
 
 export async function POST(request: NextRequest) {
+  // Rate limiting — skip in development if KV is not configured
+  if (process.env.KV_REST_API_URL) {
+    const ip = getClientIp(request)
+    const { success } = await reservationLimiter.limit(ip)
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 }
+      )
+    }
+  }
+
   try {
     const body = await request.json()
     
@@ -39,6 +53,19 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
+    // Sanitize guest input to prevent XSS / HTML injection
+    const cleanName = sanitizeGuestText(guestName)
+    let cleanEmail: string
+    try {
+      cleanEmail = sanitizeGuestEmail(guestEmail)
+    } catch {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      )
+    }
+    const cleanPhone = guestPhone ? sanitizeGuestText(guestPhone, 30) : null
     
     const supabase = createAdminClient()
     
@@ -166,9 +193,9 @@ export async function POST(request: NextRequest) {
             experience_id: experienceId,
             hotel_id: hotel.partner_id,
             session_id: sessionId,
-            guest_name: guestName,
-            guest_email: guestEmail,
-            guest_phone: guestPhone || null,
+            guest_name: cleanName,
+            guest_email: cleanEmail,
+            guest_phone: cleanPhone,
             participants,
             total_cents: expectedTotal,
             is_request: false,
@@ -197,7 +224,7 @@ export async function POST(request: NextRequest) {
         // Email guest: "spot reserved, waiting for minimum"
         const guestEmailHtml = guestSpotReserved({
           experienceTitle: experience.title,
-          guestName,
+          guestName: cleanName,
           date: date || '',
           time,
           participants,
@@ -209,7 +236,7 @@ export async function POST(request: NextRequest) {
         })
 
         await sendEmail({
-          to: guestEmail,
+          to: cleanEmail,
           subject: `Spot reserved — ${experience.title}`,
           html: guestEmailHtml,
         })
@@ -218,9 +245,9 @@ export async function POST(request: NextRequest) {
         const dashboardUrl = 'https://dashboard.traverum.com/supplier/sessions'
         const supplierEmailHtml = supplierNewReservation({
           experienceTitle: experience.title,
-          guestName,
-          guestEmail,
-          guestPhone,
+          guestName: cleanName,
+          guestEmail: cleanEmail,
+          guestPhone: cleanPhone,
           date: date || '',
           time,
           participants,
@@ -236,7 +263,7 @@ export async function POST(request: NextRequest) {
           to: experience.supplier.email,
           subject: `New reservation (${bookedAfter}/${minToRun} min) — ${experience.title}`,
           html: supplierEmailHtml,
-          replyTo: guestEmail,
+          replyTo: cleanEmail,
         })
 
         return NextResponse.json({
@@ -257,9 +284,9 @@ export async function POST(request: NextRequest) {
           experience_id: experienceId,
           hotel_id: hotel.partner_id,
           session_id: sessionId,
-          guest_name: guestName,
-          guest_email: guestEmail,
-          guest_phone: guestPhone || null,
+          guest_name: cleanName,
+          guest_email: cleanEmail,
+          guest_phone: cleanPhone,
           participants,
           total_cents: expectedTotal,
           is_request: false,
@@ -335,9 +362,9 @@ export async function POST(request: NextRequest) {
         experience_id: experienceId,
         hotel_id: hotel.partner_id,
         session_id: sessionId || null,
-        guest_name: guestName,
-        guest_email: guestEmail,
-        guest_phone: guestPhone || null,
+        guest_name: cleanName,
+        guest_email: cleanEmail,
+        guest_phone: cleanPhone,
         participants,
         total_cents: expectedTotal,
         is_request: true,
@@ -374,9 +401,9 @@ export async function POST(request: NextRequest) {
 
     const supplierEmailHtml = supplierNewRequest({
       experienceTitle: experience.title,
-      guestName,
-      guestEmail,
-      guestPhone,
+      guestName: cleanName,
+      guestEmail: cleanEmail,
+      guestPhone: cleanPhone,
       date: date || '',
       time: requestTime || null,
       participants,
@@ -393,7 +420,7 @@ export async function POST(request: NextRequest) {
       to: experience.supplier.email,
       subject: `New booking request - ${experience.title}`,
       html: supplierEmailHtml,
-      replyTo: guestEmail,
+      replyTo: cleanEmail,
     })
     
     return NextResponse.json({

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { verifyToken } from '@/lib/tokens'
 import { createTransfer, stripe } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
+import { escapeHtml } from '@/lib/sanitize'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -115,7 +116,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             <p>Great job! The experience has been marked as completed.</p>
             <p><strong>Amount transferred:</strong> €${(booking.supplier_amount_cents / 100).toFixed(2)}</p>
             <p><strong>Booking:</strong> ${experience.title}</p>
-            <p><strong>Guest:</strong> ${reservation.guest_name}</p>
+            <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
             <p style="color: #666; margin-top: 20px;">The funds will arrive in your connected Stripe account within 2-3 business days.</p>
           </div>
         `,

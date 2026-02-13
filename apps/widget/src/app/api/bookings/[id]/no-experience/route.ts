@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { verifyToken } from '@/lib/tokens'
 import { createRefund } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
+import { escapeHtml } from '@/lib/sanitize'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #111;">Refund Processed</h1>
-          <p>Hi ${reservation.guest_name},</p>
+          <p>Hi ${escapeHtml(reservation.guest_name)},</p>
           <p>The experience provider has reported that the experience did not take place. We have processed a full refund.</p>
           <p><strong>Amount refunded:</strong> €${(booking.amount_cents / 100).toFixed(2)}</p>
           <p><strong>Experience:</strong> ${experience.title}</p>

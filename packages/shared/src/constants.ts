@@ -9,10 +9,20 @@ export const BOOKING_STATUSES = {
   CANCELLED: 'cancelled',
 } as const;
 
-export const REVENUE_SPLIT = {
-  SUPPLIER: 0.80,
-  DISTRIBUTOR: 0.15,
-  PLATFORM: 0.05,
+// Commission rates (percentages). Platform rate is the only true constant.
+// Default and self-owned splits are the single source of truth for all apps.
+export const PLATFORM_COMMISSION = 8 as const;
+
+export const DEFAULT_COMMISSION = {
+  supplier: 80,
+  hotel: 12,
+  platform: PLATFORM_COMMISSION,
+} as const;
+
+export const SELF_OWNED_COMMISSION = {
+  supplier: 92,
+  hotel: 0,
+  platform: PLATFORM_COMMISSION,
 } as const;
 
 export const CURRENCY = {

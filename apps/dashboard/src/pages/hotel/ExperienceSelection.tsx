@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
-import { getCategoryLabel, getCategoryIcon } from '@traverum/shared';
+import { getCategoryLabel, getCategoryIcon, DEFAULT_COMMISSION, SELF_OWNED_COMMISSION } from '@traverum/shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -311,8 +311,8 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
 
         const isSelfOwned = experienceData?.partner_id === partnerId;
         const commissionRates = isSelfOwned
-          ? { supplier: 92, hotel: 0, platform: 8 }
-          : { supplier: 80, hotel: 12, platform: 8 };
+          ? SELF_OWNED_COMMISSION
+          : DEFAULT_COMMISSION;
 
         if (!activeHotelConfigId) throw new Error('No hotel property selected');
 

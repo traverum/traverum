@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { verifyToken } from '@/lib/tokens'
 import { createRefund } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
+import { escapeHtml } from '@/lib/sanitize'
 import { differenceInDays, parseISO } from 'date-fns'
 import { canGuestCancel } from '@/lib/availability'
 
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <h1 style="color: #111;">Cancellation Confirmed</h1>
-          <p>Hi ${reservation.guest_name},</p>
+          <p>Hi ${escapeHtml(reservation.guest_name)},</p>
           <p>Your booking for <strong>${reservation.experience.title}</strong> has been cancelled.</p>
           <p>A full refund has been initiated and will appear on your statement within 5-10 business days.</p>
           <p style="color: #666; margin-top: 20px;">We hope to see you again soon!</p>

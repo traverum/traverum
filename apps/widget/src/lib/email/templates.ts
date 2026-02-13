@@ -1,4 +1,5 @@
 import { getAppUrl, formatEmailDate, formatEmailTime, formatEmailPrice } from './index'
+import { escapeHtml } from '@/lib/sanitize'
 
 interface BaseEmailData {
   experienceTitle: string
@@ -64,7 +65,7 @@ export function guestBookingApproved(data: BaseEmailData & {
       <div class="header">
         <h1>Booking Approved</h1>
       </div>
-      <p>Hi ${data.guestName},</p>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
       <p>Great news! Your booking request has been approved. Please complete your payment to confirm the booking.</p>
       
       <div class="info-box">
@@ -112,7 +113,7 @@ export function guestRequestDeclined(data: BaseEmailData & {
       <div class="header">
         <h1>Booking Unavailable</h1>
       </div>
-      <p>Hi ${data.guestName},</p>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
       <p>Unfortunately, the experience provider was unable to accept your booking request for the requested time.</p>
       
       <div class="info-box">
@@ -170,7 +171,7 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
       <div class="header">
         <h1>Booking Confirmed</h1>
       </div>
-      <p>Hi ${data.guestName},</p>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
       <p>Your payment has been received and your booking is now confirmed!</p>
       
       <div class="info-box">
@@ -228,7 +229,7 @@ export function guestSpotReserved(data: BaseEmailData & {
       <div class="header">
         <h1>Spot Reserved</h1>
       </div>
-      <p>Hi ${data.guestName},</p>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
       <p>Your spot has been reserved! This experience needs at least ${data.minParticipants} participants to run. Currently ${data.bookedSoFar} of ${data.minParticipants} spots are booked${remaining > 0 ? ` &mdash; ${remaining} more needed` : ''}.</p>
       <p>Once the minimum is reached, you'll receive a payment link to confirm your booking. No payment is required until then.</p>
       
@@ -294,16 +295,16 @@ export function supplierNewReservation(data: BaseEmailData & {
         </div>
         <div class="info-row">
           <span class="info-label">Guest Name</span>
-          <span class="info-value">${data.guestName}</span>
+          <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Guest Email</span>
-          <span class="info-value">${data.guestEmail}</span>
+          <span class="info-value">${escapeHtml(data.guestEmail)}</span>
         </div>
         ${data.guestPhone ? `
         <div class="info-row">
           <span class="info-label">Guest Phone</span>
-          <span class="info-value">${data.guestPhone}</span>
+          <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
         </div>
         ` : ''}
         <div class="info-row">
@@ -343,7 +344,7 @@ export function guestMinimumNotReached(data: BaseEmailData & {
       <div class="header">
         <h1>Reservation Cancelled</h1>
       </div>
-      <p>Hi ${data.guestName},</p>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
       <p>Unfortunately, the session for ${data.experienceTitle} on ${formatEmailDate(data.date)} did not reach the minimum of ${data.minParticipants} participants (${data.bookedSoFar} were booked). Your reservation has been cancelled.</p>
       <p><strong>No payment was taken.</strong></p>
       
@@ -428,7 +429,7 @@ export function guestInstantBooking(data: BaseEmailData & {
       <div class="header">
         <h1>Complete Your Booking</h1>
       </div>
-      <p>Hi ${data.guestName},</p>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
       <p>Great choice! Your spot is reserved. Complete your payment to confirm the booking.</p>
       
       <div class="info-box">
@@ -490,16 +491,16 @@ export function supplierNewBooking(data: BaseEmailData & {
         </div>
         <div class="info-row">
           <span class="info-label">Guest Name</span>
-          <span class="info-value">${data.guestName}</span>
+          <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Guest Email</span>
-          <span class="info-value">${data.guestEmail}</span>
+          <span class="info-value">${escapeHtml(data.guestEmail)}</span>
         </div>
         ${data.guestPhone ? `
         <div class="info-row">
           <span class="info-label">Guest Phone</span>
-          <span class="info-value">${data.guestPhone}</span>
+          <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
         </div>
         ` : ''}
         <div class="info-row">
@@ -550,16 +551,16 @@ export function supplierNewRequest(data: BaseEmailData & {
         </div>
         <div class="info-row">
           <span class="info-label">Guest Name</span>
-          <span class="info-value">${data.guestName}</span>
+          <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Guest Email</span>
-          <span class="info-value">${data.guestEmail}</span>
+          <span class="info-value">${escapeHtml(data.guestEmail)}</span>
         </div>
         ${data.guestPhone ? `
         <div class="info-row">
           <span class="info-label">Guest Phone</span>
-          <span class="info-value">${data.guestPhone}</span>
+          <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
         </div>
         ` : ''}
         <div class="info-row">
@@ -621,16 +622,16 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
         </div>
         <div class="info-row">
           <span class="info-label">Guest Name</span>
-          <span class="info-value">${data.guestName}</span>
+          <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Guest Email</span>
-          <span class="info-value">${data.guestEmail}</span>
+          <span class="info-value">${escapeHtml(data.guestEmail)}</span>
         </div>
         ${data.guestPhone ? `
         <div class="info-row">
           <span class="info-label">Guest Phone</span>
-          <span class="info-value">${data.guestPhone}</span>
+          <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
         </div>
         ` : ''}
         <div class="info-row">
@@ -664,7 +665,7 @@ export function supplierCompletionCheck(data: BaseEmailData & {
       <div class="header">
         <h1>Did the experience happen?</h1>
       </div>
-      <p>We hope your experience with ${data.guestName} went well!</p>
+      <p>We hope your experience with ${escapeHtml(data.guestName)} went well!</p>
       
       <div class="info-box">
         <div class="info-row">
@@ -677,7 +678,7 @@ export function supplierCompletionCheck(data: BaseEmailData & {
         </div>
         <div class="info-row">
           <span class="info-label">Guest</span>
-          <span class="info-value">${data.guestName}</span>
+          <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
       </div>
       
@@ -704,7 +705,7 @@ export function guestPaymentFailed(data: BaseEmailData & {
       <div class="header">
         <h1>Payment Failed</h1>
       </div>
-      <p>Hi ${data.guestName},</p>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
       <p>Unfortunately, your payment for the following experience could not be processed.</p>
       
       <div class="info-box">
@@ -754,7 +755,7 @@ export function guestRefundProcessed(data: BaseEmailData & {
       <div class="header">
         <h1>Refund Processed</h1>
       </div>
-      <p>Hi ${data.guestName},</p>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
       <p>Your refund has been processed successfully. The funds will be returned to your original payment method within 5-10 business days.</p>
       
       <div class="info-box">
@@ -809,7 +810,7 @@ export function supplierPayoutSent(data: {
         </div>
         <div class="info-row">
           <span class="info-label">Guest</span>
-          <span class="info-value">${data.guestName}</span>
+          <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Experience Date</span>

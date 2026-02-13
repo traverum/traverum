@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/types'
+import { DEFAULT_COMMISSION, SELF_OWNED_COMMISSION } from '@traverum/shared'
 
 export const dynamic = 'force-dynamic'
 
 type DistributionUpdate = Database['public']['Tables']['distributions']['Update']
-
-// Default commission splits (in percentage)
-const DEFAULT_COMMISSION = {
-  supplier: 80,
-  hotel: 12,
-  platform: 8,
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,7 +90,7 @@ export async function POST(request: NextRequest) {
 
       // Set commission rates: 92/0/8 for self-owned, 80/12/8 for regular
       const commissionRates = isSelfOwned
-        ? { supplier: 92, hotel: 0, platform: 8 }
+        ? SELF_OWNED_COMMISSION
         : DEFAULT_COMMISSION
 
       // hotel_config_id is added via migration but not yet in generated types

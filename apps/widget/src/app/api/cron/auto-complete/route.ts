@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { createTransfer } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
+import { escapeHtml } from '@/lib/sanitize'
 import { format, subDays } from 'date-fns'
 
 function verifyCronSecret(request: NextRequest): boolean {
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
               <p>Hi ${supplier.name},</p>
               <p>A booking has been automatically marked as completed (7 days after the experience date with no response).</p>
               <p><strong>Experience:</strong> ${experience.title}</p>
-              <p><strong>Guest:</strong> ${reservation.guest_name}</p>
+              <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
               <p><strong>Amount transferred:</strong> €${(booking.supplier_amount_cents / 100).toFixed(2)}</p>
               <p style="color: #666; margin-top: 20px;">If the experience did not happen, please contact support.</p>
             </div>

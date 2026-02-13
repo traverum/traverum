@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/index'
+import { escapeHtml } from '@/lib/sanitize'
 
 function verifyCronSecret(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
         html: `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h1 style="color: #111;">Payment Window Closed</h1>
-            <p>Hi ${reservation.guest_name},</p>
+            <p>Hi ${escapeHtml(reservation.guest_name)},</p>
             <p>The payment window for your booking has closed. The provider approved your request, but payment was not completed within 24 hours.</p>
             <p><strong>Experience:</strong> ${experience.title}</p>
             <p>Feel free to submit a new booking request if you're still interested.</p>
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
               <h1 style="color: #111;">Payment Not Completed</h1>
               <p>Hi ${experience.supplier.name},</p>
               <p>The guest did not complete payment within the 24-hour window.</p>
-              <p><strong>Guest:</strong> ${reservation.guest_name}</p>
+              <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
               <p><strong>Experience:</strong> ${experience.title}</p>
               <p>The time slot has been released and is available for other bookings.</p>
             </div>

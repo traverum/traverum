@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { embedLimiter, getClientIp } from '@/lib/rate-limit'
 
 /**
  * Public API endpoint for the Shadow DOM embed widget.
@@ -11,6 +12,18 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ hotelSlug: string }> }
 ) {
+  // Rate limiting — skip in development if KV is not configured
+  if (process.env.KV_REST_API_URL) {
+    const ip = getClientIp(request)
+    const { success } = await embedLimiter.limit(ip)
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests' },
+        { status: 429 }
+      )
+    }
+  }
+
   const { hotelSlug } = await params
   const { searchParams } = new URL(request.url)
   const maxExperiences = parseInt(searchParams.get('max') || '6', 10)

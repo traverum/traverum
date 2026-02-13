@@ -18,14 +18,14 @@ git push
 In Vercel project → Settings → Environment Variables, add:
 
 **Critical:**
-- `NEXT_PUBLIC_APP_URL` = `https://widget.yourdomain.com` (your actual domain)
+- `NEXT_PUBLIC_APP_URL` = `https://book.traverum.com`
 
 **Required:**
 - All variables from `env.example`
 
 ### 4. Add Domain
 1. Settings → Domains → Add Domain
-2. Enter: `widget.yourdomain.com`
+2. Enter: `book.traverum.com`
 3. Add DNS CNAME record pointing to Vercel
 4. Wait for SSL (automatic, ~5 minutes)
 

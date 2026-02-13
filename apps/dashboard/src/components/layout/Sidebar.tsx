@@ -20,9 +20,6 @@ import { PanelLeft } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
-const VIEW_STORAGE_KEY = 'traverum_active_view';
-type ViewMode = 'experiences' | 'stays';
-
 interface SidebarProps {
   children?: ReactNode;
 }
@@ -44,29 +41,6 @@ export function Sidebar({ children }: SidebarProps) {
   // Determine current view context purely from route — no capability gating
   const isSupplierContext = location.pathname.startsWith('/supplier');
   const isHotelContext = location.pathname.startsWith('/hotel');
-
-  // Resolve active view: route-based first, then localStorage fallback
-  const getActiveView = (): ViewMode => {
-    if (isSupplierContext) return 'experiences';
-    if (isHotelContext) return 'stays';
-    try {
-      const stored = localStorage.getItem(VIEW_STORAGE_KEY);
-      if (stored === 'experiences' || stored === 'stays') return stored as ViewMode;
-    } catch {}
-    return 'experiences';
-  };
-  const activeView = getActiveView();
-
-  const handleViewSwitch = (view: ViewMode) => {
-    try {
-      localStorage.setItem(VIEW_STORAGE_KEY, view);
-    } catch {}
-    if (view === 'experiences') {
-      navigate('/supplier/dashboard');
-    } else {
-      navigate('/hotel/dashboard');
-    }
-  };
 
   const handleAddExperience = async () => {
     if (creatingExperience || !activePartnerId) return;
@@ -185,42 +159,6 @@ export function Sidebar({ children }: SidebarProps) {
           </button>
           <div className="flex-1 min-w-0">
             <OrganizationDropdown />
-          </div>
-        </div>
-
-        {/* View Toggle: Experiences / Stays */}
-        <div className="px-3 py-2.5 border-b border-border">
-          <div className="relative flex p-[3px] rounded-full bg-[rgba(242,241,238,0.7)]">
-            {/* Sliding pill indicator */}
-            <div
-              className="absolute top-[3px] bottom-[3px] rounded-full bg-primary transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-              style={{
-                width: 'calc(50% - 3px)',
-                left: activeView === 'experiences' ? '3px' : 'calc(50%)',
-              }}
-            />
-            <button
-              onClick={() => handleViewSwitch('experiences')}
-              className={cn(
-                'relative z-10 flex-1 h-6 rounded-full text-[11px] font-medium transition-colors duration-200',
-                activeView === 'experiences'
-                  ? 'text-white'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Experiences
-            </button>
-            <button
-              onClick={() => handleViewSwitch('stays')}
-              className={cn(
-                'relative z-10 flex-1 h-6 rounded-full text-[11px] font-medium transition-colors duration-200',
-                activeView === 'stays'
-                  ? 'text-white'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Stays
-            </button>
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import type { Distribution } from './supabase/types'
+import { DEFAULT_COMMISSION } from '@traverum/shared'
 
 export interface CommissionSplit {
   supplierAmount: number
@@ -41,9 +42,5 @@ export function calculateCommissionSplit(
  * Get default commission rates
  */
 export function getDefaultCommissionRates() {
-  return {
-    supplier: 80,
-    hotel: 12,
-    platform: 8,
-  }
+  return { ...DEFAULT_COMMISSION }
 }

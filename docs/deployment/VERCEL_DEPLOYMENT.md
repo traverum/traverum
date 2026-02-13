@@ -5,7 +5,7 @@ This guide will help you deploy the Traverum widget to Vercel with your custom d
 ## Prerequisites
 
 - A Vercel account (sign up at [vercel.com](https://vercel.com))
-- A custom domain (e.g., `widget.traverum.com` or `widget.yourdomain.com`)
+- A custom domain (e.g., `book.traverum.com`)
 - Domain DNS access to configure DNS records
 
 ## Step 1: Connect Your Repository to Vercel
@@ -40,7 +40,7 @@ RESEND_API_KEY=re_your-resend-api-key
 FROM_EMAIL=Traverum <bookings@yourdomain.com>
 
 # App Configuration (IMPORTANT: Use your actual domain)
-NEXT_PUBLIC_APP_URL=https://widget.yourdomain.com
+NEXT_PUBLIC_APP_URL=https://book.traverum.com
 
 # Security
 TOKEN_SECRET=your-random-token-secret
@@ -51,7 +51,7 @@ SUPABASE_PROJECT_REF=your-project-ref
 ```
 
 **Important**: 
-- Set `NEXT_PUBLIC_APP_URL` to your actual domain (e.g., `https://widget.traverum.com`)
+- Set `NEXT_PUBLIC_APP_URL` to your actual domain (e.g., `https://book.traverum.com`)
 - Use production Stripe keys (`sk_live_` and `pk_live_`) for live deployments
 - Generate secure random strings for `TOKEN_SECRET` and `CRON_SECRET`
 
@@ -68,7 +68,7 @@ Set all variables for **Production** at minimum.
 
 1. In Vercel project settings, go to **Settings → Domains**
 2. Click **Add Domain**
-3. Enter your domain (e.g., `widget.traverum.com`)
+3. Enter your domain (e.g., `book.traverum.com`)
 4. Vercel will show you DNS records to add
 
 ### DNS Configuration
@@ -80,14 +80,14 @@ Add these DNS records to your domain provider:
 - Name: `@` or `traverum.com`
 - Value: `76.76.21.21` (Vercel's IP)
 
-**For subdomain (e.g., `widget.traverum.com`):**
+**For subdomain (e.g., `book.traverum.com`):**
 - Type: `CNAME` record
-- Name: `widget`
+- Name: `book`
 - Value: `cname.vercel-dns.com`
 
 **Alternative (recommended for subdomains):**
 - Type: `CNAME` record  
-- Name: `widget`
+- Name: `book`
 - Value: Your Vercel deployment URL (e.g., `your-project.vercel.app`)
 
 ### SSL Certificate
@@ -100,7 +100,7 @@ After deployment, configure your Stripe webhook:
 
 1. Go to [Stripe Dashboard → Webhooks](https://dashboard.stripe.com/webhooks)
 2. Click **Add endpoint**
-3. Endpoint URL: `https://widget.yourdomain.com/api/webhooks/stripe`
+3. Endpoint URL: `https://book.traverum.com/api/webhooks/stripe`
 4. Select events:
    - `payment_intent.succeeded`
    - `payment_intent.payment_failed`
@@ -111,9 +111,9 @@ After deployment, configure your Stripe webhook:
 
 ## Step 5: Verify Deployment
 
-1. Visit your domain: `https://widget.yourdomain.com`
-2. Check the embed script: `https://widget.yourdomain.com/embed.js`
-3. Test a hotel page: `https://widget.yourdomain.com/[hotel-slug]`
+1. Visit your domain: `https://book.traverum.com`
+2. Check the embed script: `https://book.traverum.com/embed.js`
+3. Test a hotel page: `https://book.traverum.com/[hotel-slug]`
 4. Verify environment variables are loaded (check browser console for errors)
 
 ## Step 6: Update Email Links
@@ -156,7 +156,7 @@ These will work automatically on Vercel. Ensure `CRON_SECRET` is set for securit
 
 ### Widget Not Loading
 
-1. Verify `embed.js` is accessible: `https://widget.yourdomain.com/embed.js`
+1. Verify `embed.js` is accessible: `https://book.traverum.com/embed.js`
 2. Check browser console for errors
 3. Verify CORS headers are set correctly (already configured in `next.config.js`)
 4. Test with a simple HTML page embedding the widget

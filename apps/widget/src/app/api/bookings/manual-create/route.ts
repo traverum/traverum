@@ -10,15 +10,31 @@ import {
 import { generateCancelToken } from '@/lib/tokens'
 import { getCancellationPolicyText, CANCELLATION_POLICIES } from '@/lib/availability'
 
+// Verify cron secret to prevent unauthorized access
+function verifyCronSecret(request: NextRequest): boolean {
+  const authHeader = request.headers.get('authorization')
+  const cronSecret = process.env.CRON_SECRET
+  
+  if (!cronSecret) return true // Allow if no secret configured (dev)
+  return authHeader === `Bearer ${cronSecret}`
+}
+
 /**
  * Manual booking creation endpoint for debugging
  * Use this to manually create a booking from a payment that succeeded
  * but didn't trigger the webhook properly
  * 
+ * Requires CRON_SECRET bearer token authentication.
+ * 
  * Usage: POST /api/bookings/manual-create
+ * Headers: { Authorization: "Bearer <CRON_SECRET>" }
  * Body: { paymentIntentId: "pi_xxx" } or { reservationId: "xxx" }
  */
 export async function POST(request: NextRequest) {
+  if (!verifyCronSecret(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body = await request.json()
     const { paymentIntentId, reservationId, chargeId } = body
