@@ -65,11 +65,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const experience = reservation.experience
     const supplier = experience.supplier
 
+    // Look up the app user by auth_id (user.id from Supabase Auth is the auth UUID,
+    // but user_partners.user_id references the app users.id — not the auth UUID)
+    const { data: appUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single()
+
+    if (!appUser) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 403 })
+    }
+
     // Verify the authenticated user owns the supplier partner
     const { data: userPartner } = await supabase
       .from('user_partners')
       .select('id')
-      .eq('user_id', user.id)
+      .eq('user_id', appUser.id)
       .eq('partner_id', supplier.id)
       .single()
 
