@@ -20,7 +20,6 @@ interface DatePickerDrawerProps {
   onConfirm: () => void
   participants: number
   availabilityRules?: AvailabilityRule[]
-  minParticipants?: number
 }
 
 export function DatePickerDrawer({
@@ -37,7 +36,6 @@ export function DatePickerDrawer({
   onConfirm,
   participants,
   availabilityRules = [],
-  minParticipants = 1,
 }: DatePickerDrawerProps) {
   const shouldReduceMotion = useReducedMotion()
   const hasSelection = isCustomRequest 
@@ -123,7 +121,6 @@ export function DatePickerDrawer({
                 onRequestTimeChange={onRequestTimeChange}
                 participants={participants}
                 availabilityRules={availabilityRules}
-                minParticipants={minParticipants}
               />
             </div>
             
