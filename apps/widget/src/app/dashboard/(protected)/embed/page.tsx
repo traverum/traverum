@@ -13,7 +13,8 @@ export default async function EmbedPage() {
 
   const { hotelConfig } = result.data
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const rawUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://book.traverum.com'
+  const baseUrl = rawUrl.includes('localhost') && process.env.VERCEL ? 'https://book.traverum.com' : rawUrl
   const hotelSlug = hotelConfig.slug
 
   const embedCode = `<!-- Traverum Experiences Widget -->
