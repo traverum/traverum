@@ -933,6 +933,49 @@ function ExperienceDashboardInner() {
                   </p>
                 </div>
 
+                {pricingType !== 'per_day' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="minParticipants" className="text-sm">Minimum Guests</Label>
+                      <Input
+                        id="minParticipants"
+                        type="number"
+                        min="1"
+                        value={minParticipants}
+                        onChange={(e) => setMinParticipants(e.target.value)}
+                        className="h-8"
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Guests always pay for at least this many people, even if fewer show up. Set to 1 for no minimum.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="maxParticipants" className="text-sm">Max Participants *</Label>
+                      <Input
+                        id="maxParticipants"
+                        type="number"
+                        min="1"
+                        value={maxParticipants}
+                        onChange={(e) => setMaxParticipants(e.target.value)}
+                        className="h-8"
+                      />
+                    </div>
+                  </div>
+                )}
+                {pricingType === 'per_day' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="maxParticipants" className="text-sm">Max Participants *</Label>
+                    <Input
+                      id="maxParticipants"
+                      type="number"
+                      min="1"
+                      value={maxParticipants}
+                      onChange={(e) => setMaxParticipants(e.target.value)}
+                      className="h-8"
+                    />
+                  </div>
+                )}
+
               </CardContent>
             </Card>
           </TabsContent>
@@ -970,7 +1013,7 @@ function ExperienceDashboardInner() {
                 <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
                   {pricingType !== 'per_day' && (
                     <div className="space-y-2">
-                      <Label htmlFor="minParticipants" className="text-sm">Min to Run *</Label>
+                      <Label htmlFor="minParticipants" className="text-sm">Minimum Guests</Label>
                       <Input
                         id="minParticipants"
                         type="number"
@@ -980,7 +1023,7 @@ function ExperienceDashboardInner() {
                         className="h-8"
                       />
                       <p className="text-[11px] text-muted-foreground">
-                        Session only proceeds if this many people book. Set to 1 to allow any booking.
+                        Guests always pay for at least this many people, even if fewer show up. Set to 1 for no minimum.
                       </p>
                     </div>
                   )}

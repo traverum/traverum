@@ -171,9 +171,9 @@
       // Spacing & alignment
       var textAlign = theme.textAlign || 'left';
       var sectionPadding = theme.sectionPadding || '0';
-      var titleMargin = theme.titleMargin || '1.5rem';
-      var gridGap = theme.gridGap || '1.25rem';
-      var ctaMargin = theme.ctaMargin || '1.75rem';
+      var titleMargin = theme.titleMargin || '24px';
+      var gridGap = theme.gridGap || '20px';
+      var ctaMargin = theme.ctaMargin || '28px';
       var gridMinWidth = theme.gridMinWidth || '280px';
       
       // Debug logging
@@ -359,13 +359,13 @@
         '.trv-skeleton {\n' +
         '  display: grid;\n' +
         '  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));\n' +
-        '  gap: 1.25rem;\n' +
+        '  gap: 20px;\n' +
         '}\n' +
         '.trv-skeleton-card {\n' +
         '  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);\n' +
         '  background-size: 200% 100%;\n' +
         '  animation: trv-shimmer 1.5s infinite;\n' +
-        '  border-radius: var(--_radius, 0.75rem);\n' +
+        '  border-radius: var(--_radius, 12px);\n' +
         '  height: 300px;\n' +
         '}\n' +
         '@keyframes trv-shimmer {\n' +
@@ -493,13 +493,13 @@
         '.trv-skeleton {' +
         '  display: grid;' +
         '  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));' +
-        '  gap: 1.25rem;' +
+        '  gap: 20px;' +
         '}' +
         '.trv-skeleton-card {' +
         '  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);' +
         '  background-size: 200% 100%;' +
         '  animation: trv-shimmer 1.5s infinite;' +
-        '  border-radius: 0.75rem;' +
+        '  border-radius: 12px;' +
         '  height: 300px;' +
         '}' +
         '@keyframes trv-shimmer {' +

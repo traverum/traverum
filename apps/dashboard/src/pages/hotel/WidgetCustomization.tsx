@@ -3,7 +3,6 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -16,17 +15,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   Loader2,
   Check,
   AlertCircle,
   HelpCircle,
-  Palette,
-  Type,
-  LayoutGrid,
-  FileText,
   AlignLeft,
   AlignCenter,
-  Space,
+  ChevronDown,
+  SlidersHorizontal,
+  ExternalLink,
 } from 'lucide-react';
 
 // ── Constants ──
@@ -57,37 +59,46 @@ const WEIGHT_OPTIONS = [
 ];
 
 const RADIUS_OPTIONS = [
-  { value: '0', label: 'None' },
-  { value: '0.25rem', label: '4px' },
-  { value: '0.5rem', label: '8px' },
-  { value: '0.75rem', label: '12px' },
-  { value: '1rem', label: '16px' },
-  { value: '1.5rem', label: '24px' },
+  { value: '0', label: 'Sharp' },
+  { value: '4px', label: 'Subtle' },
+  { value: '8px', label: 'Rounded' },
+  { value: '12px', label: 'Soft' },
+  { value: '16px', label: 'Round' },
+  { value: '24px', label: 'Pill' },
 ];
 
 const SPACING_PRESETS = [
-  { value: '0.75rem', label: 'Small' },
-  { value: '1.25rem', label: 'Medium' },
-  { value: '1.5rem', label: 'Default' },
-  { value: '2rem', label: 'Large' },
-  { value: '2.5rem', label: 'Extra Large' },
-  { value: '3rem', label: 'Huge' },
+  { value: '12px', label: 'Compact' },
+  { value: '20px', label: 'Default' },
+  { value: '24px', label: 'Comfortable' },
+  { value: '32px', label: 'Relaxed' },
+  { value: '40px', label: 'Spacious' },
+  { value: '48px', label: 'Airy' },
 ];
 
 const PADDING_PRESETS = [
   { value: '0', label: 'None' },
-  { value: '1rem 0', label: 'Small' },
-  { value: '2rem 0', label: 'Medium' },
-  { value: '3rem 0', label: 'Large' },
-  { value: '4rem 0', label: 'Extra Large' },
-  { value: '5rem 0', label: 'Huge' },
+  { value: '16px 0', label: 'Tight' },
+  { value: '32px 0', label: 'Default' },
+  { value: '48px 0', label: 'Relaxed' },
+  { value: '64px 0', label: 'Spacious' },
+  { value: '80px 0', label: 'Airy' },
 ];
 
 const GRID_WIDTH_PRESETS = [
-  { value: '240px', label: 'Narrow' },
+  { value: '240px', label: 'Narrow — more columns' },
   { value: '280px', label: 'Default' },
-  { value: '320px', label: 'Wide' },
-  { value: '360px', label: 'Extra Wide' },
+  { value: '320px', label: 'Wide — fewer columns' },
+  { value: '360px', label: 'Extra wide' },
+];
+
+const TITLE_SIZE_PRESETS = [
+  { value: '28px', label: 'Small' },
+  { value: '34px', label: 'Medium' },
+  { value: '40px', label: 'Default' },
+  { value: '48px', label: 'Large' },
+  { value: '56px', label: 'Extra Large' },
+  { value: '64px', label: 'Hero' },
 ];
 
 interface ThemeState {
@@ -115,63 +126,49 @@ const DEFAULT_THEME: ThemeState = {
   accent_color: '#2563eb',
   text_color: '#1a1a1a',
   background_color: '#ffffff',
-  card_radius: '0.75rem',
+  card_radius: '12px',
   heading_font_family: 'Poppins, system-ui, sans-serif',
   body_font_family: 'Inter, system-ui, sans-serif',
   heading_font_weight: '200',
   font_size_base: '16',
-  title_font_size: '2.5rem',
+  title_font_size: '40px',
   widget_title: 'Local Experiences',
   widget_subtitle: 'Curated by the team at {{hotel_name}}',
   widget_title_enabled: true,
   widget_text_align: 'left',
   widget_section_padding: '0',
-  widget_title_margin: '1.5rem',
-  widget_grid_gap: '1.25rem',
-  widget_cta_margin: '1.75rem',
+  widget_title_margin: '24px',
+  widget_grid_gap: '20px',
+  widget_cta_margin: '28px',
   widget_grid_min_width: '280px',
 };
 
-// ── Color Input ──
-function ColorField({
+// ── Inline color picker ──
+function ColorPicker({
   label,
   value,
   onChange,
-  tooltip,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
-  tooltip?: string;
 }) {
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-1">
-        <Label className="text-xs">{label}</Label>
-        {tooltip && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">{tooltip}</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
+    <div className="flex items-center gap-2.5">
+      <div className="relative shrink-0">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-7 h-7 rounded-sm border border-border cursor-pointer p-0.5 bg-transparent"
+        />
       </div>
-      <div className="flex items-center gap-2">
-        <div className="relative">
-          <input
-            type="color"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            className="w-8 h-8 rounded-sm border border-border cursor-pointer p-0.5 bg-transparent"
-          />
-        </div>
+      <div className="flex-1 min-w-0">
+        <Label className="text-[11px] text-muted-foreground block mb-0.5">{label}</Label>
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-8 font-mono text-xs flex-1"
+          className="h-7 font-mono text-xs"
           placeholder="#000000"
         />
       </div>
@@ -179,8 +176,8 @@ function ColorField({
   );
 }
 
-// ── Alignment Selector ──
-function AlignmentSelector({
+// ── Alignment toggle ──
+function AlignmentToggle({
   value,
   onChange,
 }: {
@@ -188,8 +185,8 @@ function AlignmentSelector({
   onChange: (v: string) => void;
 }) {
   const options = [
-    { value: 'left', icon: AlignLeft, label: 'Left aligned' },
-    { value: 'center', icon: AlignCenter, label: 'Centered' },
+    { value: 'left', icon: AlignLeft, label: 'Left' },
+    { value: 'center', icon: AlignCenter, label: 'Center' },
   ];
 
   return (
@@ -198,27 +195,45 @@ function AlignmentSelector({
         const Icon = opt.icon;
         const isActive = value === opt.value;
         return (
-          <Tooltip key={opt.value}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => onChange(opt.value)}
-                className={`flex items-center justify-center w-8 h-8 rounded-sm transition-ui ${
-                  isActive
-                    ? 'bg-primary/10 text-primary border border-primary/20'
-                    : 'bg-[rgba(242,241,238,0.6)] text-muted-foreground hover:text-foreground hover:bg-accent/50 border border-transparent'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="text-xs">{opt.label}</p>
-            </TooltipContent>
-          </Tooltip>
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={`flex items-center gap-1.5 px-2.5 h-7 rounded-sm text-xs transition-ui ${
+              isActive
+                ? 'bg-primary/10 text-primary border border-primary/20'
+                : 'bg-[rgba(242,241,238,0.6)] text-muted-foreground hover:text-foreground border border-transparent'
+            }`}
+          >
+            <Icon className="w-3.5 h-3.5" />
+            {opt.label}
+          </button>
         );
       })}
     </div>
+  );
+}
+
+// ── Section divider ──
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider pt-1">
+      {children}
+    </p>
+  );
+}
+
+// ── Help tooltip ──
+function Help({ tip }: { tip: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help shrink-0" />
+      </TooltipTrigger>
+      <TooltipContent>
+        <p className="text-xs max-w-[200px]">{tip}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -237,10 +252,10 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
         color: theme.text_color,
         fontFamily: theme.body_font_family,
         fontSize: `${parseInt(theme.font_size_base) || 16}px`,
-        padding: theme.widget_section_padding !== '0' ? '1rem' : '1rem',
+        padding: theme.widget_section_padding !== '0' ? theme.widget_section_padding : '1rem',
       }}
     >
-      {/* Inject fonts */}
+      {/* Inject Google Fonts */}
       <link
         rel="stylesheet"
         href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(headingFont)}:wght@200;300;400;500;600;700&family=${encodeURIComponent(bodyFont)}:wght@300;400;500;600&display=swap`}
@@ -248,7 +263,7 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
 
       {/* Title */}
       {theme.widget_title_enabled && (
-        <div style={{ marginBottom: '0.75rem', textAlign: align as any }}>
+        <div style={{ marginBottom: theme.widget_title_margin || '12px', textAlign: align as any }}>
           <h2
             style={{
               fontFamily: theme.heading_font_family,
@@ -280,8 +295,8 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
       <div
         style={
           align === 'center'
-            ? { display: 'flex', flexWrap: 'wrap' as const, justifyContent: 'center', gap: '0.5rem' }
-            : { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }
+            ? { display: 'flex', flexWrap: 'wrap' as const, justifyContent: 'center', gap: theme.widget_grid_gap || '12px' }
+            : { display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: theme.widget_grid_gap || '12px' }
         }
       >
         {[
@@ -298,7 +313,6 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
               ...(align === 'center' ? { width: '45%', flexShrink: 0 } : {}),
             }}
           >
-            {/* Image placeholder */}
             <div
               style={{
                 width: '100%',
@@ -331,7 +345,6 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
                 {card.title}
               </span>
             </div>
-            {/* Body */}
             <div
               style={{
                 padding: '0.375rem 0.5rem',
@@ -348,7 +361,7 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
                   color: theme.accent_color,
                 }}
               >
-                {card.price} €
+                {card.price} &euro;
               </span>
             </div>
           </div>
@@ -356,7 +369,7 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
       </div>
 
       {/* Mock CTA */}
-      <div style={{ textAlign: align as any, marginTop: '0.75rem' }}>
+      <div style={{ textAlign: align as any, marginTop: theme.widget_cta_margin || '12px' }}>
         <span
           style={{
             display: 'inline-block',
@@ -364,7 +377,7 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
             fontFamily: theme.body_font_family,
             fontWeight: 500,
             fontSize: '0.7rem',
-            color: luminance(theme.accent_color) > 0.4 ? '#000' : '#fff',
+            color: luminance(theme.accent_color) > 0.6 ? '#000' : '#fff',
             background: theme.accent_color,
             border: 'none',
             borderRadius: `calc(${theme.card_radius} * 0.667)`,
@@ -402,6 +415,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
   const [hotelSlug, setHotelSlug] = useState('');
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadRef = useRef(true);
@@ -449,10 +463,17 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
           widget_cta_margin: d.widget_cta_margin || DEFAULT_THEME.widget_cta_margin,
           widget_grid_min_width: d.widget_grid_min_width || DEFAULT_THEME.widget_grid_min_width,
         });
+
+        // Auto-expand advanced if hotel has non-default advanced settings
+        const hasCustomAdvanced =
+          (d.card_radius && d.card_radius !== DEFAULT_THEME.card_radius) ||
+          (d.widget_section_padding && d.widget_section_padding !== DEFAULT_THEME.widget_section_padding && d.widget_section_padding !== '0') ||
+          (d.widget_grid_gap && d.widget_grid_gap !== DEFAULT_THEME.widget_grid_gap) ||
+          (d.widget_grid_min_width && d.widget_grid_min_width !== DEFAULT_THEME.widget_grid_min_width);
+        if (hasCustomAdvanced) setAdvancedOpen(true);
       }
 
       setLoading(false);
-      // Mark initial load complete after a tick
       setTimeout(() => {
         initialLoadRef.current = false;
       }, 100);
@@ -518,10 +539,8 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
       setTheme((prev) => {
         const next = { ...prev, [key]: value };
 
-        // Skip autosave during initial load
         if (initialLoadRef.current) return next;
 
-        // Debounce save
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => {
           saveConfig(next);
@@ -563,8 +582,8 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
 
   return (
     <>
-      {/* Autosave indicator - only when standalone */}
-      {!embedded && saveStatus !== 'idle' && (
+      {/* Autosave indicator */}
+      {saveStatus !== 'idle' && (
         <div className="fixed top-4 right-4 z-50 bg-background/95 backdrop-blur-sm border border-border/50 rounded-md px-2.5 py-1 shadow-sm flex items-center gap-1.5">
           {saveStatus === 'saving' && (
             <>
@@ -588,82 +607,55 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
       )}
 
       <div className={embedded ? '' : 'container max-w-6xl mx-auto px-4 py-6'}>
-        {/* Header - hidden when embedded in tabs */}
+        {/* Header - only when standalone */}
         {!embedded && (
-          <div className="mb-4">
-            <h1 className="text-xl font-semibold text-foreground">Widget Customization</h1>
+          <div className="mb-5">
+            <h1 className="text-xl font-semibold text-foreground">Widget Style</h1>
             <p className="mt-1 text-xs text-muted-foreground">
-              Customize how the experience widget looks on your website.
+              Match the widget to your hotel&rsquo;s website. Changes save automatically.
             </p>
           </div>
         )}
 
-        {/* Two-column layout: Settings + Preview */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-          {/* Settings Column */}
-          <div className="lg:col-span-3 space-y-4">
-            {/* ── Colors ── */}
-            <Card className="border border-border">
-              <CardContent className="pt-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-sm bg-primary/10">
-                    <Palette className="h-4 w-4 text-primary" />
-                  </div>
-                  <h2 className="text-sm font-medium text-foreground">Colors</h2>
-                </div>
+        {/* Two-column: Controls + Preview */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <ColorField
-                    label="Accent"
-                    value={theme.accent_color}
-                    onChange={(v) => updateField('accent_color', v)}
-                    tooltip="Buttons, prices, and interactive elements"
-                  />
-                  <ColorField
-                    label="Text"
-                    value={theme.text_color}
-                    onChange={(v) => updateField('text_color', v)}
-                    tooltip="Main text color throughout the widget"
-                  />
-                  <ColorField
-                    label="Background"
-                    value={theme.background_color}
-                    onChange={(v) => updateField('background_color', v)}
-                    tooltip="Widget and card background color"
-                  />
-                </div>
-              </CardContent>
-            </Card>
+          {/* ─── Controls Column ─── */}
+          <div className="lg:col-span-3 space-y-5">
 
-            {/* ── Typography ── */}
-            <Card className="border border-border">
-              <CardContent className="pt-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-sm bg-primary/10">
-                    <Type className="h-4 w-4 text-primary" />
-                  </div>
-                  <h2 className="text-sm font-medium text-foreground">Typography</h2>
-                </div>
+            {/* ── BRAND ── */}
+            <section className="space-y-3">
+              <SectionLabel>Brand</SectionLabel>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Heading Font */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Heading Font</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Font for titles and headings</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
+              {/* Colors — single row */}
+              <div className="grid grid-cols-3 gap-3">
+                <ColorPicker
+                  label="Accent"
+                  value={theme.accent_color}
+                  onChange={(v) => updateField('accent_color', v)}
+                />
+                <ColorPicker
+                  label="Text"
+                  value={theme.text_color}
+                  onChange={(v) => updateField('text_color', v)}
+                />
+                <ColorPicker
+                  label="Background"
+                  value={theme.background_color}
+                  onChange={(v) => updateField('background_color', v)}
+                />
+              </div>
+
+              {/* Fonts — heading with weight, body */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Heading font</Label>
+                  <div className="flex gap-1.5">
                     <Select
                       value={theme.heading_font_family}
                       onValueChange={(v) => updateField('heading_font_family', v)}
                     >
-                      <SelectTrigger className="h-8">
+                      <SelectTrigger className="h-7 flex-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -674,46 +666,11 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  {/* Body Font */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Body Font</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Font for body text and buttons</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Select
-                      value={theme.body_font_family}
-                      onValueChange={(v) => updateField('body_font_family', v)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {FONT_OPTIONS.map((f) => (
-                          <SelectItem key={f.value} value={f.value}>
-                            <span style={{ fontFamily: f.value }}>{f.label}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Heading Weight */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Heading Weight</Label>
                     <Select
                       value={theme.heading_font_weight}
                       onValueChange={(v) => updateField('heading_font_weight', v)}
                     >
-                      <SelectTrigger className="h-8">
+                      <SelectTrigger className="h-7 w-[100px]">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -725,379 +682,315 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
 
-                  {/* Base Font Size */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Base Font Size</Label>
-                      <Tooltip>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Body font</Label>
+                  <Select
+                    value={theme.body_font_family}
+                    onValueChange={(v) => updateField('body_font_family', v)}
+                  >
+                    <SelectTrigger className="h-7">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FONT_OPTIONS.map((f) => (
+                        <SelectItem key={f.value} value={f.value}>
+                          <span style={{ fontFamily: f.value }}>{f.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Card corners — visual inline selector */}
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">Card corners</Label>
+                <div className="flex gap-1.5">
+                  {RADIUS_OPTIONS.map((r) => {
+                    const isActive = theme.card_radius === r.value;
+                    return (
+                      <Tooltip key={r.value}>
                         <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                          <button
+                            type="button"
+                            onClick={() => updateField('card_radius', r.value)}
+                            className={`flex items-center justify-center w-8 h-8 rounded-sm transition-ui ${
+                              isActive
+                                ? 'bg-primary/10 border border-primary/20'
+                                : 'bg-[rgba(242,241,238,0.6)] border border-transparent hover:border-border'
+                            }`}
+                          >
+                            <div
+                              className={`w-4 h-4 ${isActive ? 'bg-primary/30 border-primary/40' : 'bg-muted-foreground/15 border-border'} border`}
+                              style={{ borderRadius: r.value }}
+                            />
+                          </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p className="text-xs">Base size in pixels (default 16)</p>
+                          <p className="text-xs">{r.label}</p>
                         </TooltipContent>
                       </Tooltip>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min="12"
-                        max="24"
-                        value={theme.font_size_base}
-                        onChange={(e) => updateField('font_size_base', e.target.value)}
-                        className="h-8 flex-1"
-                      />
-                      <span className="text-xs text-muted-foreground">px</span>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
 
-            {/* ── Layout ── */}
-            <Card className="border border-border">
-              <CardContent className="pt-4 space-y-4">
+            <div className="border-t border-border" />
+
+            {/* ── CONTENT ── */}
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <SectionLabel>Content</SectionLabel>
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-sm bg-primary/10">
-                    <LayoutGrid className="h-4 w-4 text-primary" />
-                  </div>
-                  <h2 className="text-sm font-medium text-foreground">Layout</h2>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Card Radius */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Card Corners</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Border radius for experience cards</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Select
-                      value={theme.card_radius}
-                      onValueChange={(v) => updateField('card_radius', v)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RADIUS_OPTIONS.map((r) => (
-                          <SelectItem key={r.value} value={r.value}>
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-4 h-4 border border-border bg-muted"
-                                style={{ borderRadius: r.value }}
-                              />
-                              <span>{r.label}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Title Font Size */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Title Size</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Widget title font size (CSS value)</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Input
-                      value={theme.title_font_size}
-                      onChange={(e) => updateField('title_font_size', e.target.value)}
-                      className="h-8"
-                      placeholder="2.5rem"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* ── Spacing & Alignment ── */}
-            <Card className="border border-border">
-              <CardContent className="pt-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-sm bg-primary/10">
-                    <Space className="h-4 w-4 text-primary" />
-                  </div>
-                  <h2 className="text-sm font-medium text-foreground">Spacing & Alignment</h2>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs max-w-[200px]">Match these to your hotel website for a native look</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-
-                {/* Widget Alignment */}
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Widget Alignment</Label>
-                  <AlignmentSelector
-                    value={theme.widget_text_align}
-                    onChange={(v) => updateField('widget_text_align', v)}
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Section Padding */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Section Padding</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Inner padding around the entire widget</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Select
-                      value={theme.widget_section_padding}
-                      onValueChange={(v) => updateField('widget_section_padding', v)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PADDING_PRESETS.map((p) => (
-                          <SelectItem key={p.value} value={p.value}>
-                            {p.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Title Margin */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Title Spacing</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Space between title and cards</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Select
-                      value={theme.widget_title_margin}
-                      onValueChange={(v) => updateField('widget_title_margin', v)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SPACING_PRESETS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>
-                            {s.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Grid Gap */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Card Gap</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Space between experience cards</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Select
-                      value={theme.widget_grid_gap}
-                      onValueChange={(v) => updateField('widget_grid_gap', v)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SPACING_PRESETS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>
-                            {s.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* CTA Margin */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Button Spacing</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Space above the "See all" button</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Select
-                      value={theme.widget_cta_margin}
-                      onValueChange={(v) => updateField('widget_cta_margin', v)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SPACING_PRESETS.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>
-                            {s.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Grid Min Width */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1">
-                      <Label className="text-xs">Card Width</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="text-xs">Minimum width per card — controls how many columns appear</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Select
-                      value={theme.widget_grid_min_width}
-                      onValueChange={(v) => updateField('widget_grid_min_width', v)}
-                    >
-                      <SelectTrigger className="h-8">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {GRID_WIDTH_PRESETS.map((g) => (
-                          <SelectItem key={g.value} value={g.value}>
-                            {g.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* ── Widget Content ── */}
-            <Card className="border border-border">
-              <CardContent className="pt-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-sm bg-primary/10">
-                    <FileText className="h-4 w-4 text-primary" />
-                  </div>
-                  <h2 className="text-sm font-medium text-foreground">Content</h2>
-                </div>
-
-                {/* Show title toggle */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Label className="text-xs">Show Title</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Show or hide the heading above experience cards</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
+                  <span className="text-[11px] text-muted-foreground">Show title</span>
                   <Switch
                     checked={theme.widget_title_enabled}
                     onCheckedChange={(v) => updateField('widget_title_enabled', v)}
                   />
                 </div>
+              </div>
 
-                {theme.widget_title_enabled && (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs">Title</Label>
+              {theme.widget_title_enabled && (
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Title</Label>
                       <Input
                         value={theme.widget_title}
                         onChange={(e) => updateField('widget_title', e.target.value)}
-                        className="h-8"
+                        className="h-7"
                         placeholder="Local Experiences"
                       />
                     </div>
-
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       <div className="flex items-center gap-1">
-                        <Label className="text-xs">Subtitle</Label>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="text-xs">
-                              Use {'{{hotel_name}}'} to insert your hotel name
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
+                        <Label className="text-[11px] text-muted-foreground">Subtitle</Label>
+                        <Help tip="Use {{hotel_name}} to insert your hotel name automatically" />
                       </div>
                       <Input
                         value={theme.widget_subtitle}
                         onChange={(e) => updateField('widget_subtitle', e.target.value)}
-                        className="h-8"
-                        placeholder="Curated by the team at {{hotel_name}}"
+                        className="h-7"
+                        placeholder="Curated by {{hotel_name}}"
                       />
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Alignment</Label>
+                      <AlignmentToggle
+                        value={theme.widget_text_align}
+                        onChange={(v) => updateField('widget_text_align', v)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <div className="border-t border-border" />
+
+            {/* ── FINE-TUNE (collapsible) ── */}
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <CollapsibleTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 w-full text-left group"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                    Fine-tune
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/60">
+                    Spacing, sizes &amp; layout
+                  </span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-muted-foreground/50 ml-auto transition-transform ${
+                      advancedOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <div className="pt-3 space-y-3">
+                  {/* Row 1: Title size + Base font size */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Label className="text-[11px] text-muted-foreground">Title size</Label>
+                        <Help tip="Font size of the widget heading" />
+                      </div>
+                      <Select
+                        value={theme.title_font_size}
+                        onValueChange={(v) => updateField('title_font_size', v)}
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {TITLE_SIZE_PRESETS.map((s) => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Label className="text-[11px] text-muted-foreground">Base font</Label>
+                        <Help tip="Base size in px — all other text scales from this" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="number"
+                          min="12"
+                          max="24"
+                          value={theme.font_size_base}
+                          onChange={(e) => updateField('font_size_base', e.target.value)}
+                          className="h-7 flex-1"
+                        />
+                        <span className="text-[11px] text-muted-foreground">px</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Label className="text-[11px] text-muted-foreground">Card width</Label>
+                        <Help tip="Min width per card — narrower means more columns" />
+                      </div>
+                      <Select
+                        value={theme.widget_grid_min_width}
+                        onValueChange={(v) => updateField('widget_grid_min_width', v)}
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {GRID_WIDTH_PRESETS.map((g) => (
+                            <SelectItem key={g.value} value={g.value}>
+                              {g.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Spacing controls */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Label className="text-[11px] text-muted-foreground">Section padding</Label>
+                      </div>
+                      <Select
+                        value={theme.widget_section_padding}
+                        onValueChange={(v) => updateField('widget_section_padding', v)}
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PADDING_PRESETS.map((p) => (
+                            <SelectItem key={p.value} value={p.value}>
+                              {p.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Title spacing</Label>
+                      <Select
+                        value={theme.widget_title_margin}
+                        onValueChange={(v) => updateField('widget_title_margin', v)}
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SPACING_PRESETS.map((s) => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Card gap</Label>
+                      <Select
+                        value={theme.widget_grid_gap}
+                        onValueChange={(v) => updateField('widget_grid_gap', v)}
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SPACING_PRESETS.map((s) => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Button spacing</Label>
+                      <Select
+                        value={theme.widget_cta_margin}
+                        onValueChange={(v) => updateField('widget_cta_margin', v)}
+                      >
+                        <SelectTrigger className="h-7">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SPACING_PRESETS.map((s) => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
-          {/* Preview Column */}
+          {/* ─── Preview Column ─── */}
           <div className="lg:col-span-2">
             <div className="lg:sticky lg:top-6 space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
-                Preview
-              </p>
-              <LivePreview theme={theme} hotelName={hotelName} />
-
-              {/* Link to full preview */}
-              {hotelSlug && (
-                <div className="text-center pt-1">
+              <div className="flex items-center justify-between px-0.5">
+                <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                  Preview
+                </p>
+                {hotelSlug && (
                   <a
                     href={`${WIDGET_BASE_URL}/${hotelSlug}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-primary hover:text-primary/80 transition-ui"
+                    className="text-[11px] text-primary hover:text-primary/80 transition-ui flex items-center gap-1"
                   >
-                    Open full widget page
+                    Full page
+                    <ExternalLink className="w-3 h-3" />
                   </a>
-                </div>
-              )}
+                )}
+              </div>
+              <LivePreview theme={theme} hotelName={hotelName} />
             </div>
           </div>
+
         </div>
       </div>
     </>

@@ -749,6 +749,7 @@ export default function ExperienceForm() {
                     <div className="space-y-2">
                       <Label htmlFor="minParticipantsBase">Minimum guests</Label>
                       <Input id="minParticipantsBase" type="number" min="1" value={minParticipants} onChange={(e) => setMinParticipants(e.target.value)} disabled={loading} />
+                      <p className="text-xs text-muted-foreground">Guests pay for at least this many</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="maxParticipantsBase">Maximum guests *</Label>

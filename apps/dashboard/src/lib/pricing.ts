@@ -26,8 +26,8 @@ export interface PriceCalculation {
  * - base_plus_extra: Base price includes X people, then extra per additional person
  * - per_day: Time-based pricing for rentals (price_per_day × days × quantity)
  * 
- * Note: min_participants is a session-level threshold (min to run), not a pricing floor.
- * Each guest pays for exactly the number of people they bring.
+ * Note: min_participants is a pricing floor only — it does NOT gate session availability.
+ * Guests always pay for at least min_participants, even if fewer people are in the group.
  */
 export function calculateTotalPrice(
   participants: number,
@@ -37,8 +37,8 @@ export function calculateTotalPrice(
 ): PriceCalculation {
   const { pricing_type, base_price_cents, included_participants, extra_person_cents, min_participants, min_days } = pricing;
   
-  // Each guest pays for exactly the people they bring
-  const effective_participants = participants;
+  // min_participants is a pricing floor: guest always pays for at least this many
+  const effective_participants = Math.max(participants, min_participants || 1);
   
   let total_cents: number;
   let breakdown: string;
@@ -104,7 +104,7 @@ export function getPricingSummary(pricing: PricingConfig): string {
   switch (pricing_type) {
     case 'per_person':
       if (min_participants > 1) {
-        return `${formatPrice(extra_person_cents)} per person (${min_participants} min. to run)`;
+        return `${formatPrice(extra_person_cents)} per person (min. ${min_participants})`;
       }
       return `${formatPrice(extra_person_cents)} per person`;
 

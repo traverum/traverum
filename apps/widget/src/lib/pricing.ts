@@ -22,7 +22,7 @@ export interface PriceCalculation {
  * Each guest pays for exactly the number of people they bring (min_participants is the minimum billable).
  */
 export function calculatePrice(
-  experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants'>,
+  experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants' | 'min_participants'>,
   participants: number,
   session?: Pick<ExperienceSession, 'price_override_cents'> | null
 ): PriceCalculation {
@@ -39,8 +39,9 @@ export function calculatePrice(
     }
   }
 
-  // Each guest pays for exactly the people they bring
-  const effectiveParticipants = participants
+  // min_participants is a pricing floor: guest always pays for at least this many
+  const minParticipants = experience.min_participants || 1
+  const effectiveParticipants = Math.max(participants, minParticipants)
   
   switch (experience.pricing_type) {
     case 'per_person':

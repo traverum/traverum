@@ -130,13 +130,33 @@ export function truncate(text: string, maxLength: number): string {
 }
 
 /**
+ * Validate that a string is a valid hex color (#RGB, #RRGGBB, RGB, RRGGBB).
+ * Returns the 6-char hex (without #) or null if invalid.
+ */
+function normalizeHex(raw: string): string | null {
+  if (!raw || typeof raw !== 'string') return null
+  const cleaned = raw.trim().replace('#', '')
+  // Support 3-char shorthand: "abc" → "aabbcc"
+  const expanded = cleaned.length === 3
+    ? cleaned[0] + cleaned[0] + cleaned[1] + cleaned[1] + cleaned[2] + cleaned[2]
+    : cleaned
+  if (expanded.length !== 6 || !/^[0-9a-fA-F]{6}$/.test(expanded)) return null
+  return expanded
+}
+
+/**
  * Convert hex color to HSL string (without hsl() wrapper)
- * Returns format: "h s% l%" for use in CSS variables
+ * Returns format: "h s% l%" for use in CSS variables.
+ * Falls back to a neutral grey ("0 0% 50%") if the input is not a valid hex color.
  */
 export function hexToHsl(hex: string): string {
-  // Remove # if present
-  const color = hex.replace('#', '')
-  
+  const color = normalizeHex(hex)
+  if (!color) {
+    // Malformed input — return neutral grey so CSS doesn't break with NaN
+    console.warn(`hexToHsl: invalid hex color "${hex}", falling back to neutral grey`)
+    return '0 0% 50%'
+  }
+
   // Parse hex to RGB
   const r = parseInt(color.substring(0, 2), 16) / 255
   const g = parseInt(color.substring(2, 4), 16) / 255

@@ -86,13 +86,19 @@ export default async function HotelLayout({ children, params }: HotelLayoutProps
   const mutedTextHsl = `${textH} ${Math.max(0, textS - 20)}% ${mutedTextL}%`
   
   // Get card radius - ensure we handle the "0" string case properly
-  const cardRadius = hotel.card_radius ?? '0.75rem'
+  const cardRadius = hotel.card_radius ?? '12px'
   
   // Calculate font sizes from base (default 16px)
-  const basePx = parseInt(hotel.font_size_base || '16')
+  const basePx = parseInt(hotel.font_size_base || '16') || 16
   // Calculate responsive title size using clamp() for mobile responsiveness
   const configuredTitleSize = hotel.title_font_size || `${basePx * 4}px`
-  const titleSizePx = parseInt(configuredTitleSize.replace('px', '')) || (basePx * 4)
+  // Parse the configured size — handle both "2.5rem" and "64px" formats
+  let titleSizePx: number
+  if (configuredTitleSize.includes('rem')) {
+    titleSizePx = Math.round(parseFloat(configuredTitleSize) * basePx) || (basePx * 4)
+  } else {
+    titleSizePx = parseFloat(configuredTitleSize) || (basePx * 4)
+  }
   // Use clamp: min 50% of size (mobile), preferred scales smoothly with viewport, max full size (desktop)
   // Formula ensures smooth scaling from mobile (375px) to desktop (1920px+)
   const minSize = Math.round(titleSizePx * 0.5)
@@ -105,7 +111,32 @@ export default async function HotelLayout({ children, params }: HotelLayoutProps
   // Default: Poppins (current font) for headings, Inter for body text
   const headingFont = hotel.heading_font_family || 'var(--font-sans), Poppins, system-ui, sans-serif'
   const bodyFont = hotel.body_font_family || 'Inter, system-ui, sans-serif'
-  
+
+  // Build Google Fonts URL for any custom fonts the hotel selected.
+  // Poppins and Fraunces are already loaded via next/font in the root layout,
+  // so we only need to load additional fonts the hotel has chosen.
+  const PRE_LOADED_FONTS = ['poppins', 'fraunces']
+  const SYSTEM_FONT_KEYWORDS = /^(system-ui|sans-serif|serif|monospace|inherit|initial|var\()/i
+
+  function extractGoogleFontName(fontStack: string): string | null {
+    const name = fontStack.split(',')[0].trim().replace(/['"]/g, '')
+    if (!name || SYSTEM_FONT_KEYWORDS.test(name)) return null
+    if (PRE_LOADED_FONTS.includes(name.toLowerCase())) return null
+    return name
+  }
+
+  const fontsToLoad: string[] = []
+  const headingFontName = extractGoogleFontName(headingFont)
+  if (headingFontName) fontsToLoad.push(headingFontName)
+  const bodyFontName = extractGoogleFontName(bodyFont)
+  if (bodyFontName && bodyFontName !== headingFontName) fontsToLoad.push(bodyFontName)
+
+  const googleFontsUrl = fontsToLoad.length > 0
+    ? 'https://fonts.googleapis.com/css2?' +
+      fontsToLoad.map(f => `family=${encodeURIComponent(f)}:wght@200;300;400;500;600;700`).join('&') +
+      '&display=swap'
+    : null
+
   const cssVariables = {
     '--accent': accentHsl,
     '--accent-hover': `${aH} ${aS}% ${accentHoverL}%`,
@@ -156,6 +187,10 @@ export default async function HotelLayout({ children, params }: HotelLayoutProps
   
   return (
     <>
+      {/* Load hotel's custom Google Fonts (skip Poppins/Fraunces — already in root layout) */}
+      {googleFontsUrl && (
+        <link rel="stylesheet" href={googleFontsUrl} />
+      )}
       {/* Inject CSS variables at body level where Next.js font variables are available */}
       <style dangerouslySetInnerHTML={{
         __html: `
