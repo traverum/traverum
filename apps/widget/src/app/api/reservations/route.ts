@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       guestName,
       guestEmail,
       guestPhone,
+      preferredLanguage,
     } = body
     
     // Validate required fields
@@ -186,6 +187,7 @@ export async function POST(request: NextRequest) {
           reservation_status: 'approved',
           payment_deadline: paymentDeadline.toISOString(),
           response_deadline: paymentDeadline.toISOString(), // Required field
+          preferred_language: preferredLanguage || sessionData?.session_language || null,
         })
         .select()
         .single()
@@ -256,6 +258,7 @@ export async function POST(request: NextRequest) {
         time_preference: null,
         reservation_status: 'pending',
         response_deadline: responseDeadline.toISOString(),
+        preferred_language: preferredLanguage || null,
       })
       .select()
       .single()

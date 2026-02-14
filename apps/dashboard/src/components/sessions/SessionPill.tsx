@@ -1,10 +1,12 @@
 import { cn } from '@/lib/utils';
+import { getLanguageFlag } from '@/components/LanguageSelector';
 
 interface SessionPillProps {
   session: {
     id: string;
     start_time: string;
     session_status: string;
+    session_language?: string | null;
     price_override_cents: number | null;
     price_note: string | null;
     experience?: {
@@ -40,6 +42,7 @@ export function SessionPill({ session, showExperienceTitle = false, isPast = fal
     >
       <div className="flex items-center justify-between gap-1">
         <span className="font-medium truncate">
+          {session.session_language && <span className="mr-0.5">{getLanguageFlag(session.session_language)}</span>}
           {session.start_time.slice(0, 5)}
           {showExperienceTitle && session.experience && (
             <span className="ml-1 opacity-70">· {session.experience.title}</span>

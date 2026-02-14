@@ -11,6 +11,7 @@ export interface Session {
   spots_total: number;
   spots_available: number;
   session_status: string;
+  session_language: string | null;
   price_override_cents: number | null;
   price_note: string | null;
   created_at: string;
@@ -25,6 +26,7 @@ export interface Experience {
   max_participants: number;
   price_cents: number;
   partner_id: string;
+  available_languages?: string[];
 }
 
 interface UseExperienceSessionsOptions {

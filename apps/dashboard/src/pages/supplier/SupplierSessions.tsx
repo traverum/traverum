@@ -18,6 +18,7 @@ type SessionData = {
   spotsAvailable: number;
   priceOverrideCents: number | null;
   priceNote: string | null;
+  sessionLanguage: string | null;
 };
 
 type RecurringData = {
@@ -29,6 +30,7 @@ type RecurringData = {
   frequency: 'daily' | 'weekly';
   priceOverrideCents: number | null;
   priceNote: string | null;
+  sessionLanguage: string | null;
 };
 
 export default function SupplierSessions() {
@@ -86,6 +88,7 @@ export default function SupplierSessions() {
             spots_total: data.spotsTotal,
             spots_available: data.spotsAvailable,
             session_status: 'available',
+            session_language: data.sessionLanguage,
             price_override_cents: data.priceOverrideCents,
             price_note: data.priceNote,
           });
@@ -113,6 +116,7 @@ export default function SupplierSessions() {
         
         const sessionsWithPricing = baseSessions.map(s => ({
           ...s,
+          session_language: data.sessionLanguage,
           price_override_cents: data.priceOverrideCents,
           price_note: data.priceNote,
         }));
@@ -175,6 +179,7 @@ export default function SupplierSessions() {
               duration_minutes: e.duration_minutes,
               max_participants: e.max_participants,
               price_cents: e.price_cents,
+              available_languages: (e as any).available_languages || [],
             }))}
             currentMonth={currentMonth}
             onMonthChange={setCurrentMonth}

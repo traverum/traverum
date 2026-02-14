@@ -9,9 +9,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { X, ChevronDown, Users, Euro, Repeat } from 'lucide-react';
+import { X, ChevronDown, Users, Euro, Repeat, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateRecurringSessions, type Experience } from '@/hooks/useExperienceSessions';
+import { getLanguageName, getLanguageFlag } from '@/components/LanguageSelector';
 
 interface SessionData {
   single: true;
@@ -22,6 +23,7 @@ interface SessionData {
   spotsAvailable: number;
   priceOverrideCents: number | null;
   priceNote: string | null;
+  sessionLanguage: string | null;
 }
 
 interface RecurringData {
@@ -33,6 +35,7 @@ interface RecurringData {
   frequency: 'daily' | 'weekly';
   priceOverrideCents: number | null;
   priceNote: string | null;
+  sessionLanguage: string | null;
 }
 
 interface SessionCreatePopupProps {
@@ -73,6 +76,9 @@ export function SessionCreatePopup({
   const [frequency, setFrequency] = useState<'daily' | 'weekly'>('weekly');
   const [repeatEndDate, setRepeatEndDate] = useState(format(addMonths(new Date(), 1), 'yyyy-MM-dd'));
   
+  // Language
+  const [sessionLanguage, setSessionLanguage] = useState<string>('');
+  
   // Advanced
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [customPrice, setCustomPrice] = useState('');
@@ -81,6 +87,7 @@ export function SessionCreatePopup({
   const popupRef = useRef<HTMLDivElement>(null);
   const hasPositioned = useRef(false);
   const selectedExperience = experiences.find(e => e.id === experienceId);
+  const availableLanguages = (selectedExperience as any)?.available_languages as string[] | undefined;
 
   // Session count for recurring
   const sessionCount = isRecurring
@@ -94,12 +101,19 @@ export function SessionCreatePopup({
       }).length
     : 1;
 
-  // Update end time when experience changes (use default duration)
+  // Update end time and language when experience changes
   useEffect(() => {
     if (selectedExperience) {
       setSpots(selectedExperience.max_participants || 8);
       const duration = selectedExperience.duration_minutes || 60;
       setEndTime(calculateEndTime(startTime, duration));
+      // Auto-fill language if experience has exactly one
+      const langs = (selectedExperience as any)?.available_languages as string[] | undefined;
+      if (langs && langs.length === 1) {
+        setSessionLanguage(langs[0]);
+      } else {
+        setSessionLanguage('');
+      }
     }
   }, [selectedExperience]);
 
@@ -136,6 +150,7 @@ export function SessionCreatePopup({
       setShowAdvanced(false);
       setIsRecurring(false);
       setCustomPrice('');
+      setSessionLanguage('');
       setValidationError(null);
     }
   }, [isOpen, initialDate, initialTime, experiences]);
@@ -215,6 +230,7 @@ export function SessionCreatePopup({
         frequency,
         priceOverrideCents,
         priceNote: null,
+        sessionLanguage: sessionLanguage || null,
       });
     } else {
       onSubmit({
@@ -226,6 +242,7 @@ export function SessionCreatePopup({
         spotsAvailable: spots,
         priceOverrideCents,
         priceNote: null,
+        sessionLanguage: sessionLanguage || null,
       });
     }
     onClose();
@@ -305,6 +322,31 @@ export function SessionCreatePopup({
               required
             />
           </div>
+
+          {/* Language selector - only show if experience has languages configured */}
+          {availableLanguages && availableLanguages.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Globe className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              {availableLanguages.length === 1 ? (
+                <span className="text-sm text-foreground">
+                  {getLanguageFlag(availableLanguages[0])} {getLanguageName(availableLanguages[0])}
+                </span>
+              ) : (
+                <Select value={sessionLanguage} onValueChange={setSessionLanguage}>
+                  <SelectTrigger className={cn(selectTriggerClass, "flex-1 h-8")}>
+                    <SelectValue placeholder="Session language" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-sm">
+                    {availableLanguages.map((code) => (
+                      <SelectItem key={code} value={code} className="rounded-sm text-sm">
+                        {getLanguageFlag(code)} {getLanguageName(code)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
 
           {/* Repeat toggle */}
           <button

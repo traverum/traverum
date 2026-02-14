@@ -24,6 +24,7 @@ interface CheckoutPageProps {
     isRequest?: string
     requestDate?: string
     requestTime?: string
+    preferredLanguage?: string
   }>
 }
 
@@ -155,6 +156,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
                 sessionTime={sessionTime}
                 isDemo={isDemo}
                 returnUrl={returnUrl}
+                preferredLanguage={search.preferredLanguage}
               />
             </div>
           </div>

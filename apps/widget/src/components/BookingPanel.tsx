@@ -6,6 +6,7 @@ import { formatPrice } from '@/lib/utils'
 import { calculatePrice, getDisplayPrice } from '@/lib/pricing'
 import { DatePickerDrawer } from './DatePickerDrawer'
 import { ParticipantSelector } from './ParticipantSelector'
+import { getLanguageName, getLanguageFlag } from '@/lib/languages'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 import type { ExperienceSession } from '@/lib/supabase/types'
 import type { AvailabilityRule } from '@/lib/availability'
@@ -26,8 +27,10 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
   const [customDate, setCustomDate] = useState('')
   const [requestTime, setRequestTime] = useState('')
   const [dateDrawerOpen, setDateDrawerOpen] = useState(false)
+  const [preferredLanguage, setPreferredLanguage] = useState<string>('')
   
   const selectedSession = sessions.find(s => s.id === selectedSessionId) || null
+  const availableLanguages = experience.available_languages || []
   const priceCalc = calculatePrice(experience, participants, selectedSession)
   const displayPrice = getDisplayPrice(experience)
   
@@ -83,8 +86,10 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
         params.set('requestDate', customDate)
         params.set('requestTime', requestTime)
         params.set('isRequest', 'true')
+        if (preferredLanguage) params.set('preferredLanguage', preferredLanguage)
       } else if (selectedSession) {
         params.set('sessionId', selectedSession.id)
+        if (selectedSession.session_language) params.set('preferredLanguage', selectedSession.session_language)
       }
       
       router.push(`/${hotelSlug}/checkout?${params.toString()}`)
@@ -125,6 +130,27 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
             max={experience.max_participants}
           />
         </div>
+
+        {/* Language selector for request flow */}
+        {isCustomRequest && availableLanguages.length > 1 && (
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-foreground mb-2">
+              Preferred language
+            </label>
+            <select
+              value={preferredLanguage}
+              onChange={(e) => setPreferredLanguage(e.target.value)}
+              className="w-full px-3 py-2.5 border border-border rounded-button bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+            >
+              <option value="">Select language...</option>
+              {availableLanguages.map((code) => (
+                <option key={code} value={code}>
+                  {getLanguageFlag(code)} {getLanguageName(code)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Total & CTA */}
         <div className="mt-4 pt-4 border-t border-border">

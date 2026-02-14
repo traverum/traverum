@@ -4,6 +4,7 @@ import { getAvailableSessions } from '@/lib/sessions'
 import { getExperienceAvailability } from '@/lib/availability.server'
 import { getEmbedMode, formatDuration, cn } from '@/lib/utils'
 import { getCancellationPolicyText } from '@/lib/availability'
+import { getLanguageName, getLanguageFlag } from '@/lib/languages'
 import { Header } from '@/components/Header'
 import { EmbedResizer } from '@/components/EmbedResizer'
 import { ImageGallery } from '@/components/ImageGallery'
@@ -101,6 +102,18 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                 style={{ fontSize: 'var(--font-size-body)' }}
               />
             </div>
+
+            {/* Languages */}
+            {experience.available_languages && experience.available_languages.length > 0 && (
+              <div className="mt-4 flex items-center gap-2 text-muted-foreground" style={{ fontSize: 'var(--font-size-sm)' }}>
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><path strokeLinecap="round" strokeLinejoin="round" d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                <span>
+                  {experience.available_languages.map(code => 
+                    `${getLanguageFlag(code)} ${getLanguageName(code)}`
+                  ).join(', ')}
+                </span>
+              </div>
+            )}
 
             {/* Info Sections */}
             <div className="mt-6 pt-6 border-t border-border space-y-4">

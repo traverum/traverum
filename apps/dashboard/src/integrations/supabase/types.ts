@@ -152,6 +152,7 @@ export type Database = {
           price_note: string | null
           price_override_cents: number | null
           session_date: string
+          session_language: string | null
           session_status: string
           spots_available: number
           spots_total: number
@@ -165,6 +166,7 @@ export type Database = {
           price_note?: string | null
           price_override_cents?: number | null
           session_date: string
+          session_language?: string | null
           session_status?: string
           spots_available: number
           spots_total: number
@@ -178,6 +180,7 @@ export type Database = {
           price_note?: string | null
           price_override_cents?: number | null
           session_date?: string
+          session_language?: string | null
           session_status?: string
           spots_available?: number
           spots_total?: number
@@ -197,6 +200,7 @@ export type Database = {
       experiences: {
         Row: {
           allows_requests: boolean | null
+          available_languages: string[]
           base_price_cents: number
           created_at: string | null
           currency: string
@@ -220,6 +224,7 @@ export type Database = {
         }
         Insert: {
           allows_requests?: boolean | null
+          available_languages?: string[]
           base_price_cents?: number
           created_at?: string | null
           currency?: string
@@ -243,6 +248,7 @@ export type Database = {
         }
         Update: {
           allows_requests?: boolean | null
+          available_languages?: string[]
           base_price_cents?: number
           created_at?: string | null
           currency?: string

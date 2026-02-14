@@ -11,6 +11,7 @@ export interface SessionWithExperience {
   spots_available: number;
   spots_total: number;
   session_status: string;
+  session_language: string | null;
   price_override_cents: number | null;
   price_note: string | null;
   experience: {

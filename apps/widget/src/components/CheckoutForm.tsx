@@ -33,6 +33,7 @@ interface CheckoutFormProps {
   sessionTime?: string
   isDemo?: boolean
   returnUrl?: string | null
+  preferredLanguage?: string
 }
 
 export function CheckoutForm({
@@ -50,6 +51,7 @@ export function CheckoutForm({
   sessionTime,
   isDemo = false,
   returnUrl,
+  preferredLanguage,
 }: CheckoutFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -99,6 +101,7 @@ export function CheckoutForm({
           guestName: `${data.firstName} ${data.lastName}`,
           guestEmail: data.email,
           guestPhone: data.phone,
+          preferredLanguage: preferredLanguage || null,
         }),
       })
       

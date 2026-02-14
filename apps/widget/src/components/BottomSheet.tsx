@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { SessionPicker } from './SessionPicker'
 import { ParticipantSelector } from './ParticipantSelector'
 import { formatPrice } from '@/lib/utils'
 import { calculatePrice } from '@/lib/pricing'
+import { getLanguageName, getLanguageFlag } from '@/lib/languages'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 import type { ExperienceSession } from '@/lib/supabase/types'
 import type { AvailabilityRule } from '@/lib/availability'
@@ -50,6 +51,9 @@ export function BottomSheet({
 }: BottomSheetProps) {
   const router = useRouter()
   const shouldReduceMotion = useReducedMotion()
+  const [preferredLanguage, setPreferredLanguage] = useState<string>('')
+
+  const availableLanguages = experience.available_languages || []
 
   // Handle escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -88,8 +92,10 @@ export function BottomSheet({
         params.set('requestDate', customDate)
         params.set('requestTime', requestTime)
         params.set('isRequest', 'true')
+        if (preferredLanguage) params.set('preferredLanguage', preferredLanguage)
       } else if (selectedSession) {
         params.set('sessionId', selectedSession.id)
+        if (selectedSession.session_language) params.set('preferredLanguage', selectedSession.session_language)
       }
       
       onClose()
@@ -170,6 +176,27 @@ export function BottomSheet({
                   max={experience.max_participants}
                 />
               </div>
+
+              {/* Language selector for request flow */}
+              {isCustomRequest && availableLanguages.length > 1 && (
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Preferred language
+                  </label>
+                  <select
+                    value={preferredLanguage}
+                    onChange={(e) => setPreferredLanguage(e.target.value)}
+                    className="w-full px-3 py-2.5 border border-border rounded-button bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
+                  >
+                    <option value="">Select language...</option>
+                    {availableLanguages.map((code) => (
+                      <option key={code} value={code}>
+                        {getLanguageFlag(code)} {getLanguageName(code)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Footer */}

@@ -4,9 +4,10 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { X, Users, Euro, ExternalLink, Trash2 } from 'lucide-react';
+import { X, Users, Euro, Globe, ExternalLink, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPrice } from '@/lib/pricing';
+import { getLanguageName, getLanguageFlag } from '@/components/LanguageSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -220,6 +221,14 @@ export function SessionQuickEditPopup({
             <span className="font-medium">{format(new Date(session.session_date), 'EEE, d MMM yyyy')}</span>
             <span className="text-muted-foreground ml-2">{session.start_time.slice(0, 5)}</span>
           </div>
+
+          {/* Language */}
+          {(session as any).session_language && (
+            <div className="flex items-center gap-2 text-sm">
+              <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+              <span>{getLanguageFlag((session as any).session_language)} {getLanguageName((session as any).session_language)}</span>
+            </div>
+          )}
 
           {/* Booking Status */}
           <div className="flex items-center justify-between">

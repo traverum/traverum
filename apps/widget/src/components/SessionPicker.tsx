@@ -6,6 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { format } from 'date-fns'
 import { formatTime, cn } from '@/lib/utils'
 import { isDateAvailable, getOperatingHours, generateTimeSlots, DEFAULT_TIME_GROUPS } from '@/lib/availability'
+import { getLanguageName, getLanguageFlag } from '@/lib/languages'
 import type { AvailabilityRule } from '@/lib/availability'
 import type { ExperienceSession } from '@/lib/supabase/types'
 
@@ -215,7 +216,9 @@ export function SessionPicker({
                           {formatTime(session.start_time)}
                         </div>
                         <div className="text-[10px] text-muted-foreground tabular-nums">
-                          Available
+                          {session.session_language
+                            ? `${getLanguageFlag(session.session_language)} ${getLanguageName(session.session_language)}`
+                            : 'Available'}
                         </div>
                       </button>
                     )

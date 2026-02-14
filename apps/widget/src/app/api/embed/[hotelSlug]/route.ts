@@ -67,7 +67,8 @@ export async function GET(
         pricing_type,
         currency,
         experience_status,
-        tags
+        tags,
+        available_languages
       )
     `)
     .eq('hotel_config_id', hotel.id)
@@ -145,6 +146,7 @@ export async function GET(
         priceSuffix: priceDisplay.suffix,
         currency: exp.currency || 'EUR',
         tags: exp.tags || [],
+        availableLanguages: exp.available_languages || [],
       }
     })
 
@@ -153,16 +155,16 @@ export async function GET(
     accentColor: hotel.accent_color || '#2563eb',
     textColor: hotel.text_color || '#1a1a1a',
     backgroundColor: hotel.background_color || '#ffffff',
-    cardRadius: hotel.card_radius || '0.75rem',
+    cardRadius: hotel.card_radius || '12px',
     headingFontFamily: hotel.heading_font_family || 'Poppins, system-ui, sans-serif',
     bodyFontFamily: hotel.body_font_family || 'Inter, system-ui, sans-serif',
     headingFontWeight: hotel.heading_font_weight || '200',
     fontSizeBase: hotel.font_size_base || '16',
     textAlign: hotel.widget_text_align || 'left',
     sectionPadding: hotel.widget_section_padding || '0',
-    titleMargin: hotel.widget_title_margin || '1.5rem',
-    gridGap: hotel.widget_grid_gap || '1.25rem',
-    ctaMargin: hotel.widget_cta_margin || '1.75rem',
+    titleMargin: hotel.widget_title_margin || '24px',
+    gridGap: hotel.widget_grid_gap || '20px',
+    ctaMargin: hotel.widget_cta_margin || '28px',
     gridMinWidth: hotel.widget_grid_min_width || '280px',
   }
 
