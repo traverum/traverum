@@ -6,7 +6,7 @@ import { formatPrice } from '@/lib/utils'
 import { calculatePrice, getDisplayPrice } from '@/lib/pricing'
 import { DatePickerDrawer } from './DatePickerDrawer'
 import { ParticipantSelector } from './ParticipantSelector'
-import { getLanguageName, getLanguageFlag } from '@/lib/languages'
+import { LanguageSelector } from './LanguageSelector'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 import type { ExperienceSession } from '@/lib/supabase/types'
 import type { AvailabilityRule } from '@/lib/availability'
@@ -134,21 +134,11 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
         {/* Language selector for request flow */}
         {isCustomRequest && availableLanguages.length > 1 && (
           <div className="mt-3">
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Preferred language
-            </label>
-            <select
+            <LanguageSelector
               value={preferredLanguage}
-              onChange={(e) => setPreferredLanguage(e.target.value)}
-              className="w-full px-3 py-2.5 border border-border rounded-button bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors"
-            >
-              <option value="">Select language...</option>
-              {availableLanguages.map((code) => (
-                <option key={code} value={code}>
-                  {getLanguageFlag(code)} {getLanguageName(code)}
-                </option>
-              ))}
-            </select>
+              onChange={setPreferredLanguage}
+              languages={availableLanguages}
+            />
           </div>
         )}
 

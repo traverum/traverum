@@ -38,8 +38,10 @@ export function useExperienceAvailability(experienceId: string | null) {
         return {
           id: rule.id,
           weekdays: rule.weekdays || DEFAULT_WEEKDAYS,
-          startTime: rule.start_time || DEFAULT_START_TIME,
-          endTime: rule.end_time || DEFAULT_END_TIME,
+          // Postgres `time` columns return 'HH:MM:SS'; normalize to 'HH:MM' so
+          // the AvailabilityEditor <Select> options (which use 'HH:MM') match.
+          startTime: (rule.start_time || DEFAULT_START_TIME).slice(0, 5),
+          endTime: (rule.end_time || DEFAULT_END_TIME).slice(0, 5),
           validFrom: rule.valid_from,
           validUntil: rule.valid_until,
         };
@@ -67,8 +69,8 @@ export function useExperienceAvailability(experienceId: string | null) {
         id: rule.id,
         experience_id: rule.experience_id,
         weekdays: rule.weekdays || DEFAULT_WEEKDAYS,
-        start_time: rule.start_time || DEFAULT_START_TIME,
-        end_time: rule.end_time || DEFAULT_END_TIME,
+        start_time: (rule.start_time || DEFAULT_START_TIME).slice(0, 5),
+        end_time: (rule.end_time || DEFAULT_END_TIME).slice(0, 5),
         valid_from: rule.valid_from,
         valid_until: rule.valid_until,
       }));
@@ -76,7 +78,7 @@ export function useExperienceAvailability(experienceId: string | null) {
     enabled: !!experienceId,
   });
 
-  // Save or update availability
+  // Save or update availability (atomic upsert on experience_id unique constraint)
   const saveAvailability = useMutation({
     mutationFn: async ({
       experienceId,
@@ -85,13 +87,6 @@ export function useExperienceAvailability(experienceId: string | null) {
       experienceId: string;
       data: AvailabilityData;
     }) => {
-      // Check if a rule already exists
-      const { data: existing } = await supabase
-        .from('experience_availability')
-        .select('id')
-        .eq('experience_id', experienceId)
-        .limit(1);
-
       const payload = {
         experience_id: experienceId,
         weekdays: data.weekdays,
@@ -102,22 +97,11 @@ export function useExperienceAvailability(experienceId: string | null) {
         updated_at: new Date().toISOString(),
       };
 
-      if (existing && existing.length > 0) {
-        // Update existing rule
-        const { error } = await supabase
-          .from('experience_availability')
-          .update(payload)
-          .eq('id', existing[0].id);
+      const { error } = await supabase
+        .from('experience_availability')
+        .upsert(payload, { onConflict: 'experience_id' });
 
-        if (error) throw error;
-      } else {
-        // Insert new rule
-        const { error } = await supabase
-          .from('experience_availability')
-          .insert(payload);
-
-        if (error) throw error;
-      }
+      if (error) throw error;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -183,8 +167,8 @@ export function useMultipleExperienceAvailability(experienceIds: string[]) {
           id: rule.id,
           experience_id: rule.experience_id,
           weekdays: rule.weekdays || DEFAULT_WEEKDAYS,
-          start_time: rule.start_time || DEFAULT_START_TIME,
-          end_time: rule.end_time || DEFAULT_END_TIME,
+          start_time: (rule.start_time || DEFAULT_START_TIME).slice(0, 5),
+          end_time: (rule.end_time || DEFAULT_END_TIME).slice(0, 5),
           valid_from: rule.valid_from,
           valid_until: rule.valid_until,
         });

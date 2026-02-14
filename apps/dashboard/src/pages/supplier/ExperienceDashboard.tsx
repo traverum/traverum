@@ -96,6 +96,14 @@ function ExperienceDashboardInner() {
   const hasInitialized = useRef(false);
   const hasAvailabilityInitialized = useRef(false);
   const hasImagesLoaded = useRef(false);
+  // Dirty flag for availability — true when user has unsaved edits, false after save completes.
+  // Prevents phantom records for new experiences AND prevents redundant unmount flush saves.
+  const availabilityDirtyRef = useRef(false);
+  // Skips the first autosave trigger that fires when loaded data is set into state
+  const isFirstAvailabilityRender = useRef(true);
+  const isFirstFormRender = useRef(true);
+  // Mirrors saveStatus as a ref so the beforeunload handler can read it without stale closures
+  const saveStatusRef = useRef<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   // Form state — seeded from cached experience so the first render already shows correct data
   const [title, setTitle] = useState(() => experience?.title || '');
@@ -157,6 +165,18 @@ function ExperienceDashboardInner() {
     };
   });
 
+  // Warn user before closing the browser tab if a save is in-flight.
+  // Uses refs (not state) so the handler closure is always current.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (saveStatusRef.current === 'saving' || availabilityDirtyRef.current) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, []);
+
   // Flush pending changes on unmount — ensures no edits are lost when switching experiences
   useEffect(() => {
     return () => {
@@ -210,30 +230,21 @@ function ExperienceDashboardInner() {
         .eq('id', experienceId)
         .then(() => refetchRef.current());
 
-      // Also flush pending availability changes (prevents data loss when switching experiences quickly)
-      if (hasAvailabilityInitialized.current && vals.weekdays) {
-        supabase
-          .from('experience_availability')
-          .select('id')
-          .eq('experience_id', experienceId)
-          .limit(1)
-          .then(({ data: existing }) => {
-            const payload = {
-              experience_id: experienceId,
-              weekdays: vals.weekdays,
-              start_time: vals.startTime,
-              end_time: vals.endTime,
-              valid_from: vals.validFrom,
-              valid_until: vals.validUntil,
-              updated_at: new Date().toISOString(),
-            };
-            if (existing && existing.length > 0) {
-              return supabase.from('experience_availability').update(payload).eq('id', existing[0].id);
-            } else {
-              return supabase.from('experience_availability').insert(payload);
-            }
-          })
-          .catch(() => {}); // fire-and-forget
+      // Also flush pending availability changes (prevents data loss when switching experiences quickly).
+      // Only flush if the user actually edited availability — avoids creating phantom records
+      // for new experiences that were never configured. Uses saveAvailabilityRef so the save
+      // logic is shared with the autosave effect (single codepath, atomic upsert).
+      if (hasAvailabilityInitialized.current && availabilityDirtyRef.current && vals.weekdays) {
+        saveAvailabilityRef.current.mutateAsync({
+          experienceId,
+          data: {
+            weekdays: vals.weekdays,
+            startTime: vals.startTime,
+            endTime: vals.endTime,
+            validFrom: vals.validFrom,
+            validUntil: vals.validUntil,
+          },
+        }).catch(() => {}); // fire-and-forget
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -375,8 +386,16 @@ function ExperienceDashboardInner() {
   useEffect(() => {
     if (!experienceId || !hasInitialized.current) return;
 
+    // Skip the first trigger — it's just the loaded/cached data settling through useDebounce,
+    // not a user edit. Prevents a wasted DB write + updated_at churn on every page load.
+    if (isFirstFormRender.current) {
+      isFirstFormRender.current = false;
+      return;
+    }
+
     const autoSave = async () => {
       setSaveStatus('saving');
+      saveStatusRef.current = 'saving';
       try {
         const durationValue = parseInt(debouncedDuration) || 60;
         const maxP = parseInt(debouncedMaxParticipants) || 10;
@@ -442,9 +461,11 @@ function ExperienceDashboardInner() {
 
         await refetchRef.current();
         setSaveStatus('saved');
-        setTimeout(() => setSaveStatus('idle'), 2000);
+        saveStatusRef.current = 'saved';
+        setTimeout(() => { setSaveStatus('idle'); saveStatusRef.current = 'idle'; }, 2000);
       } catch (error: any) {
         setSaveStatus('error');
+        saveStatusRef.current = 'error';
         const errorMessage = error?.message || error?.toString() || 'Unknown error';
         console.error('Auto-save error:', error);
         console.error('Error details:', {
@@ -487,7 +508,19 @@ function ExperienceDashboardInner() {
   useEffect(() => {
     if (!experienceId || !hasInitialized.current || !hasAvailabilityInitialized.current) return;
 
+    // Skip the first trigger after initialization — it's just the loaded data being
+    // set into state, not a user edit. Prevents a wasted save on every page load.
+    if (isFirstAvailabilityRender.current) {
+      isFirstAvailabilityRender.current = false;
+      return;
+    }
+
+    // User has made a real edit — mark dirty so unmount flush and beforeunload know
+    availabilityDirtyRef.current = true;
+
     const saveAvail = async () => {
+      setSaveStatus('saving');
+      saveStatusRef.current = 'saving';
       try {
         await saveAvailabilityRef.current.mutateAsync({
           experienceId,
@@ -499,8 +532,19 @@ function ExperienceDashboardInner() {
             validUntil,
           },
         });
+        availabilityDirtyRef.current = false; // saved — no longer dirty
+        setSaveStatus('saved');
+        saveStatusRef.current = 'saved';
+        setTimeout(() => { setSaveStatus('idle'); saveStatusRef.current = 'idle'; }, 2000);
       } catch (error) {
         console.error('Error saving availability:', error);
+        setSaveStatus('error');
+        saveStatusRef.current = 'error';
+        toast({
+          title: 'Failed to save availability',
+          description: 'Your availability changes were not saved. Please try again.',
+          variant: 'destructive',
+        });
       }
     };
 
@@ -769,7 +813,7 @@ function ExperienceDashboardInner() {
         </div>
       )}
 
-      <main className="container max-w-6xl mx-auto px-4 py-6">
+      <main className="container max-w-7xl mx-auto px-3 py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <div className="flex items-center gap-3">
             <TabsList className="flex-1 h-9">
@@ -932,49 +976,6 @@ function ExperienceDashboardInner() {
                     Optional: Free-form description of where to meet
                   </p>
                 </div>
-
-                {pricingType !== 'per_day' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="minParticipants" className="text-sm">Minimum Guests</Label>
-                      <Input
-                        id="minParticipants"
-                        type="number"
-                        min="1"
-                        value={minParticipants}
-                        onChange={(e) => setMinParticipants(e.target.value)}
-                        className="h-8"
-                      />
-                      <p className="text-[11px] text-muted-foreground">
-                        Guests always pay for at least this many people, even if fewer show up. Set to 1 for no minimum.
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="maxParticipants" className="text-sm">Max Participants *</Label>
-                      <Input
-                        id="maxParticipants"
-                        type="number"
-                        min="1"
-                        value={maxParticipants}
-                        onChange={(e) => setMaxParticipants(e.target.value)}
-                        className="h-8"
-                      />
-                    </div>
-                  </div>
-                )}
-                {pricingType === 'per_day' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="maxParticipants" className="text-sm">Max Participants *</Label>
-                    <Input
-                      id="maxParticipants"
-                      type="number"
-                      min="1"
-                      value={maxParticipants}
-                      onChange={(e) => setMaxParticipants(e.target.value)}
-                      className="h-8"
-                    />
-                  </div>
-                )}
 
               </CardContent>
             </Card>

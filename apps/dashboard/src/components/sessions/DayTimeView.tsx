@@ -147,18 +147,18 @@ export function DayTimeView({
 
         {/* Day header */}
         <div className="flex-1 py-2 text-center">
-          <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+          <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-normal">
             {format(date, 'EEEE')}
           </div>
           <div className={cn(
-            'text-xl font-medium mt-1',
+            'mt-1 tabular-nums',
             isToday
-              ? 'w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto'
-              : 'text-foreground'
+              ? 'w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-medium'
+              : 'text-lg font-normal text-foreground/80'
           )}>
             {format(date, 'd')}
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
+          <div className="text-xs text-muted-foreground/60 mt-1">
             {sessions.length} {sessions.length === 1 ? 'session' : 'sessions'}
           </div>
           {requests.length > 0 && (
@@ -170,7 +170,7 @@ export function DayTimeView({
                 const rect = (e.target as HTMLElement).getBoundingClientRect();
                 onRequestBadgeClick?.(dateKey, { x: rect.left, y: rect.bottom + 4 });
               }}
-              className="mt-1.5 inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
+              className="mt-1.5 inline-flex items-center px-2.5 py-1 rounded-sm text-xs font-normal bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
             >
               {requests.length} {requests.length === 1 ? 'request' : 'requests'}
             </button>
@@ -193,7 +193,7 @@ export function DayTimeView({
                 className="relative"
                 style={{ height: `${HOUR_HEIGHT}px` }}
               >
-                <span className="absolute -top-2 right-3 text-[11px] text-muted-foreground/70 font-normal">
+                <span className="absolute -top-2 right-3 text-[11px] text-muted-foreground/50 font-normal tabular-nums">
                   {TIME_LABELS[index]}
                 </span>
               </div>
@@ -213,7 +213,7 @@ export function DayTimeView({
                   {/* Hour line */}
                   <div
                     className="h-px"
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.06)' }}
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.08)' }}
                   />
                   {/* Half hour line */}
                   <div
@@ -274,8 +274,8 @@ export function DayTimeView({
                 className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
                 style={{ top: `${currentTimeTop}px` }}
               >
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1 shadow-sm" />
-                <div className="flex-1 h-[2px] bg-red-500" />
+                <div className="w-2 h-2 rounded-full bg-primary -ml-1" />
+                <div className="flex-1 h-px bg-primary" />
               </div>
             )}
           </div>

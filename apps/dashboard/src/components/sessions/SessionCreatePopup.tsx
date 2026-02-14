@@ -12,7 +12,7 @@ import {
 import { X, ChevronDown, Users, Euro, Repeat, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateRecurringSessions, type Experience } from '@/hooks/useExperienceSessions';
-import { getLanguageName, getLanguageFlag } from '@/components/LanguageSelector';
+import { getLanguageName } from '@/components/LanguageSelector';
 
 interface SessionData {
   single: true;
@@ -43,6 +43,10 @@ interface SessionCreatePopupProps {
   onClose: () => void;
   initialDate?: Date;
   initialTime?: string;
+  initialExperienceId?: string;
+  initialSpots?: number;
+  initialPriceOverride?: string;
+  initialLanguage?: string;
   position?: { x: number; y: number };
   experiences: Experience[];
   onSubmit: (data: SessionData | RecurringData) => void;
@@ -61,6 +65,10 @@ export function SessionCreatePopup({
   onClose,
   initialDate,
   initialTime,
+  initialExperienceId,
+  initialSpots,
+  initialPriceOverride,
+  initialLanguage,
   position,
   experiences,
   onSubmit,
@@ -133,27 +141,33 @@ export function SessionCreatePopup({
       if (initialDate) setDate(format(initialDate, 'yyyy-MM-dd'));
       if (initialTime) {
         setStartTime(initialTime);
-        // Calculate initial end time based on first experience or default 1hr
         const defaultDuration = experiences.length > 0 
           ? (experiences[0].duration_minutes || 60) 
           : 60;
         setEndTime(calculateEndTime(initialTime, defaultDuration));
       }
-      if (experiences.length === 1) {
-        setExperienceId(experiences[0].id);
-        setSpots(experiences[0].max_participants || 8);
-        const duration = experiences[0].duration_minutes || 60;
-        setEndTime(calculateEndTime(initialTime || '09:00', duration));
+
+      // Pre-select experience: explicit prop > single experience > blank
+      const preselectedId = initialExperienceId || (experiences.length === 1 ? experiences[0].id : '');
+      if (preselectedId) {
+        setExperienceId(preselectedId);
+        const exp = experiences.find(e => e.id === preselectedId);
+        if (exp) {
+          setSpots(initialSpots ?? exp.max_participants ?? 8);
+          const duration = exp.duration_minutes || 60;
+          setEndTime(calculateEndTime(initialTime || '09:00', duration));
+        }
       } else {
         setExperienceId('');
       }
-      setShowAdvanced(false);
+
+      setShowAdvanced(!!initialPriceOverride);
       setIsRecurring(false);
-      setCustomPrice('');
-      setSessionLanguage('');
+      setCustomPrice(initialPriceOverride || '');
+      setSessionLanguage(initialLanguage || '');
       setValidationError(null);
     }
-  }, [isOpen, initialDate, initialTime, experiences]);
+  }, [isOpen, initialDate, initialTime, initialExperienceId, initialSpots, initialPriceOverride, initialLanguage, experiences]);
 
   // Reset positioning flag when popup closes
   useEffect(() => {
@@ -329,7 +343,7 @@ export function SessionCreatePopup({
               <Globe className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
               {availableLanguages.length === 1 ? (
                 <span className="text-sm text-foreground">
-                  {getLanguageFlag(availableLanguages[0])} {getLanguageName(availableLanguages[0])}
+                  {getLanguageName(availableLanguages[0])}
                 </span>
               ) : (
                 <Select value={sessionLanguage} onValueChange={setSessionLanguage}>
@@ -339,7 +353,7 @@ export function SessionCreatePopup({
                   <SelectContent className="rounded-sm">
                     {availableLanguages.map((code) => (
                       <SelectItem key={code} value={code} className="rounded-sm text-sm">
-                        {getLanguageFlag(code)} {getLanguageName(code)}
+                        {getLanguageName(code)}
                       </SelectItem>
                     ))}
                   </SelectContent>

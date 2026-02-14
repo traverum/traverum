@@ -4,6 +4,7 @@ import { isToday, isPast, startOfDay, isSameMonth, format } from 'date-fns';
 import { AvailabilityRule, isDateAvailable, getUnavailableReason } from '@/lib/availability';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { isSessionUpcoming } from '@/lib/date-utils';
+import { Plus } from 'lucide-react';
 import type { CalendarRequest } from '@/hooks/useCalendarRequests';
 
 interface CalendarDayProps {
@@ -22,7 +23,7 @@ interface CalendarDayProps {
   requests?: CalendarRequest[];
   totalSessionCount?: number;
   currentMonth: Date;
-  onAddSession: (date: Date) => void;
+  onAddSession: (date: Date, position: { x: number; y: number }) => void;
   onDayClick?: (date: Date) => void;
   showExperienceTitle?: boolean;
   availabilityRules?: AvailabilityRule[];
@@ -60,35 +61,56 @@ export function CalendarDay({
     }
   };
 
+  const handleAddClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    onAddSession(date, { x: rect.left, y: rect.bottom + 4 });
+  };
+
   const dayContent = (
     <div
       onClick={handleDayClick}
       className={cn(
-        'bg-background min-h-[120px] p-2 relative cursor-pointer hover:bg-accent/50 transition-colors',
-        today && 'bg-primary/5',
+        'group bg-background min-h-[110px] p-2 relative cursor-pointer hover:bg-accent/30 transition-colors',
+        today && 'bg-primary/[0.03]',
         pastDate && 'opacity-50',
-        !inCurrentMonth && 'opacity-40',
-        !isAvailable && !pastDate && inCurrentMonth && 'bg-muted/30'
+        !inCurrentMonth && 'opacity-30',
+        !isAvailable && !pastDate && inCurrentMonth && 'bg-muted/20'
       )}
     >
-      {/* Date Number */}
-      <div className="flex items-center gap-1.5">
-        <div
-          className={cn(
-            'text-sm font-medium',
-            today && 'w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center'
+      {/* Date Number + Add button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div
+            className={cn(
+              'text-[13px] font-normal tabular-nums',
+              today && 'w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-medium',
+              !today && 'text-foreground/80'
+            )}
+          >
+            {date.getDate()}
+          </div>
+          {/* Unavailable indicator */}
+          {!isAvailable && !pastDate && inCurrentMonth && (
+            <span className="text-[10px] text-muted-foreground/60 font-normal">Closed</span>
           )}
-        >
-          {date.getDate()}
         </div>
-        {/* Unavailable indicator */}
-        {!isAvailable && !pastDate && inCurrentMonth && (
-          <span className="text-[10px] text-muted-foreground font-medium">Closed</span>
+
+        {/* "+" button — appears on hover, lets suppliers create from month view */}
+        {!pastDate && inCurrentMonth && (
+          <button
+            type="button"
+            onClick={handleAddClick}
+            className="h-5 w-5 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+            title="Add session"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
         )}
       </div>
 
       {/* Sessions and requests for this day */}
-      <div className="space-y-1 mt-2">
+      <div className="space-y-0.5 mt-1.5">
         {displayedSessions.map((session) => (
           <SessionPill
             key={session.id}
@@ -109,9 +131,9 @@ export function CalendarDay({
               }
             }}
             className={cn(
-              'w-full text-left px-1.5 py-0.5 rounded text-[11px] font-medium truncate',
-              'bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors',
-              'dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50'
+              'w-full text-left px-1.5 py-0.5 rounded-sm text-[11px] font-normal truncate',
+              'bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors',
+              'dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40'
             )}
           >
             {requests.length} {requests.length === 1 ? 'request' : 'requests'}

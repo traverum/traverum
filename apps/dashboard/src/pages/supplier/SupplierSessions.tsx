@@ -158,7 +158,7 @@ export default function SupplierSessions() {
 
   return (
     <div className="min-h-screen bg-background-alt">
-      <main className="container max-w-6xl mx-auto px-4 py-4">
+      <main className="container max-w-7xl mx-auto px-3 py-3">
         {isMobile ? (
           <SessionsListView
             sessionsByDate={formattedSessionsByDate}

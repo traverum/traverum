@@ -4,10 +4,10 @@ import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { X, Users, Euro, Globe, ExternalLink, Trash2 } from 'lucide-react';
+import { X, Users, Euro, Globe, ExternalLink, Trash2, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPrice } from '@/lib/pricing';
-import { getLanguageName, getLanguageFlag } from '@/components/LanguageSelector';
+import { getLanguageName } from '@/components/LanguageSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -28,6 +28,7 @@ interface SessionQuickEditPopupProps {
   session: SessionWithExperience | null;
   position?: { x: number; y: number };
   onSessionUpdate?: () => void;
+  onDuplicate?: (session: SessionWithExperience) => void;
 }
 
 export function SessionQuickEditPopup({
@@ -36,6 +37,7 @@ export function SessionQuickEditPopup({
   session,
   position,
   onSessionUpdate,
+  onDuplicate,
 }: SessionQuickEditPopupProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -226,7 +228,7 @@ export function SessionQuickEditPopup({
           {(session as any).session_language && (
             <div className="flex items-center gap-2 text-sm">
               <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-              <span>{getLanguageFlag((session as any).session_language)} {getLanguageName((session as any).session_language)}</span>
+              <span>{getLanguageName((session as any).session_language)}</span>
             </div>
           )}
 
@@ -300,6 +302,17 @@ export function SessionQuickEditPopup({
               <ExternalLink className="w-3 h-3 mr-1" />
               Full Details
             </Button>
+            {onDuplicate && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 w-7 p-0"
+                title="Duplicate session"
+                onClick={() => onDuplicate(session)}
+              >
+                <Copy className="w-3 h-3" />
+              </Button>
+            )}
             {!isCancelled && (
               isBooked ? (
                 <Button

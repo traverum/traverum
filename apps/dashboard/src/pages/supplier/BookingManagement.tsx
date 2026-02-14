@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPrice } from '@/lib/pricing';
-import { getLanguageName, getLanguageFlag } from '@/components/LanguageSelector';
+import { getLanguageName } from '@/components/LanguageSelector';
 import { useBookingManagement, type SessionWithGuests, type SessionGuest, type PendingRequest } from '@/hooks/useBookingManagement';
 import { useToast } from '@/hooks/use-toast';
 
@@ -270,7 +270,7 @@ function SessionCard({
                         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
                           <span>{guest.participants} {guest.participants === 1 ? 'person' : 'people'}</span>
                           {guest.preferred_language && (
-                            <span>{getLanguageFlag(guest.preferred_language)} {getLanguageName(guest.preferred_language)}</span>
+                            <span>{getLanguageName(guest.preferred_language)}</span>
                           )}
                           {canShowContact(guest) && (
                             <>

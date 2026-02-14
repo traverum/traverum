@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CalendarDay } from './CalendarDay';
 import { DayTimeView } from './DayTimeView';
@@ -24,6 +24,8 @@ import {
   subWeeks,
   addDays,
   subDays,
+  parseISO,
+  formatDistanceToNow,
 } from 'date-fns';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -66,6 +68,85 @@ interface SessionsCalendarProps {
   onRequestAction?: () => void;
 }
 
+// ─── Request Urgency Banner ──────────────────────────────────────────────────
+
+function RequestUrgencyBanner({
+  requestsByDate,
+  onRequestBadgeClick,
+}: {
+  requestsByDate: Record<string, CalendarRequest[]>;
+  onRequestBadgeClick: (dateKey: string, position: { x: number; y: number }) => void;
+}) {
+  // Aggregate all pending requests across all dates
+  const allRequests = useMemo(() => {
+    const requests: CalendarRequest[] = [];
+    for (const dateRequests of Object.values(requestsByDate)) {
+      requests.push(...dateRequests);
+    }
+    return requests;
+  }, [requestsByDate]);
+
+  // Find the soonest deadline
+  const soonestDeadline = useMemo(() => {
+    if (allRequests.length === 0) return null;
+    let earliest: Date | null = null;
+    for (const req of allRequests) {
+      const deadline = parseISO(req.response_deadline);
+      if (!earliest || deadline < earliest) {
+        earliest = deadline;
+      }
+    }
+    return earliest;
+  }, [allRequests]);
+
+  const isUrgent = soonestDeadline && (soonestDeadline.getTime() - Date.now() < 12 * 60 * 60 * 1000);
+
+  // Click handler — open requests for the soonest deadline date
+  const handleClick = (e: React.MouseEvent) => {
+    if (allRequests.length > 0) {
+      let soonestReq = allRequests[0];
+      for (const req of allRequests) {
+        if (parseISO(req.response_deadline) < parseISO(soonestReq.response_deadline)) {
+          soonestReq = req;
+        }
+      }
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      onRequestBadgeClick(soonestReq.requested_date, { x: rect.left, y: rect.bottom + 4 });
+    }
+  };
+
+  // Nothing to show — all hooks still ran
+  if (allRequests.length === 0) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      className={`
+        w-full flex items-center gap-2 px-3 py-2 rounded-sm mb-3 text-left transition-colors
+        ${isUrgent
+          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/50'
+          : 'bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+        }
+      `}
+    >
+      <AlertCircle className={`w-4 h-4 flex-shrink-0 ${isUrgent ? 'text-amber-600 dark:text-amber-400' : 'text-amber-500 dark:text-amber-400'}`} />
+      <div className="flex-1 min-w-0">
+        <span className="text-sm">
+          {allRequests.length} {allRequests.length === 1 ? 'request' : 'requests'} awaiting your response
+        </span>
+        {soonestDeadline && (
+          <span className="text-xs opacity-80 ml-2">
+            · soonest deadline {formatDistanceToNow(soonestDeadline, { addSuffix: true })}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ─── Main Calendar ───────────────────────────────────────────────────────────
+
 export function SessionsCalendar({
   sessionsByDate,
   requestsByDate = {},
@@ -87,6 +168,15 @@ export function SessionsCalendar({
   const [quickAddTime, setQuickAddTime] = useState<string | undefined>();
   const [quickAddPosition, setQuickAddPosition] = useState<{ x: number; y: number } | undefined>();
   
+  // Pre-fill state for create popup (duplicate + remember last experience)
+  const [quickAddExperienceId, setQuickAddExperienceId] = useState<string | undefined>();
+  const [quickAddSpots, setQuickAddSpots] = useState<number | undefined>();
+  const [quickAddPriceOverride, setQuickAddPriceOverride] = useState<string | undefined>();
+  const [quickAddLanguage, setQuickAddLanguage] = useState<string | undefined>();
+
+  // Remember last created experience for batch creation
+  const [lastCreatedExperienceId, setLastCreatedExperienceId] = useState<string | undefined>();
+
   // Quick-edit popup state
   const [quickEditOpen, setQuickEditOpen] = useState(false);
   const [quickEditSession, setQuickEditSession] = useState<SessionWithExperience | null>(null);
@@ -159,18 +249,61 @@ export function SessionsCalendar({
     }
   };
 
+  // ── Month view "+" button — open create popup for a specific date ──────────
+  const handleMonthAddSession = (date: Date, position: { x: number; y: number }) => {
+    setQuickAddDate(date);
+    setQuickAddTime('09:00');
+    setQuickAddPosition(position);
+    setQuickAddExperienceId(lastCreatedExperienceId);
+    setQuickAddSpots(undefined);
+    setQuickAddPriceOverride(undefined);
+    setQuickAddLanguage(undefined);
+    setQuickAddOpen(true);
+  };
+
   const handleTimeSlotClick = (date: Date, time: string, position?: { x: number; y: number }) => {
     setQuickAddDate(date);
     setQuickAddTime(time);
     if (position) {
       setQuickAddPosition(position);
     }
+    // Remember last experience for convenience
+    setQuickAddExperienceId(lastCreatedExperienceId);
+    setQuickAddSpots(undefined);
+    setQuickAddPriceOverride(undefined);
+    setQuickAddLanguage(undefined);
     setQuickAddOpen(true);
   };
 
   const handleCreateSession = (data: SessionData | RecurringData) => {
+    // Remember the experience ID for next creation
+    setLastCreatedExperienceId(data.experienceId);
     onCreateSession(data);
     setQuickAddOpen(false);
+  };
+
+  // ── Duplicate session — pre-fill create popup from an existing session ─────
+  const handleDuplicateSession = (session: SessionWithExperience) => {
+    // Close the edit popup
+    setQuickEditOpen(false);
+    setQuickEditSession(null);
+
+    // Calculate a sensible default date: tomorrow
+    const tomorrow = addDays(new Date(), 1);
+
+    // Pre-fill the create popup
+    setQuickAddDate(tomorrow);
+    setQuickAddTime(session.start_time.slice(0, 5));
+    setQuickAddExperienceId(session.experience_id);
+    setQuickAddSpots(session.spots_total);
+    setQuickAddPriceOverride(
+      session.price_override_cents !== null
+        ? (session.price_override_cents / 100).toString()
+        : undefined
+    );
+    setQuickAddLanguage((session as any).session_language || undefined);
+    setQuickAddPosition(quickEditPosition); // Reuse the same position
+    setQuickAddOpen(true);
   };
 
   // Handle session click → open quick-edit popup instead of navigating
@@ -233,7 +366,7 @@ export function SessionsCalendar({
 
   if (!sessionsByDate || !currentMonth) {
     return (
-      <div className="bg-card rounded-xl p-4 border border-border">
+      <div className="bg-card rounded-lg p-4 border border-border">
         <p className="text-muted-foreground">Loading calendar...</p>
       </div>
     );
@@ -242,10 +375,16 @@ export function SessionsCalendar({
   try {
     return (
       <>
-        <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+        <div className="bg-card rounded-lg p-5 shadow-sm border border-border">
+          {/* Request urgency banner — impossible to miss */}
+          <RequestUrgencyBanner
+            requestsByDate={requestsByDate}
+            onRequestBadgeClick={handleRequestBadgeClick}
+          />
+
           {/* Calendar Header - Navigation */}
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-lg font-medium tracking-[-0.01em]">
               {getHeaderTitle()}
             </h2>
             <div className="flex items-center gap-2">
@@ -276,7 +415,7 @@ export function SessionsCalendar({
                 {weekdays.map((day) => (
                   <div
                     key={day}
-                    className="text-center text-xs font-medium text-muted-foreground py-2"
+                    className="text-center text-[11px] font-normal text-muted-foreground/70 uppercase tracking-wider py-2"
                   >
                     {day}
                   </div>
@@ -284,7 +423,7 @@ export function SessionsCalendar({
               </div>
 
               {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-px bg-border rounded overflow-hidden">
+              <div className="grid grid-cols-7 gap-px bg-border/50 rounded-sm overflow-hidden">
                 {calendarDays.map((day) => {
                   const dateKey = format(day, 'yyyy-MM-dd');
                   const daySessions = getDaySessions(day) || [];
@@ -299,7 +438,7 @@ export function SessionsCalendar({
                       requests={dayRequests}
                       totalSessionCount={daySessions.length}
                       currentMonth={currentMonth}
-                      onAddSession={() => {}}
+                      onAddSession={handleMonthAddSession}
                       onDayClick={handleDayClick}
                       showExperienceTitle={showExperienceTitle}
                       availabilityRules={availabilityRules || []}
@@ -348,6 +487,10 @@ export function SessionsCalendar({
             onClose={() => setQuickAddOpen(false)}
             initialDate={quickAddDate}
             initialTime={quickAddTime}
+            initialExperienceId={quickAddExperienceId}
+            initialSpots={quickAddSpots}
+            initialPriceOverride={quickAddPriceOverride}
+            initialLanguage={quickAddLanguage}
             position={quickAddPosition}
             experiences={experiences.map(e => ({
               id: e.id,
@@ -369,6 +512,7 @@ export function SessionsCalendar({
           session={quickEditSession}
           position={quickEditPosition}
           onSessionUpdate={onSessionUpdate}
+          onDuplicate={handleDuplicateSession}
         />
 
         {/* Request Day Popup */}
@@ -388,7 +532,7 @@ export function SessionsCalendar({
   } catch (error) {
     console.error('Error rendering SessionsCalendar:', error);
     return (
-      <div className="bg-card rounded-xl p-4 border border-border">
+      <div className="bg-card rounded-lg p-4 border border-border">
         <p className="text-destructive">Error loading calendar. Please refresh the page.</p>
       </div>
     );

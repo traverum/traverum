@@ -19,7 +19,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useSessionDetail, type SessionUpdate } from '@/hooks/useSessionDetail';
 import { formatPrice } from '@/lib/pricing';
-import { getLanguageName, getLanguageFlag } from '@/components/LanguageSelector';
+import { getLanguageName } from '@/components/LanguageSelector';
 
 export default function SessionDetail() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -338,7 +338,7 @@ export default function SessionDetail() {
                       <p className="text-sm text-muted-foreground">
                         {guest.participants} person{guest.participants !== 1 ? 's' : ''}
                         {guest.preferred_language && (
-                          <> • {getLanguageFlag(guest.preferred_language)} {getLanguageName(guest.preferred_language)}</>
+                          <> • {getLanguageName(guest.preferred_language)}</>
                         )}
                       </p>
                     </div>

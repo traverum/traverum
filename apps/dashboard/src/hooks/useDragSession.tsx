@@ -62,6 +62,12 @@ export function useDragSession({ scrollRef, onSessionUpdate }: UseDragSessionOpt
     session: SessionWithExperience,
     originalTop: number
   ) => {
+    // Block drag for booked or cancelled sessions — moving a booked session
+    // silently reschedules a paid guest. That should never happen casually.
+    if (session.session_status === 'booked' || session.session_status === 'cancelled') {
+      return;
+    }
+
     e.preventDefault();
     e.stopPropagation();
 

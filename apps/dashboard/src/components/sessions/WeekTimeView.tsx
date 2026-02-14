@@ -169,14 +169,14 @@ export function WeekTimeView({
               key={dateKey}
               className="flex-1 py-2 text-center"
             >
-              <div className="text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+              <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-normal">
                 {format(day, 'EEE')}
               </div>
               <div className={cn(
-                'text-xl font-medium mt-1',
+                'mt-1 tabular-nums',
                 isToday
-                  ? 'w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto'
-                  : 'text-foreground'
+                  ? 'w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-medium'
+                  : 'text-lg font-normal text-foreground/80'
               )}>
                 {format(day, 'd')}
               </div>
@@ -188,7 +188,7 @@ export function WeekTimeView({
                     const rect = (e.target as HTMLElement).getBoundingClientRect();
                     onRequestBadgeClick?.(dateKey, { x: rect.left, y: rect.bottom + 4 });
                   }}
-                  className="mt-1 inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-100 text-amber-800 hover:bg-amber-200 transition-colors dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
+                  className="mt-1 inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-normal bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
                 >
                   {dayRequests.length} {dayRequests.length === 1 ? 'request' : 'requests'}
                 </button>
@@ -214,7 +214,7 @@ export function WeekTimeView({
                 style={{ height: `${HOUR_HEIGHT}px` }}
               >
                 {/* Time label aligned to top of each hour slot */}
-                <span className="absolute -top-2 right-3 text-[11px] text-muted-foreground/70 font-normal">
+                <span className="absolute -top-2 right-3 text-[11px] text-muted-foreground/50 font-normal tabular-nums">
                   {TIME_LABELS[index]}
                 </span>
               </div>
@@ -231,12 +231,12 @@ export function WeekTimeView({
                   className="absolute left-0 right-0"
                   style={{ top: `${index * HOUR_HEIGHT}px` }}
                 >
-                  {/* Hour line - subtle */}
+                  {/* Hour line */}
                   <div
                     className="h-px"
-                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.06)' }}
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.08)' }}
                   />
-                  {/* Half hour line - very subtle */}
+                  {/* Half hour line */}
                   <div
                     className="h-px"
                     style={{
@@ -259,7 +259,7 @@ export function WeekTimeView({
                   key={dateKey}
                   className="flex-1 relative"
                   style={{
-                    borderRight: dayIndex < 6 ? '1px solid rgba(0, 0, 0, 0.04)' : 'none'
+                    borderRight: dayIndex < 6 ? '1px solid rgba(0, 0, 0, 0.06)' : 'none'
                   }}
                 >
                   {/* Clickable hour slots */}
@@ -309,8 +309,8 @@ export function WeekTimeView({
                       className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
                       style={{ top: `${currentTimeTop}px` }}
                     >
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-1 shadow-sm" />
-                      <div className="flex-1 h-[2px] bg-red-500" />
+                      <div className="w-2 h-2 rounded-full bg-primary -ml-1" />
+                      <div className="flex-1 h-px bg-primary" />
                     </div>
                   )}
                 </div>
