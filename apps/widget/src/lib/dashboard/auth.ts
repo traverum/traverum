@@ -38,6 +38,10 @@ export async function getHotelContext(): Promise<AuthResult> {
 
   const user = userData as User
 
+  if (!user.partner_id) {
+    return { success: false, error: 'no_user_record' }
+  }
+
   // Fetch partner (hotel)
   const { data: partnerData } = await supabase
     .from('partners')
