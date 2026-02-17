@@ -72,6 +72,56 @@ Suppliers can accept/decline via three entry points:
 
 ---
 
+## Flow B2: Rental Booking (Request-Based, No Sessions)
+
+Rentals (`pricing_type = 'per_day'`) always follow the request flow but with key differences from regular requests.
+
+### How It Differs from Flow B
+
+| Aspect | Regular Request (Flow B) | Rental (Flow B2) |
+|--------|--------------------------|-------------------|
+| Date selection | Single date + time | Single date + number of days |
+| Participants | People count | Quantity (units) |
+| Sessions | Private session created on accept | **No session created** |
+| `requested_time` | Required | `null` |
+| Inventory | N/A | No tracking (manual by supplier) |
+
+### Phase 1: Guest Submits Rental Request
+
+1. Guest selects experience + start date + number of days + quantity (units)
+2. Guest enters name, email, phone
+3. System validates: `min_days ≤ days ≤ max_days`, `quantity ≤ max_participants`
+4. System calculates: `price_per_day_cents × days × quantity`
+5. System creates reservation:
+   - `is_request = true`
+   - `requested_date` = start date
+   - `requested_time = null`
+   - `rental_start_date` = start date
+   - `rental_end_date` = start date + days (computed server-side)
+   - `participants` = quantity (repurposed)
+   - `response_deadline` = now + 48h
+   - `reservation_status = 'pending'`
+6. Email to supplier: "New rental request" with Accept/Decline buttons — shows rental dates, duration, quantity
+7. Email to guest: "Request received, awaiting confirmation"
+
+### Phase 2: Supplier Responds
+
+**Accept:**
+- **No session is created** (unlike regular requests)
+- Reservation status → `approved`, set `payment_deadline` = now + 24h
+- Create Stripe Payment Link
+- Email to guest: "Rental approved!" with Pay Now button — shows start/end dates, duration, quantity
+
+**Decline:**
+- Same as Flow B — status → `declined`, optional message, email to guest
+
+**No response within 48h:**
+- Same as Flow B — status → `expired`, email to guest
+
+Then continues to [Payment Phase](#payment-phase) (same as all other flows).
+
+---
+
 ## Flow C: Propose New Time (NOT YET IMPLEMENTED)
 
 > **Status:** Planned but not built. The spec is retained here for future reference. Currently, the closest behavior is the supplier's ability to include a message when declining (suggesting alternatives informally).
@@ -389,6 +439,9 @@ All links: signed HMAC token, expiring, one-click, idempotent.
 | Double payment | Stripe handles, one charge only |
 | Webhook failure | Manual recovery via `/api/bookings/manual-create` |
 | Participants > max_participants | Rejected at submission |
+| Rental with no time | Normal — `requested_time` is null for rentals |
+| Multiple rental requests for same dates | Allowed — no inventory tracking, supplier decides |
+| Rental accept | No session created (unlike regular requests) |
 
 ---
 
@@ -398,7 +451,11 @@ All links: signed HMAC token, expiring, one-click, idempotent.
 
 **Reservation created (request-based):** experience_id, hotel_id, guest name/email/phone, participants, total_cents, requested_date/time, response_deadline, is_request=true, status `pending`
 
-**On accept:** session_id (created as private), payment_deadline, stripe_payment_link_id, stripe_payment_link_url, status `approved`
+**Reservation created (rental request):** Same as request-based, plus: rental_start_date, rental_end_date, requested_time=null, participants=quantity
+
+**On accept (regular request):** session_id (created as private), payment_deadline, stripe_payment_link_id, stripe_payment_link_url, status `approved`
+
+**On accept (rental):** No session created. payment_deadline, stripe_payment_link_id, stripe_payment_link_url, status `approved`
 
 **On payment:** booking record with reservation_id, session_id, stripe_payment_intent_id, stripe_charge_id, supplier_amount_cents, hotel_amount_cents, platform_amount_cents, paid_at, status `confirmed`
 

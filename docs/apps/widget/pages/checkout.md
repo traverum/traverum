@@ -16,18 +16,21 @@
 
 - Cover image, experience title, duration, date/time, participants, total price
 - "Custom Request" badge and notice if request-based
+- **Rental summary**: Shows "Start date", "Duration: X days", "Quantity: Y" instead of date/time/participants
 
 ## URL Parameters
 
 | Param | Required | Description |
 |-------|----------|-------------|
 | `experienceId` | Yes | Experience UUID |
-| `participants` | Yes | Number of participants |
+| `participants` | Yes | Number of participants (or quantity for rentals) |
 | `total` | Yes | Total price in cents |
 | `sessionId` | No | Session UUID (session-based) |
-| `isRequest` | No | "true" for custom requests |
-| `requestDate` | No | YYYY-MM-DD for custom date |
-| `requestTime` | No | HH:MM for custom time |
+| `isRequest` | No | "true" for custom requests and rentals |
+| `requestDate` | No | YYYY-MM-DD for custom date or rental start date |
+| `requestTime` | No | HH:MM for custom time (not used for rentals) |
+| `rentalDays` | No | Number of rental days (rental only) |
+| `quantity` | No | Number of units (rental only, maps to participants) |
 
 Missing required params → redirect back to hotel experience list.
 

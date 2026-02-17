@@ -165,77 +165,82 @@ Where `effective_participants = participants` (always equals participants, since
 - Equipment rentals
 - Any service priced by time period rather than participants
 
+### How It Works
+
+Rentals follow a simplified request-based model:
+
+1. **Guest selects a single start date** (not a date range)
+2. **Guest selects number of days** from a dropdown (constrained by `min_days` / `max_days`)
+3. **Guest selects quantity** (how many units, e.g. 2 Vespas — constrained by `max_participants`)
+4. **Every rental booking is a request** — supplier must accept or decline via email or dashboard
+5. **No inventory tracking** — multiple guests can request the same dates. Requests are rare enough that overbooking is not a practical concern. Supplier manages availability manually.
+
 ### Formula
 ```
-days = (rental_end_date - rental_start_date) + 1
-quantity = participants (repurposed as quantity)
 total = price_per_day_cents × days × quantity
 ```
+
+Where:
+- `days` = number selected by the guest (validated against `min_days` / `max_days`)
+- `quantity` = `participants` field (repurposed as unit count for rentals)
 
 ### Validation Rules
 - `min_days ≤ days ≤ max_days` (if `max_days` is set)
 - `days ≥ 1` (always)
-- `quantity ≥ 1` (minimum 1 unit)
+- `quantity ≥ 1`, `quantity ≤ max_participants`
 
 ### Example Scenarios
 
 **Scenario 1: Single Vespa, 3 days**
 - Price: €50/day
 - Quantity: 1 Vespa
-- Days: Jan 15 - Jan 18 (3 days)
+- Days: 3
 - Total: €50 × 3 × 1 = **€150**
 
 **Scenario 2: Two Vespas, 3 days**
 - Price: €50/day
 - Quantity: 2 Vespas
-- Days: Jan 15 - Jan 18 (3 days)
+- Days: 3
 - Total: €50 × 3 × 2 = **€300**
 
-**Scenario 3: Two Vespas, 5 days (with constraints)**
-- Price: €50/day
+**Scenario 3: Invalid rental period**
 - Min days: 2, Max days: 7
-- Quantity: 2 Vespas
-- Days: Jan 15 - Jan 20 (5 days) ✅ Valid
-- Total: €50 × 5 × 2 = **€500**
-
-**Scenario 4: Invalid rental period**
-- Min days: 2, Max days: 7
-- Days: 1 day ❌ Rejected (below minimum)
-- Days: 10 days ❌ Rejected (above maximum)
+- Days: 1 day → Rejected (below minimum)
+- Days: 10 days → Rejected (above maximum)
 
 ### Database Fields Used
-- `pricing_type = 'per_day'`
-- `price_per_day_cents`
-- `min_days`
-- `max_days` (nullable)
-- `min_participants` (repurposed as min quantity, typically 1)
-- `max_participants` (repurposed as max quantity available)
 
-### Reservation Fields
-- `rental_start_date` (date)
-- `rental_end_date` (date)
-- `participants` (repurposed as quantity)
+**Experiences table:**
+- `pricing_type = 'per_day'`
+- `price_per_day_cents` — price per unit per day
+- `min_days` — minimum rental period
+- `max_days` (nullable) — maximum rental period
+- `max_participants` — max quantity per booking (e.g. 5 vespas)
+
+**Reservations table:**
+- `requested_date` — rental start date (same field used by session requests)
+- `rental_start_date` — rental start date (duplicated for clarity in queries)
+- `rental_end_date` — computed server-side as `requested_date + days`
+- `participants` — repurposed as quantity (number of units)
+- `is_request = true` — always true for rentals
+- `requested_time = null` — no time component for rentals
 
 ### Display
 - Card: "50€ / day"
-- Booking: "50€/day × 3 days × 2 Vespas = 300€"
-- Period: "Jan 15 - Jan 18, 2025 (3 days)"
+- Booking panel: "50€/day × 3 days × 2 units = 300€"
+- Checkout summary: "Start date: Mon 20 Feb", "Duration: 3 days", "Quantity: 2"
 
-### Special Considerations
+### Key Design Decisions
 
-1. **Date Range Selection**: Unlike other pricing types that use a single date/time, rentals require a date range picker (start + end dates)
+1. **Single date, not date range**: Guest picks one start date and selects days from a dropdown. This is simpler than a date range picker and avoids off-by-one confusion.
 
-2. **Quantity vs Participants**: The `participants` field is repurposed to represent quantity (number of units) for rental experiences
+2. **Always request-based**: Every rental goes through the request flow (supplier Accept/Decline). There is no instant booking for rentals.
 
-3. **Availability Tracking**: For rentals, you may need to track inventory:
-   - How many units are available on each date?
-   - Prevent overbooking (if you have 5 Vespas, can't rent 6 on overlapping dates)
-   - This may require a new `rental_availability` table or date-based inventory tracking
+3. **No inventory tracking**: We do not track how many units are available on each date. Rental requests are infrequent enough that the supplier can manage availability manually by accepting or declining.
 
-4. **Day Calculation**: Days are calculated inclusively: `(end_date - start_date) + 1`
-   - Jan 15 to Jan 15 = 1 day
-   - Jan 15 to Jan 16 = 2 days
-   - Jan 15 to Jan 18 = 4 days
+4. **No sessions for rentals**: Rentals do not use `experience_sessions`. When a rental request is accepted, no session is created — the reservation goes directly to `approved` status with a payment link.
+
+5. **`max_participants` as max quantity**: For rentals, `max_participants` represents the maximum number of units a guest can request in a single booking (e.g. "up to 5 vespas"). It is not inventory.
 
 ---
 
@@ -345,11 +350,12 @@ getDefaultUnitPrice(pricing): number       // default unit price for override pl
 
 ### Rental Experience (Per Day)
 ```
-1. Supplier creates experience: "Vespa Rental" at 50€/day, min 2 days, max 7 days
-2. Guest selects: Jan 15 - Jan 18 (3 days), quantity: 2 Vespas
-3. System validates: 2 ≤ 3 ≤ 7 ✅
+1. Supplier creates experience: "Vespa Rental" at 50€/day, min 2 days, max 7 days, max qty 5
+2. Guest selects: start date Jan 15, 3 days, quantity 2 Vespas
+3. System validates: 2 ≤ 3 ≤ 7 ✅, 2 ≤ 5 ✅
 4. System calculates: 50€ × 3 days × 2 Vespas = 300€
-5. Guest pays 300€
+5. Guest submits request (always request-based, no instant booking)
+6. Supplier accepts → guest receives payment link → guest pays 300€
 ```
 
 ### Session Override
@@ -369,18 +375,11 @@ getDefaultUnitPrice(pricing): number       // default unit price for override pl
 | **Per Person** | Tours, classes, tastings | `extra_person_cents`, `min_participants` | `price × participants` |
 | **Flat Rate** | Private charters, exclusive experiences | `base_price_cents`, `max_participants` | `base_price` (constant) |
 | **Base + Extra** | Vehicles with seats, packages | `base_price_cents`, `included_participants`, `extra_person_cents` | `base + (extra × additional)` |
-| **Per Day** | Rentals (Vespa, car, equipment) | `price_per_day_cents`, `min_days`, `max_days` | `price × days × quantity` |
+| **Per Day** | Rentals (Vespa, car, equipment) | `price_per_day_cents`, `min_days`, `max_days`, `max_participants` (max qty) | `price × days × quantity` |
 
 ---
 
 ## Future Considerations
-
-### Rental Inventory Management
-For rental services, consider implementing:
-- Date-based availability tracking
-- Overlapping booking prevention
-- Inventory management per date range
-- Multi-unit availability (e.g., "5 Vespas available Jan 15-20")
 
 ### Advanced Pricing Features
 - Seasonal pricing (different rates by date range)
@@ -388,6 +387,7 @@ For rental services, consider implementing:
 - Quantity discounts (e.g., "Rent 3+ Vespas, get 10% off")
 - Early bird discounts
 - Last-minute pricing
+- Rental inventory tracking (date-based availability, overbooking prevention) — currently not needed due to low request volume
 
 ---
 

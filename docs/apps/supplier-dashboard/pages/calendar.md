@@ -111,3 +111,19 @@ Opens at click position. Shows:
 - Available: Success color (green tint)
 - Booked: Primary color (blue tint)
 - Cancelled: Muted color with strikethrough
+
+---
+
+## Pending Requests on Calendar
+
+Pending booking requests (including rental requests) appear on the calendar as indicators on their requested dates.
+
+- **Click a day with pending requests** → opens a popup showing request cards
+- Request cards use the same design as the Booking Management page (see [booking-management.md](./booking-management.md))
+- Suppliers can Accept or Decline requests directly from the calendar popup
+- **Rental requests** show on their `requested_date` (start date) and display rental-specific info (date range, duration, quantity/units)
+- **Session requests** show date and time with people count
+
+### Rental Requests on Calendar
+
+Rental requests appear on the calendar on their start date. Since rentals don't create sessions, they only appear as pending request indicators — once accepted, they do not show as calendar events (there is no session to display).

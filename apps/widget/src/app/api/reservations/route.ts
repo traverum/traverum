@@ -346,7 +346,7 @@ export async function POST(request: NextRequest) {
       manageUrl,
       hotelName: hotel.display_name,
       dashboardUrl,
-      ...(isRental ? { rentalEndDate, rentalDays } : {}),
+      ...(isRental ? { rentalEndDate: rentalEndDate || undefined, rentalDays } : {}),
     })
     
     await sendEmail({

@@ -18,15 +18,32 @@
 
 ## Booking Panel (right column / mobile bottom sheet)
 
-- Price display varies by type: per person ("€45 / person"), flat rate ("€200 total"), base+extras ("€120 for 4")
+- Price display varies by type: per person ("€45 / person"), flat rate ("€200 total"), base+extras ("€120 for 4"), rental ("€50 / day")
 - "Select Date" → opens date picker
-- Participants: +/− buttons, enforces max
+- Participants: +/− buttons, enforces max. For rentals, labeled "Quantity" with "unit(s)" instead of "person/people".
 - Price breakdown (calculation varies by pricing type)
-- CTA: "Book Now — €total" (session) or "Request Booking — €total" (custom request). Disabled until date selected.
+- CTA: "Book Now — €total" (session) or "Request Booking — €total" (custom request / rental). Disabled until date selected.
+
+### Rental-specific behavior
+
+For `per_day` experiences, the booking panel shows:
+1. **"Select Date"** → opens single-date calendar (not a date range)
+2. **"Number of days"** dropdown → values from `min_days` to `max_days` (or 30 if no max)
+3. **"Quantity"** selector → +/− buttons, 1 to `max_participants`
+4. **Price breakdown**: "€50/day × 3 days × 2 units = €300"
+5. **CTA is always "Request Booking"** — rentals are always request-based
 
 ## Date Picker
 
 - Calendar month view. Disabled: past dates, days outside availability/seasonal rules. Future limit: 1 year.
-- Dots on dates with existing sessions
+- Dots on dates with existing sessions (not shown for rentals)
+
+### Session-based experiences
 - **Sessions available:** List with time and price. Click to select → instant booking path.
 - **Custom request:** "Request a different time" → time picker grid, 30-min slots within operating hours, grouped Morning/Afternoon/Evening.
+
+### Rental experiences (`per_day`)
+- **Single date only** — no date range selection
+- Calendar shows available dates (based on availability rules)
+- Below the calendar: "Number of days" dropdown (values from `min_days` to `max_days`)
+- Confirm button: "Confirm Selection"

@@ -15,10 +15,11 @@
 | Term | Definition |
 |------|------------|
 | **Experience** | A bookable activity with title, description, pricing, and availability. Owned by one supplier, sold through many hotels. |
-| **Session** | A specific date and time slot when an experience can be booked. Has capacity limits. |
+| **Session** | A specific date and time slot when an experience can be booked. Has capacity limits. Not used for rental experiences. |
 | **Reservation** | A booking request before payment. Statuses: `pending`, `approved`, `declined`, `expired`. |
 | **Booking** | A confirmed, paid reservation. Statuses: `confirmed`, `completed`, `cancelled`. |
 | **Widget** | Embeddable booking interface that hotels place on their websites. |
+| **Rental** | An experience with `pricing_type = 'per_day'`. Priced by day and quantity (units). Always request-based, no sessions, no inventory tracking. |
 
 ## Booking States
 
@@ -31,6 +32,16 @@
 | **Confirmed** | Guest paid, experience upcoming. |
 | **Completed** | Experience delivered, funds transferred to supplier. Terminal state. |
 | **Cancelled** | Booking cancelled by guest or supplier, refund issued. Terminal state. |
+
+## Rental-Specific Terms
+
+| Term | Definition |
+|------|------------|
+| **Quantity** | Number of units a guest wants to rent (e.g. 2 vespas). Stored in `participants` field. |
+| **Max quantity per booking** | Maximum units a guest can request at once. Stored in `max_participants`. Not inventory — just a per-booking limit. |
+| **Rental days** | Duration of the rental period. Guest selects from a dropdown (min/max constrained). |
+| **Start date** | The day the rental begins. Stored in `requested_date` and `rental_start_date`. |
+| **End date** | Computed server-side as start date + days. Stored in `rental_end_date`. |
 
 ## Money Terms
 

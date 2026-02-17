@@ -25,8 +25,6 @@ Reviewed by Elias on 07-02-2026
 - **Available Languages**
 - **Location**
 - **Meeting Point** (optional text input)
-- **Minimum Guests** (required for going live, number, hidden when pricing type is "Per day (Rental)" — guests cannot select fewer than this in the widget)
-- **Max Participants** (required for going live, number)
 
 ---
 
@@ -50,9 +48,14 @@ Reviewed by Elias on 07-02-2026
 - Extra person price (EUR, optional)
 
 **When "Per day (Rental)" selected:**
-- Price per day (EUR, required, min €1.00) — stored in `price_per_day_cents`
-- Minimum rental period (days, required, min 1) — stored in `min_days`
-- Maximum rental period (days, optional) — stored in `max_days`
+- Price per unit per day (EUR, required, min €1.00) — stored in `price_per_day_cents`
+- Max quantity per booking (required, min 1) — stored in `max_participants`. Maximum units a guest can request at once (e.g. 5 vespas). This is **not** inventory tracking.
+- Minimum days (required, min 1) — stored in `min_days`
+- Maximum days (optional) — stored in `max_days`
+
+**Non-rental pricing types also show:**
+- Minimum Guests (hidden for rentals — guests cannot select fewer than this in the widget)
+- Max Participants (capacity limit for the experience)
 
 **Session Price Override** (in session create/edit popups):
 - Label is dynamic based on pricing type: "per person" / "total" / "per day"
