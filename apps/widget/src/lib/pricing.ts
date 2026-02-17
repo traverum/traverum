@@ -17,35 +17,82 @@ export interface PriceCalculation {
  * - 'per_person': extra_person_cents per participant
  * - 'base_plus_extra': base_price_cents for included_participants, extra_person_cents for additional
  * - 'flat_rate': base_price_cents (constant, regardless of participants)
+ * - 'per_day': price_per_day_cents × days × quantity
  * 
- * Note: min_participants is a pricing floor only — it does NOT gate session availability.
- * Each guest pays for exactly the number of people they bring (min_participants is the minimum billable).
+ * Session override replaces the unit price and scales with quantity:
+ * - per_person / base_plus_extra: override × participants
+ * - flat_rate: override (constant)
+ * - per_day: override × days × quantity
+ * 
+ * Note: min_participants is a booking minimum — guests cannot select fewer than this
+ * number of participants in the widget. The Math.max below is a safety net.
  */
 export function calculatePrice(
-  experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants' | 'min_participants'>,
+  experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants' | 'min_participants' | 'price_per_day_cents' | 'min_days' | 'max_days'>,
   participants: number,
-  session?: Pick<ExperienceSession, 'price_override_cents'> | null
+  session?: Pick<ExperienceSession, 'price_override_cents'> | null,
+  rentalDays?: number,
+  quantity?: number
 ): PriceCalculation {
-  // Session override takes precedence
-  if (session?.price_override_cents) {
-    return {
-      basePrice: session.price_override_cents,
-      extraPersonFee: 0,
-      totalPrice: session.price_override_cents,
-      includedParticipants: participants,
-      extraParticipants: 0,
-      pricePerPerson: null,
-      effectiveParticipants: participants,
-    }
-  }
-
-  // min_participants is a pricing floor: guest always pays for at least this many
+  // min_participants is enforced at the UI level (guest can't select fewer), Math.max is a safety net
   const minParticipants = experience.min_participants || 1
   const effectiveParticipants = Math.max(participants, minParticipants)
+
+  // Session override replaces the unit price, scales with quantity
+  if (session?.price_override_cents) {
+    switch (experience.pricing_type) {
+      case 'per_person':
+      case 'base_plus_extra': {
+        const total = session.price_override_cents * effectiveParticipants
+        return {
+          basePrice: total,
+          extraPersonFee: 0,
+          totalPrice: total,
+          includedParticipants: effectiveParticipants,
+          extraParticipants: 0,
+          pricePerPerson: session.price_override_cents,
+          effectiveParticipants,
+        }
+      }
+      case 'flat_rate':
+        return {
+          basePrice: session.price_override_cents,
+          extraPersonFee: 0,
+          totalPrice: session.price_override_cents,
+          includedParticipants: effectiveParticipants,
+          extraParticipants: 0,
+          pricePerPerson: null,
+          effectiveParticipants,
+        }
+      case 'per_day': {
+        const days = rentalDays || experience.min_days || 1
+        const qty = quantity || 1
+        const total = session.price_override_cents * days * qty
+        return {
+          basePrice: total,
+          extraPersonFee: 0,
+          totalPrice: total,
+          includedParticipants: qty,
+          extraParticipants: 0,
+          pricePerPerson: null,
+          effectiveParticipants: qty,
+        }
+      }
+      default:
+        return {
+          basePrice: session.price_override_cents,
+          extraPersonFee: 0,
+          totalPrice: session.price_override_cents,
+          includedParticipants: effectiveParticipants,
+          extraParticipants: 0,
+          pricePerPerson: null,
+          effectiveParticipants,
+        }
+    }
+  }
   
   switch (experience.pricing_type) {
-    case 'per_person':
-      // Use extra_person_cents (not price_cents)
+    case 'per_person': {
       const perPersonPrice = experience.extra_person_cents || experience.price_cents
       return {
         basePrice: perPersonPrice * effectiveParticipants,
@@ -56,9 +103,9 @@ export function calculatePrice(
         pricePerPerson: perPersonPrice,
         effectiveParticipants,
       }
+    }
     
-    case 'base_plus_extra':
-      // Base price for included participants, extra for additional
+    case 'base_plus_extra': {
       const extraPeople = Math.max(0, effectiveParticipants - experience.included_participants)
       const extraFee = extraPeople * (experience.extra_person_cents || 0)
       return {
@@ -70,10 +117,26 @@ export function calculatePrice(
         pricePerPerson: null,
         effectiveParticipants,
       }
+    }
+
+    case 'per_day': {
+      const pricePerDay = experience.price_per_day_cents || experience.extra_person_cents || experience.price_cents
+      const days = rentalDays || experience.min_days || 1
+      const qty = quantity || 1
+      const total = pricePerDay * days * qty
+      return {
+        basePrice: total,
+        extraPersonFee: 0,
+        totalPrice: total,
+        includedParticipants: qty,
+        extraParticipants: 0,
+        pricePerPerson: null,
+        effectiveParticipants: qty,
+      }
+    }
     
     case 'flat_rate':
     default:
-      // Fixed price regardless of participants
       return {
         basePrice: experience.base_price_cents || experience.price_cents || 0,
         extraPersonFee: 0,
@@ -89,7 +152,7 @@ export function calculatePrice(
 /**
  * Get price display text for experience card
  */
-export function getPriceDisplay(experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'extra_person_cents' | 'base_price_cents' | 'currency'>): {
+export function getPriceDisplay(experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'extra_person_cents' | 'base_price_cents' | 'price_per_day_cents' | 'currency'>): {
   amount: number
   suffix: string
 } {
@@ -98,6 +161,8 @@ export function getPriceDisplay(experience: Pick<Experience, 'pricing_type' | 'p
       return { amount: experience.extra_person_cents || experience.price_cents, suffix: ' / person' }
     case 'base_plus_extra':
       return { amount: experience.base_price_cents || experience.price_cents, suffix: ' / group' }
+    case 'per_day':
+      return { amount: experience.price_per_day_cents || experience.extra_person_cents || experience.price_cents, suffix: ' / day' }
     case 'flat_rate':
     default:
       return { amount: experience.base_price_cents || experience.price_cents, suffix: '' }
@@ -107,22 +172,30 @@ export function getPriceDisplay(experience: Pick<Experience, 'pricing_type' | 'p
 /**
  * Get the display price for booking panels (matching demo format)
  */
-export function getDisplayPrice(experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants'>): {
+export function getDisplayPrice(experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants' | 'price_per_day_cents'>): {
   price: string
   suffix: string
 } {
   switch (experience.pricing_type) {
-    case 'per_person':
+    case 'per_person': {
       const perPersonCents = experience.extra_person_cents || experience.price_cents
       return {
         price: (perPersonCents / 100).toFixed(0),
         suffix: '/ person',
       }
+    }
     case 'base_plus_extra':
       return {
         price: ((experience.base_price_cents || experience.price_cents) / 100).toFixed(0),
         suffix: `for ${experience.included_participants}`,
       }
+    case 'per_day': {
+      const perDayCents = experience.price_per_day_cents || experience.extra_person_cents || experience.price_cents
+      return {
+        price: (perDayCents / 100).toFixed(0),
+        suffix: '/ day',
+      }
+    }
     case 'flat_rate':
     default:
       return {

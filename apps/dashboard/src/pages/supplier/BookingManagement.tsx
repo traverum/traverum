@@ -4,7 +4,6 @@ import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   AlertDialog,
@@ -25,6 +24,10 @@ import {
   ChevronDown,
   ChevronRight,
   Clock,
+  Calendar,
+  User,
+  Users,
+  AlertTriangle,
   Mail,
   Copy,
   Check,
@@ -34,6 +37,11 @@ import { formatPrice } from '@/lib/pricing';
 import { getLanguageName } from '@/components/LanguageSelector';
 import { useBookingManagement, type SessionWithGuests, type SessionGuest, type PendingRequest } from '@/hooks/useBookingManagement';
 import { useToast } from '@/hooks/use-toast';
+
+/** Format YYYY-MM-DD to "Mon 20 Feb" */
+function fmtDate(dateStr: string): string {
+  return format(new Date(dateStr + 'T12:00:00'), 'EEE d MMM');
+}
 
 // --- Pending Request Card ---
 
@@ -52,74 +60,122 @@ function PendingRequestCard({
 }) {
   const [showDeclineConfirm, setShowDeclineConfirm] = useState(false);
   const [declineSuggestion, setDeclineSuggestion] = useState('');
-  const canAccept = !!(request.requested_date && request.requested_time);
+
+  const isRental = request.isRental;
+  const canAccept = isRental
+    ? !!request.requested_date
+    : !!(request.requested_date && request.requested_time);
 
   const deadline = parseISO(request.response_deadline);
   const isUrgent = deadline.getTime() - Date.now() < 12 * 60 * 60 * 1000;
 
+  // Compute rental days from start/end dates
+  const rentalDays = isRental && request.rental_start_date && request.rental_end_date
+    ? Math.round(
+        (new Date(request.rental_end_date + 'T12:00:00').getTime() -
+          new Date(request.rental_start_date + 'T12:00:00').getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : null;
+
+  // Build "When" text
+  const whenText = (() => {
+    if (isRental && request.rental_start_date && request.rental_end_date && rentalDays) {
+      return `${fmtDate(request.rental_start_date)} → ${fmtDate(request.rental_end_date)} (${rentalDays} day${rentalDays !== 1 ? 's' : ''})`;
+    }
+    if (request.requested_date) {
+      const datePart = fmtDate(request.requested_date);
+      return request.requested_time
+        ? `${datePart} at ${request.requested_time.slice(0, 5)}`
+        : datePart;
+    }
+    return 'No date specified';
+  })();
+
   return (
     <>
       <Card className={cn(
-        'border shadow-sm',
+        'border shadow-sm overflow-hidden',
         isUrgent ? 'border-destructive/40' : 'border-border'
       )}>
-        <CardContent className="p-4 space-y-3">
-          {/* Row 1: Experience + date + participants */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h4 className="text-sm font-medium truncate">{request.experience.title}</h4>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                {request.requested_date && (
-                  <span className="font-medium text-foreground">{format(parseISO(request.requested_date), 'dd.MM.yyyy')}</span>
-                )}
-                {request.requested_time && (
-                  <>
-                    <span>·</span>
-                    <span className="font-medium text-foreground">{request.requested_time.slice(0, 5)}</span>
-                  </>
-                )}
-                <span>·</span>
-                <span>{request.participants} {request.participants === 1 ? 'person' : 'people'}</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Requested {formatDistanceToNow(parseISO(request.created_at), { addSuffix: true })}
-              </p>
+        <CardContent className="p-0">
+          {/* Header: experience title */}
+          <div className="px-4 pt-4 pb-2">
+            <h4 className="text-sm font-semibold leading-tight">{request.experience.title}</h4>
+          </div>
+
+          {/* Info rows */}
+          <div className="px-4 space-y-1.5 pb-3">
+            {/* When */}
+            <div className="flex items-center gap-2 text-sm">
+              {isRental
+                ? <Calendar className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                : <Clock className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              }
+              <span>{whenText}</span>
             </div>
-            {isUrgent && (
-              <Badge variant="destructive" className="text-[10px] h-4 px-1.5 flex-shrink-0">
-                Urgent
-              </Badge>
+
+            {/* Who */}
+            <div className="flex items-center gap-2 text-sm">
+              <User className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <span>{request.guest_name}</span>
+            </div>
+
+            {/* How many */}
+            <div className="flex items-center gap-2 text-sm">
+              <Users className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              <span>
+                {request.participants}{' '}
+                {isRental
+                  ? (request.participants === 1 ? 'unit' : 'units')
+                  : (request.participants === 1 ? 'person' : 'people')
+                }
+              </span>
+            </div>
+          </div>
+
+          {/* Footer: price, deadline, actions */}
+          <div className="border-t border-border px-4 py-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">{formatPrice(request.total_cents)}</span>
+              <span className={cn(
+                'text-xs',
+                isUrgent ? 'text-destructive font-medium' : 'text-muted-foreground'
+              )}>
+                {isUrgent && <AlertTriangle className="w-3 h-3 inline mr-1" />}
+                Respond by {format(deadline, 'd.M HH:mm')}
+              </span>
+            </div>
+
+            {!canAccept && (
+              <p className="text-xs text-muted-foreground">
+                {isRental
+                  ? 'No rental dates specified — decline to suggest alternatives'
+                  : 'No specific time — decline to suggest alternatives'
+                }
+              </p>
             )}
-          </div>
 
-          {/* Row 2: Accept / Decline actions */}
-          {!canAccept && (
-            <p className="text-[11px] text-muted-foreground">No specific time — decline to suggest alternatives</p>
-          )}
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="h-8 text-xs px-4"
-              onClick={() => onAccept()}
-              disabled={isAccepting || !canAccept}
-            >
-              {isAccepting ? 'Accepting...' : 'Accept'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs"
-              onClick={() => setShowDeclineConfirm(true)}
-              disabled={isDeclining}
-            >
-              Decline or propose alternatives
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                className="h-8 text-xs px-4"
+                onClick={() => onAccept()}
+                disabled={isAccepting || !canAccept}
+              >
+                {isAccepting ? 'Accepting...' : 'Accept'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs"
+                onClick={() => setShowDeclineConfirm(true)}
+                disabled={isDeclining}
+              >
+                Decline
+              </Button>
+            </div>
           </div>
-
-          {/* Deadline */}
-          <p className="text-[11px] text-muted-foreground">
-            Respond within {formatDistanceToNow(deadline)}
-          </p>
         </CardContent>
       </Card>
 
@@ -127,19 +183,27 @@ function PendingRequestCard({
       <AlertDialog open={showDeclineConfirm} onOpenChange={(open) => { setShowDeclineConfirm(open); if (!open) setDeclineSuggestion(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Decline or propose other times?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isRental ? 'Decline rental request?' : 'Decline or propose other times?'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              The guest will be notified. You can propose times that work for you — they'll see your message and can request again or pick an existing session.
+              {isRental
+                ? 'The guest will be notified that this rental is not available. You can suggest alternative dates or quantities.'
+                : 'The guest will be notified. You can propose times that work for you — they\'ll see your message and can request again or pick an existing session.'
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="px-1">
             <label className="text-sm font-medium text-foreground mb-1.5 block">
-              Propose alternative times (optional)
+              {isRental ? 'Message to guest (optional)' : 'Propose alternative times (optional)'}
             </label>
             <textarea
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
               rows={3}
-              placeholder="e.g. We have availability on Thursday at 10:00 or Friday at 14:00"
+              placeholder={isRental
+                ? 'e.g. We only have 2 units available for those dates, or try starting from Thursday'
+                : 'e.g. We have availability on Thursday at 10:00 or Friday at 14:00'
+              }
               value={declineSuggestion}
               onChange={(e) => setDeclineSuggestion(e.target.value)}
             />

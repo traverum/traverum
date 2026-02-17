@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { SessionPicker } from './SessionPicker'
 import { ParticipantSelector } from './ParticipantSelector'
 import { formatPrice } from '@/lib/utils'
-import { calculatePrice } from '@/lib/pricing'
+import { calculatePrice, getDisplayPrice } from '@/lib/pricing'
 import { LanguageSelector } from './LanguageSelector'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 import type { ExperienceSession } from '@/lib/supabase/types'
@@ -29,6 +29,13 @@ interface BottomSheetProps {
   hotelSlug: string
   availabilityRules?: AvailabilityRule[]
   returnUrl?: string | null
+  // Rental props
+  rentalDate?: string
+  rentalDays?: number
+  quantity?: number
+  onRentalDateChange?: (date: string) => void
+  onRentalDaysChange?: (days: number) => void
+  onQuantityChange?: (quantity: number) => void
 }
 
 export function BottomSheet({
@@ -48,10 +55,17 @@ export function BottomSheet({
   hotelSlug,
   availabilityRules = [],
   returnUrl,
+  rentalDate = '',
+  rentalDays: rentalDaysProp = 1,
+  quantity = 1,
+  onRentalDateChange,
+  onRentalDaysChange,
+  onQuantityChange,
 }: BottomSheetProps) {
   const router = useRouter()
   const shouldReduceMotion = useReducedMotion()
   const [preferredLanguage, setPreferredLanguage] = useState<string>('')
+  const isRental = experience.pricing_type === 'per_day'
 
   const availableLanguages = experience.available_languages || []
 
@@ -74,19 +88,37 @@ export function BottomSheet({
   }, [isOpen, handleKeyDown])
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId) || null
-  const priceCalc = calculatePrice(experience, participants, selectedSession)
+  const rentalDays = rentalDaysProp
+  const minDays = experience.min_days || 1
+  const maxDays = experience.max_days || null
+
+  const priceCalc = isRental
+    ? calculatePrice(experience, quantity, null, rentalDays, quantity)
+    : calculatePrice(experience, participants, selectedSession)
   
-  const canContinue = isCustomRequest 
-    ? (customDate && requestTime && experience.allows_requests)
-    : selectedSessionId
+  const canContinue = isRental
+    ? !!rentalDate
+    : (isCustomRequest 
+      ? (customDate && requestTime && experience.allows_requests)
+      : selectedSessionId)
 
   const handleContinue = () => {
-    if (canContinue) {
-      const params = new URLSearchParams()
-      params.set('experienceId', experience.id)
+    if (!canContinue) return
+
+    const params = new URLSearchParams()
+    params.set('experienceId', experience.id)
+    if (returnUrl) params.set('returnUrl', returnUrl)
+
+    if (isRental) {
+      params.set('participants', quantity.toString())
+      params.set('total', priceCalc.totalPrice.toString())
+      params.set('requestDate', rentalDate)
+      params.set('rentalDays', rentalDays.toString())
+      params.set('quantity', quantity.toString())
+      params.set('isRequest', 'true')
+    } else {
       params.set('participants', participants.toString())
       params.set('total', priceCalc.totalPrice.toString())
-      if (returnUrl) params.set('returnUrl', returnUrl)
       
       if (isCustomRequest) {
         params.set('requestDate', customDate)
@@ -97,11 +129,13 @@ export function BottomSheet({
         params.set('sessionId', selectedSession.id)
         if (selectedSession.session_language) params.set('preferredLanguage', selectedSession.session_language)
       }
-      
-      onClose()
-      router.push(`/${hotelSlug}/checkout?${params.toString()}`)
     }
+    
+    onClose()
+    router.push(`/${hotelSlug}/checkout?${params.toString()}`)
   }
+
+  const displayPrice = getDisplayPrice(experience)
 
   return (
     <AnimatePresence>
@@ -140,7 +174,9 @@ export function BottomSheet({
             {/* Header with close button */}
             <div className="flex items-center justify-between px-4 pb-3 border-b border-border">
               <div>
-                <h3 id="sheet-title" className="text-lg font-bold text-foreground">Select Date</h3>
+                <h3 id="sheet-title" className="text-lg font-bold text-foreground">
+                  Select Date
+                </h3>
               </div>
               <button
                 type="button"
@@ -158,27 +194,42 @@ export function BottomSheet({
                 sessions={sessions}
                 selectedSessionId={selectedSessionId}
                 isCustomRequest={isCustomRequest}
-                customDate={customDate}
+                customDate={isRental ? rentalDate : customDate}
                 requestTime={requestTime}
                 onSessionSelect={onSessionSelect}
-                onCustomDateChange={onCustomDateChange}
+                onCustomDateChange={isRental ? (d: string) => onRentalDateChange?.(d) : onCustomDateChange}
                 onRequestTimeChange={onRequestTimeChange}
-                participants={participants}
+                participants={isRental ? quantity : participants}
                 availabilityRules={availabilityRules}
+                mode={isRental ? 'rental' : 'session'}
+                rentalDays={rentalDays}
+                onRentalDaysChange={onRentalDaysChange}
+                minDays={minDays}
+                maxDays={maxDays}
               />
 
-              {/* Participants */}
+              {/* Participants / Quantity */}
               <div className="mt-5 pt-4 border-t border-border">
-                <ParticipantSelector
-                  value={participants}
-                  onChange={onParticipantsChange}
-                  min={1}
-                  max={experience.max_participants}
-                />
+                {isRental ? (
+                  <ParticipantSelector
+                    value={quantity}
+                    onChange={(v) => onQuantityChange?.(v)}
+                    min={1}
+                    max={experience.max_participants}
+                    label="Quantity"
+                  />
+                ) : (
+                  <ParticipantSelector
+                    value={participants}
+                    onChange={onParticipantsChange}
+                    min={experience.min_participants || 1}
+                    max={experience.max_participants}
+                  />
+                )}
               </div>
 
-              {/* Language selector for request flow */}
-              {isCustomRequest && availableLanguages.length > 1 && (
+              {/* Language selector for request flow (non-rental only) */}
+              {!isRental && isCustomRequest && availableLanguages.length > 1 && (
                 <div className="mt-4">
                   <LanguageSelector
                     value={preferredLanguage}
@@ -191,10 +242,16 @@ export function BottomSheet({
 
             {/* Footer */}
             <div className="p-4 border-t border-border bg-background">
+              {isRental && rentalDate && (
+                <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                  <span>{displayPrice.price}€ × {rentalDays} {rentalDays === 1 ? 'day' : 'days'}{quantity > 1 ? ` × ${quantity}` : ''}</span>
+                  <span className="tabular-nums">{formatPrice(priceCalc.totalPrice, experience.currency)}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-muted-foreground">Total</span>
                 <span className="text-xl font-bold text-foreground tabular-nums">
-                  {formatPrice(priceCalc.totalPrice, experience.currency)}
+                  {isRental && !rentalDate ? '—' : formatPrice(priceCalc.totalPrice, experience.currency)}
                 </span>
               </div>
 
@@ -204,7 +261,7 @@ export function BottomSheet({
                 disabled={!canContinue}
                 className="w-full py-3.5 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
-                {isCustomRequest ? 'Send Request' : 'Book Now'}
+                {isRental || isCustomRequest ? 'Send Request' : 'Book Now'}
               </button>
             </div>
           </motion.div>

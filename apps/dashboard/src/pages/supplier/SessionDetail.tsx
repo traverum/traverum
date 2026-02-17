@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useSessionDetail, type SessionUpdate } from '@/hooks/useSessionDetail';
-import { formatPrice } from '@/lib/pricing';
+import { formatPrice, getUnitLabel } from '@/lib/pricing';
 import { getLanguageName } from '@/components/LanguageSelector';
 
 export default function SessionDetail() {
@@ -74,7 +74,18 @@ export default function SessionDetail() {
 
   const hasBookings = bookingsCount > 0;
   const hasCustomPrice = session.price_override_cents !== null;
-  const currentPrice = hasCustomPrice ? session.price_override_cents! : experience.price_cents;
+  const pricingType = (experience as any).pricing_type || 'per_person';
+  const defaultUnitPrice = (() => {
+    switch (pricingType) {
+      case 'per_person': return (experience as any).extra_person_cents || experience.price_cents;
+      case 'flat_rate': return (experience as any).base_price_cents || experience.price_cents;
+      case 'base_plus_extra': return (experience as any).base_price_cents || experience.price_cents;
+      case 'per_day': return (experience as any).price_per_day_cents || (experience as any).extra_person_cents || experience.price_cents;
+      default: return experience.price_cents;
+    }
+  })();
+  const currentPrice = hasCustomPrice ? session.price_override_cents! : defaultUnitPrice;
+  const unitLabel = getUnitLabel(pricingType);
   const isCancelled = session.session_status === 'cancelled';
 
   const getStatusBadge = () => {
@@ -251,7 +262,7 @@ export default function SessionDetail() {
                   </div>
                 )}
                 <div>
-                  <Label htmlFor="priceEuros">Price per person (€)</Label>
+                  <Label htmlFor="priceEuros">Price {unitLabel} (€)</Label>
                   <Input
                     id="priceEuros"
                     type="number"
@@ -297,7 +308,7 @@ export default function SessionDetail() {
               <div className="space-y-2">
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-semibold">{formatPrice(currentPrice)}</span>
-                  <span className="text-muted-foreground">per person</span>
+                  <span className="text-muted-foreground">{unitLabel}</span>
                 </div>
                 {session.price_note && (
                   <p className="text-sm text-muted-foreground">{session.price_note}</p>

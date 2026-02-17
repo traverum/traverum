@@ -106,17 +106,27 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       )
     }
 
-    // Accept as-is: use guest's requested date and time (supplier cannot change them)
-    if (!reservation.requested_date || !reservation.requested_time) {
+    const isRental = experience.pricing_type === 'per_day'
+
+    // For non-rental requests: we need both date and time
+    if (!isRental && (!reservation.requested_date || !reservation.requested_time)) {
       return NextResponse.json(
         { error: 'This request has no specific time. Please decline and suggest alternative times.' },
         { status: 400 }
       )
     }
-    const formattedTime =
-      reservation.requested_time.length === 5
-        ? `${reservation.requested_time}:00`
-        : reservation.requested_time
+
+    // For rental requests: we only need the requested_date
+    if (isRental && !reservation.requested_date) {
+      return NextResponse.json(
+        { error: 'This rental request has no start date.' },
+        { status: 400 }
+      )
+    }
+
+    const formattedTime = reservation.requested_time
+      ? (reservation.requested_time.length === 5 ? `${reservation.requested_time}:00` : reservation.requested_time)
+      : null
 
     // Get hotel config for redirect URL
     const { data: hotelConfig } = await supabase
@@ -128,11 +138,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const hotelSlug = (hotelConfig as any)?.slug || 'default'
     const appUrl = getAppUrl()
 
-    // Create or find session for this date/time
+    // Create or find session for this date/time (skip for rentals — no session needed)
     let sessionId = reservation.session_id
 
-    if (!sessionId) {
-      // Create a private session for this booking (status 'booked' — not visible in widget)
+    if (!isRental && !sessionId && reservation.requested_date && formattedTime) {
       const { data: newSession, error: sessionError } = await (supabase
         .from('experience_sessions') as any)
         .insert({
@@ -141,7 +150,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           start_time: formattedTime,
           spots_total: experience.max_participants,
           spots_available: 0,
-          session_status: 'booked', // Private: not shown in widget
+          session_status: 'booked',
         })
         .select()
         .single()
@@ -153,7 +162,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       sessionId = newSession.id
 
-      // Update reservation with session_id
       await (supabase.from('reservations') as any)
         .update({ session_id: sessionId, updated_at: new Date().toISOString() })
         .eq('id', reservation.id)
@@ -175,7 +183,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     await (supabase.from('reservations') as any)
       .update({
         reservation_status: 'approved',
-        requested_time: formattedTime, // Update time if it was flexible
+        ...(formattedTime ? { requested_time: formattedTime } : {}),
         payment_deadline: paymentDeadline.toISOString(),
         stripe_payment_link_id: paymentLink.id,
         stripe_payment_link_url: paymentLink.url,
@@ -183,18 +191,34 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', reservation.id)
 
+    // Compute rental info for email
+    const emailDate = isRental
+      ? (reservation.rental_start_date || reservation.requested_date || '')
+      : (reservation.requested_date || '')
+    const emailTime = isRental ? '' : (formattedTime || '')
+
+    let emailRentalDays: number | undefined
+    let emailRentalEndDate: string | undefined
+    if (isRental && reservation.rental_start_date && reservation.rental_end_date) {
+      emailRentalEndDate = reservation.rental_end_date
+      emailRentalDays = Math.max(1, Math.round(
+        (new Date(reservation.rental_end_date + 'T12:00:00').getTime() - new Date(reservation.rental_start_date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)
+      ))
+    }
+
     // Send email to guest with payment link
     const emailHtml = guestBookingApproved({
       experienceTitle: experience.title,
       guestName: reservation.guest_name,
-      date: reservation.requested_date || '',
-      time: formattedTime,
+      date: emailDate,
+      time: emailTime,
       participants: reservation.participants,
       totalCents: reservation.total_cents,
       currency: experience.currency,
       paymentUrl: paymentLink.url!,
       meetingPoint: experience.meeting_point,
       paymentDeadline: paymentDeadline.toISOString(),
+      ...(isRental ? { rentalEndDate: emailRentalEndDate, rentalDays: emailRentalDays } : {}),
     })
 
     await sendEmail({

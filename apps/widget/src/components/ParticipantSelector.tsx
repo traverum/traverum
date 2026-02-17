@@ -8,6 +8,7 @@ interface ParticipantSelectorProps {
   onChange: (value: number) => void
   min: number
   max: number
+  label?: string
 }
 
 export function ParticipantSelector({ 
@@ -15,6 +16,7 @@ export function ParticipantSelector({
   onChange, 
   min, 
   max,
+  label,
 }: ParticipantSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -102,13 +104,14 @@ export function ParticipantSelector({
     buttonRef.current?.focus()
   }
   
-  const displayText = `${value} ${value === 1 ? 'person' : 'people'}`
+  const isQuantityMode = label === 'Quantity'
+  const displayText = isQuantityMode ? `${value}` : `${value} ${value === 1 ? 'person' : 'people'}`
   const dropdownId = 'participant-dropdown'
   
   return (
     <div className="relative font-body" ref={dropdownRef}>
       <label id="participant-label" className="block">
-        <span className="text-sm font-medium text-foreground">Participants</span>
+        <span className="text-sm font-medium text-foreground">{label || 'Participants'}</span>
       </label>
       
       {/* Dropdown button */}
@@ -166,7 +169,7 @@ export function ParticipantSelector({
                     !isSelected && !isFocused && 'text-foreground'
                   )}
                 >
-                  <span className="tabular-nums">{num} {num === 1 ? 'person' : 'people'}</span>
+                  <span className="tabular-nums">{isQuantityMode ? num : `${num} ${num === 1 ? 'person' : 'people'}`}</span>
                   {isSelected && <svg className="w-4 h-4" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20 6 9 17l-5-5" /></svg>}
                 </button>
               )

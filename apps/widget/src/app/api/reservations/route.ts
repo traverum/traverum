@@ -42,6 +42,8 @@ export async function POST(request: NextRequest) {
       guestEmail,
       guestPhone,
       preferredLanguage,
+      rentalDays: rentalDaysParam,
+      quantity,
     } = body
     
     // Validate required fields
@@ -101,11 +103,43 @@ export async function POST(request: NextRequest) {
     const experience = experienceData as any
     
     // Validate participants against experience limits
-    if (participants < 1 || participants > experience.max_participants) {
+    const isRental = experience.pricing_type === 'per_day'
+    if (!isRental && (participants < 1 || participants > experience.max_participants)) {
       return NextResponse.json(
         { error: `Participants must be between 1 and ${experience.max_participants}` },
         { status: 400 }
       )
+    }
+
+    // Per-day rental validation
+    const rentalDays = isRental ? (Number(rentalDaysParam) || 0) : 0
+    if (isRental) {
+      if (!requestDate) {
+        return NextResponse.json(
+          { error: 'Rental start date is required' },
+          { status: 400 }
+        )
+      }
+      if (rentalDays < 1) {
+        return NextResponse.json(
+          { error: 'Number of rental days is required' },
+          { status: 400 }
+        )
+      }
+      const minDays = experience.min_days || 1
+      const maxDays = experience.max_days || null
+      if (rentalDays < minDays) {
+        return NextResponse.json(
+          { error: `Minimum rental period is ${minDays} days` },
+          { status: 400 }
+        )
+      }
+      if (maxDays && rentalDays > maxDays) {
+        return NextResponse.json(
+          { error: `Maximum rental period is ${maxDays} days` },
+          { status: 400 }
+        )
+      }
     }
     
     // If session-based, verify session is available
@@ -143,7 +177,9 @@ export async function POST(request: NextRequest) {
     }
     
     // Recalculate price to ensure it's correct
-    const calculatedPrice = calculatePrice(experience, participants, sessionData)
+    const calculatedPrice = isRental
+      ? calculatePrice(experience, quantity || 1, null, rentalDays, quantity || 1)
+      : calculatePrice(experience, participants, sessionData)
     const expectedTotal = calculatedPrice.totalPrice
     
     // Verify the total matches (allow small rounding differences)
@@ -156,6 +192,14 @@ export async function POST(request: NextRequest) {
     
     const appUrl = getAppUrl()
     
+    // Compute rental end date from start + days for storage
+    let rentalEndDate: string | null = null
+    if (isRental && requestDate && rentalDays > 0) {
+      const startDate = new Date(requestDate + 'T12:00:00')
+      startDate.setDate(startDate.getDate() + rentalDays)
+      rentalEndDate = startDate.toISOString().slice(0, 10)
+    }
+
     // =========================================================================
     // SESSION-BASED BOOKING: Guest picked existing session
     // One group per session — claim it immediately, then redirect to payment.
@@ -238,6 +282,7 @@ export async function POST(request: NextRequest) {
     
     // =========================================================================
     // REQUEST-BASED BOOKING: Guest requested custom date/time, needs approval
+    // Also handles rental requests (per_day pricing)
     // =========================================================================
     const responseDeadline = addHours(new Date(), 48)
     
@@ -250,15 +295,19 @@ export async function POST(request: NextRequest) {
         guest_name: cleanName,
         guest_email: cleanEmail,
         guest_phone: cleanPhone,
-        participants,
+        participants: isRental ? (quantity || 1) : participants,
         total_cents: expectedTotal,
         is_request: true,
         requested_date: requestDate || null,
-        requested_time: requestTime ? (requestTime.length === 5 ? `${requestTime}:00` : requestTime) : null,
+        requested_time: isRental ? null : (requestTime ? (requestTime.length === 5 ? `${requestTime}:00` : requestTime) : null),
         time_preference: null,
         reservation_status: 'pending',
         response_deadline: responseDeadline.toISOString(),
         preferred_language: preferredLanguage || null,
+        ...(isRental ? {
+          rental_start_date: requestDate,
+          rental_end_date: rentalEndDate,
+        } : {}),
       })
       .select()
       .single()
@@ -287,9 +336,9 @@ export async function POST(request: NextRequest) {
       guestName: cleanName,
       guestEmail: cleanEmail,
       guestPhone: cleanPhone,
-      date: date || '',
-      time: requestTime || null,
-      participants,
+      date: requestDate || date || '',
+      time: isRental ? null : (requestTime || null),
+      participants: isRental ? (quantity || 1) : participants,
       totalCents: expectedTotal,
       currency: experience.currency,
       acceptUrl,
@@ -297,11 +346,12 @@ export async function POST(request: NextRequest) {
       manageUrl,
       hotelName: hotel.display_name,
       dashboardUrl,
+      ...(isRental ? { rentalEndDate, rentalDays } : {}),
     })
     
     await sendEmail({
       to: experience.supplier.email,
-      subject: `New booking request - ${experience.title}`,
+      subject: isRental ? `New rental request - ${experience.title}` : `New booking request - ${experience.title}`,
       html: supplierEmailHtml,
       replyTo: cleanEmail,
     })

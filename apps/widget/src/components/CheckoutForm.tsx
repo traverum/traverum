@@ -34,6 +34,8 @@ interface CheckoutFormProps {
   isDemo?: boolean
   returnUrl?: string | null
   preferredLanguage?: string
+  rentalDays?: number
+  quantity?: number
 }
 
 export function CheckoutForm({
@@ -52,6 +54,8 @@ export function CheckoutForm({
   isDemo = false,
   returnUrl,
   preferredLanguage,
+  rentalDays,
+  quantity,
 }: CheckoutFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -102,6 +106,8 @@ export function CheckoutForm({
           guestEmail: data.email,
           guestPhone: data.phone,
           preferredLanguage: preferredLanguage || null,
+          ...(rentalDays ? { rentalDays } : {}),
+          ...(quantity ? { quantity } : {}),
         }),
       })
       

@@ -173,14 +173,16 @@ export default function SupplierSessions() {
             sessionsByDate={formattedSessionsByDate}
             requestsByDate={requestsByDate}
             experience={null}
-            experiences={allExperiences.map(e => ({
-              id: e.id,
-              title: e.title,
-              duration_minutes: e.duration_minutes,
-              max_participants: e.max_participants,
-              price_cents: e.price_cents,
-              available_languages: (e as any).available_languages || [],
-            }))}
+            experiences={allExperiences
+              .filter(e => e.pricing_type !== 'per_day')
+              .map(e => ({
+                id: e.id,
+                title: e.title,
+                duration_minutes: e.duration_minutes,
+                max_participants: e.max_participants,
+                price_cents: e.price_cents,
+                available_languages: (e as any).available_languages || [],
+              }))}
             currentMonth={currentMonth}
             onMonthChange={setCurrentMonth}
             onCreateSession={handleCreateSession}

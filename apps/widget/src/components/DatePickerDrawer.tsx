@@ -20,6 +20,11 @@ interface DatePickerDrawerProps {
   onConfirm: () => void
   participants: number
   availabilityRules?: AvailabilityRule[]
+  mode?: 'session' | 'rental'
+  rentalDays?: number
+  onRentalDaysChange?: (days: number) => void
+  minDays?: number
+  maxDays?: number | null
 }
 
 export function DatePickerDrawer({
@@ -36,11 +41,20 @@ export function DatePickerDrawer({
   onConfirm,
   participants,
   availabilityRules = [],
+  mode = 'session',
+  rentalDays,
+  onRentalDaysChange,
+  minDays = 1,
+  maxDays,
 }: DatePickerDrawerProps) {
   const shouldReduceMotion = useReducedMotion()
-  const hasSelection = isCustomRequest 
-    ? (customDate && requestTime)
-    : selectedSessionId
+  const isRentalMode = mode === 'rental'
+
+  const hasSelection = isRentalMode
+    ? !!(customDate && rentalDays && rentalDays > 0)
+    : isCustomRequest 
+      ? (customDate && requestTime)
+      : selectedSessionId
 
   // Handle escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -121,6 +135,11 @@ export function DatePickerDrawer({
                 onRequestTimeChange={onRequestTimeChange}
                 participants={participants}
                 availabilityRules={availabilityRules}
+                mode={mode}
+                rentalDays={rentalDays}
+                onRentalDaysChange={onRentalDaysChange}
+                minDays={minDays}
+                maxDays={maxDays}
               />
             </div>
             

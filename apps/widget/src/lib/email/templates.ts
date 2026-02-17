@@ -59,16 +59,35 @@ export function guestBookingApproved(data: BaseEmailData & {
   paymentUrl: string
   meetingPoint?: string | null
   paymentDeadline: string
+  rentalEndDate?: string | null
+  rentalDays?: number
 }) {
-  const content = `
-    <div class="card">
-      <div class="header">
-        <h1>Booking Approved</h1>
-      </div>
-      <p>Hi ${escapeHtml(data.guestName)},</p>
-      <p>Great news! Your booking request has been approved. Please complete your payment to confirm the booking.</p>
-      
-      <div class="info-box">
+  const isRental = !!(data.rentalDays && data.rentalDays > 0)
+
+  const detailsHtml = isRental ? `
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays} ${data.rentalDays === 1 ? 'day' : 'days'}</span>
+        </div>
+        ${data.rentalEndDate ? `
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate)}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Quantity</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+  ` : `
         <div class="info-row">
           <span class="info-label">Experience</span>
           <span class="info-value">${data.experienceTitle}</span>
@@ -81,6 +100,18 @@ export function guestBookingApproved(data: BaseEmailData & {
           <span class="info-label">Time</span>
           <span class="info-value">${formatEmailTime(data.time)}</span>
         </div>
+  `
+
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Booking Approved</h1>
+      </div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>Great news! Your booking request has been approved. Please complete your payment to confirm the booking.</p>
+      
+      <div class="info-box">
+        ${detailsHtml}
         ${data.meetingPoint ? `
         <div class="info-row">
           <span class="info-label">Meeting Point</span>
@@ -336,13 +367,51 @@ export function supplierNewRequest(data: BaseEmailData & {
   manageUrl?: string
   hotelName: string
   dashboardUrl?: string
+  rentalEndDate?: string
+  rentalDays?: number
 }) {
+  const isRentalRequest = !!data.rentalEndDate
+
+  const dateRows = isRentalRequest
+    ? `
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate!)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays} ${data.rentalDays === 1 ? 'day' : 'days'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Quantity</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+    : `
+        <div class="info-row">
+          <span class="info-label">Requested Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Requested Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+
   const content = `
     <div class="card">
       <div class="header">
-        <h1>New Booking Request</h1>
+        <h1>New ${isRentalRequest ? 'Rental' : 'Booking'} Request</h1>
       </div>
-      <p>You have a new booking request via ${data.hotelName}!</p>
+      <p>You have a new ${isRentalRequest ? 'rental' : 'booking'} request via ${data.hotelName}!</p>
       
       <div class="info-box">
         <div class="info-row">
@@ -363,18 +432,7 @@ export function supplierNewRequest(data: BaseEmailData & {
           <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
         </div>
         ` : ''}
-        <div class="info-row">
-          <span class="info-label">Requested Date</span>
-          <span class="info-value">${formatEmailDate(data.date)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Requested Time</span>
-          <span class="info-value">${formatEmailTime(data.time)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Participants</span>
-          <span class="info-value">${data.participants}</span>
-        </div>
+        ${dateRows}
         <div class="info-row">
           <span class="info-label">Total Price</span>
           <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
@@ -395,7 +453,7 @@ export function supplierNewRequest(data: BaseEmailData & {
       <p class="text-muted text-center mt-4">Please respond within 48 hours. If you don't respond, the request will expire automatically.</p>
     </div>
   `
-  return baseTemplate(content, 'New Booking Request')
+  return baseTemplate(content, `New ${isRentalRequest ? 'Rental' : 'Booking'} Request`)
 }
 
 // Supplier: Booking confirmed (guest paid)

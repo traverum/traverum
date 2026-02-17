@@ -1,7 +1,7 @@
 # Traverum Pricing Systems
 
 > **Document Purpose**: Complete specification of all pricing models supported by Traverum
-> **Last Updated**: January 2025
+> **Last Updated**: February 2026
 
 ---
 
@@ -29,7 +29,7 @@ All prices are stored in **cents** (integer) to avoid floating-point precision i
 | `extra_person_cents` | integer | Price per person in cents (used for `per_person` and as "extra" in `base_plus_extra`) |
 | `price_per_day_cents` | integer | Price per day in cents (used for `per_day` rentals) |
 | `included_participants` | integer | How many people are included in base price (for `base_plus_extra`) |
-| `min_participants` | integer | Minimum charge size — pricing floor only (e.g. 1 guest pays for 2 if min is 2). Does NOT gate session availability. |
+| `min_participants` | integer | Minimum booking size — guests cannot select fewer than this many participants in the widget. |
 | `max_participants` | integer | Maximum capacity for the experience |
 | `min_days` | integer | Minimum rental period in days (for `per_day` rentals) |
 | `max_days` | integer | Maximum rental period in days (for `per_day` rentals, nullable) |
@@ -39,7 +39,7 @@ All prices are stored in **cents** (integer) to avoid floating-point precision i
 
 | **Column** | **Purpose** |
 | --- | --- |
-| `price_override_cents` | If set, overrides all pricing logic with a flat amount for this specific session |
+| `price_override_cents` | If set, replaces the unit price for this session and scales with quantity (see Session Price Override) |
 
 ### Reservations Table (for rentals)
 
@@ -64,7 +64,7 @@ All prices are stored in **cents** (integer) to avoid floating-point precision i
 total = extra_person_cents × effective_participants
 ```
 
-Where `effective_participants = max(participants, min_participants)`
+Where `effective_participants = participants` (always equals participants, since the widget enforces `min_participants` at selection time)
 
 ### Example
 **Wine tasting at 40€ per person**
@@ -73,10 +73,10 @@ Where `effective_participants = max(participants, min_participants)`
 - 3 guests = 120€
 - 10 guests = 400€
 
-**With minimum participants (pricing floor)**: If `min_participants = 2` and only 1 person books:
-- They pay for 2 people (80€) even though they're alone
+**With minimum participants**: If `min_participants = 2`:
+- The participant selector in the widget starts at 2 — guests cannot choose fewer
 - This protects the supplier from unprofitable small bookings
-- Note: `min_participants` is a **pricing floor only** — it does not prevent the guest from booking or gate session availability
+- Note: `min_participants` is a **booking minimum** enforced at the UI level, not a backend pricing floor
 
 ### Database Fields Used
 - `pricing_type = 'per_person'`
@@ -133,7 +133,7 @@ extra_people = max(0, effective_participants - included_participants)
 total = base_price_cents + (extra_people × extra_person_cents)
 ```
 
-Where `effective_participants = max(participants, min_participants)`
+Where `effective_participants = participants` (always equals participants, since the widget enforces `min_participants` at selection time)
 
 ### Example
 **Safari at 400€ for 4 people, +60€ per extra**
@@ -244,14 +244,23 @@ total = price_per_day_cents × days × quantity
 Any pricing type can be overridden at the session level using `price_override_cents` on the `experience_sessions` table.
 
 ### Behavior
-- If `session.price_override_cents` is set, it takes precedence over all pricing logic
-- The override applies as a flat rate for that specific session
+- If `session.price_override_cents` is set, it **replaces the unit price** and scales with quantity
+- The override is a per-unit price, not a flat total
 - Useful for special promotions, peak pricing, or session-specific discounts
 
-### Example
-- Experience: Wine tasting at 40€ per person
-- Session override: 35€ per person (special promotion)
-- Result: All bookings for this session use 35€ regardless of pricing type
+### How it works per pricing type
+
+| **Pricing Type** | **Override Meaning** | **Formula** |
+| --- | --- | --- |
+| `per_person` | Replaces per-person price | `override × participants` |
+| `base_plus_extra` | Simplifies to per-person | `override × participants` |
+| `flat_rate` | Replaces the flat rate | `override` (constant) |
+| `per_day` | Replaces per-day rate | `override × days × quantity` |
+
+### Examples
+- **Per person**: Wine tasting 40€/person, override 35€ → 3 guests = 35€ × 3 = **105€**
+- **Flat rate**: Yacht 800€, override 700€ → **700€** (regardless of group size)
+- **Per day**: Vespa 50€/day, override 40€ → 3 days × 2 = 40€ × 3 × 2 = **240€**
 
 ---
 
@@ -266,8 +275,8 @@ calculatePrice(
   experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants' | 'min_participants' | 'price_per_day_cents' | 'min_days' | 'max_days'>,
   participants: number,
   session?: Pick<ExperienceSession, 'price_override_cents'> | null,
-  rentalStartDate?: Date | null,
-  rentalEndDate?: Date | null
+  rentalDays?: number,   // number of days for per_day pricing
+  quantity?: number       // number of units for per_day pricing
 ): PriceCalculation
 ```
 
@@ -276,20 +285,28 @@ calculatePrice(
 ```typescript
 calculateTotalPrice(
   participants: number,
-  pricing: PricingConfig,
+  pricing: PricingConfig,          // includes price_per_day_cents
   sessionPriceOverrideCents?: number | null,
-  rentalDays?: number | null
+  days?: number                    // number of days for per_day pricing
 ): PriceCalculation
+```
+
+#### Helper Functions (Dashboard)
+
+```typescript
+getUnitLabel(pricingType): string          // "per person" | "total" | "per day"
+getDefaultUnitPrice(pricing): number       // default unit price for override placeholder
 ```
 
 ### Key Behaviors
 
-1. **Minimum Enforcement (Pricing Floor)**: `effective_participants = Math.max(participants, min_participants)`
+1. **Minimum Guests (Booking Minimum)**: `min_participants` is enforced at the UI level
    - Applies to `per_person` and `base_plus_extra` types
-   - Creates a price floor to protect suppliers from unprofitable small bookings
-   - This is a **pricing-only** concept — it does not affect session availability or block bookings
+   - The widget's participant selector starts at `min_participants` — guests cannot choose fewer
+   - Protects suppliers from unprofitable small bookings
+   - `Math.max(participants, min_participants)` exists as a safety net in the pricing functions
 
-2. **Session Override**: If a session has `price_override_cents`, it ignores all other pricing logic
+2. **Session Override**: If a session has `price_override_cents`, it replaces the unit price and scales with quantity (see Session Price Override section)
 
 3. **Breakdown Strings**: Always explains the calculation (e.g., "40€ × 3 = 120€")
 

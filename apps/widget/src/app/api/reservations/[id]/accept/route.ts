@@ -104,19 +104,28 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
   
   const hotelSlug = (hotelConfig as any)?.slug || 'default'
   
-  // For requests: accept as-is — we need guest's requested date and time (supplier cannot change)
-  if (reservation.is_request && (!reservation.requested_date || !reservation.requested_time)) {
+  const isRental = experience.pricing_type === 'per_day'
+
+  // For non-rental requests: we need both date and time
+  if (reservation.is_request && !isRental && (!reservation.requested_date || !reservation.requested_time)) {
     return {
       success: false,
       error: 'This request has no specific time. Please decline and suggest alternative times from your dashboard.',
     }
   }
+
+  // For rental requests: we only need the requested_date (no time needed)
+  if (reservation.is_request && isRental && !reservation.requested_date) {
+    return {
+      success: false,
+      error: 'This rental request has no start date. Please decline and ask the guest to resubmit.',
+    }
+  }
   
-  // If this is a request-based reservation without a session, create one
+  // If this is a non-rental request without a session, create one
   let sessionId = reservation.session_id
   
-  if (reservation.is_request && !sessionId && reservation.requested_date && reservation.requested_time) {
-    // Create a private session for this booking (status 'booked' — not visible in widget)
+  if (reservation.is_request && !isRental && !sessionId && reservation.requested_date && reservation.requested_time) {
     const { data: newSession, error: sessionError } = await (supabase
       .from('experience_sessions') as any)
       .insert({
@@ -125,7 +134,7 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
         start_time: reservation.requested_time,
         spots_total: experience.max_participants,
         spots_available: 0,
-        session_status: 'booked', // Private: not shown in widget
+        session_status: 'booked',
       })
       .select()
       .single()
@@ -138,7 +147,6 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
     sessionId = newSession.id
     console.log(`Created private session ${sessionId} for ${reservation.requested_date} at ${reservation.requested_time}`)
     
-    // Update reservation with session_id
     await (supabase
       .from('reservations') as any)
       .update({ 
@@ -172,9 +180,21 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
     })
     .eq('id', reservation.id)
   
-  // Get date and time
-  const date = reservation.session?.session_date || reservation.requested_date || ''
-  const time = reservation.session?.start_time || reservation.requested_time || ''
+  // Get date and time — rentals don't have a time
+  const date = isRental
+    ? (reservation.rental_start_date || reservation.requested_date || '')
+    : (reservation.session?.session_date || reservation.requested_date || '')
+  const time = isRental ? '' : (reservation.session?.start_time || reservation.requested_time || '')
+
+  // Compute rental days for email
+  let emailRentalDays: number | undefined
+  let emailRentalEndDate: string | undefined
+  if (isRental && reservation.rental_start_date && reservation.rental_end_date) {
+    emailRentalEndDate = reservation.rental_end_date
+    emailRentalDays = Math.max(1, Math.round(
+      (new Date(reservation.rental_end_date + 'T12:00:00').getTime() - new Date(reservation.rental_start_date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)
+    ))
+  }
   
   // Send email to guest
   const emailHtml = guestBookingApproved({
@@ -188,6 +208,7 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
     paymentUrl: paymentLink.url!,
     meetingPoint: experience.meeting_point,
     paymentDeadline: paymentDeadline.toISOString(),
+    ...(isRental ? { rentalEndDate: emailRentalEndDate, rentalDays: emailRentalDays } : {}),
   })
   
   await sendEmail({

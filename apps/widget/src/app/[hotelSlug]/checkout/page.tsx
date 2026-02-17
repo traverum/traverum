@@ -25,6 +25,8 @@ interface CheckoutPageProps {
     requestDate?: string
     requestTime?: string
     preferredLanguage?: string
+    rentalDays?: string
+    quantity?: string
   }>
 }
 
@@ -157,6 +159,8 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
                 isDemo={isDemo}
                 returnUrl={returnUrl}
                 preferredLanguage={search.preferredLanguage}
+                rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
+                quantity={search.quantity ? parseInt(search.quantity) : undefined}
               />
             </div>
           </div>
@@ -172,6 +176,8 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
               requestDate={search.requestDate}
               requestTime={search.requestTime}
               coverImage={coverImage}
+              rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
+              quantity={search.quantity ? parseInt(search.quantity) : undefined}
             />
           </div>
         </div>

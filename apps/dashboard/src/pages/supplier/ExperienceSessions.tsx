@@ -153,6 +153,8 @@ export default function ExperienceSessions() {
     );
   }
 
+  const isPerDay = (experience as any).pricing_type === 'per_day';
+
   return (
     <div className="min-h-screen bg-background-alt">
       {/* Header */}
@@ -170,7 +172,10 @@ export default function ExperienceSessions() {
               <div>
                 <h1 className="text-xl font-semibold">{experience.title}</h1>
                 <p className="text-sm text-muted-foreground">
-                  {experience.duration_minutes} min · {formatPrice(experience.price_cents)} per person
+                  {isPerDay
+                    ? `${formatPrice((experience as any).price_per_day_cents || experience.price_cents)} per day`
+                    : `${experience.duration_minutes} min · ${formatPrice(experience.price_cents)} per person`
+                  }
                 </p>
               </div>
             </div>
@@ -179,7 +184,31 @@ export default function ExperienceSessions() {
       </header>
 
       <main className="container max-w-6xl mx-auto px-4 py-6">
-        {isMobile ? (
+        {isPerDay ? (
+          <div className="max-w-2xl mx-auto mt-8">
+            <div className="rounded-lg border border-border bg-background p-6 text-center">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                <svg className="h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold mb-2">Rental Experience</h2>
+              <p className="text-muted-foreground text-sm leading-relaxed max-w-md mx-auto">
+                This is a per-day rental experience. Guests send booking requests for their desired dates directly through the widget. You'll receive each request by email and can accept or decline it.
+              </p>
+              <p className="text-muted-foreground text-sm mt-3">
+                Sessions are not needed for rental experiences.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-6"
+                onClick={() => navigate(`/supplier/experiences/${experienceId}`)}
+              >
+                Back to Experience
+              </Button>
+            </div>
+          </div>
+        ) : isMobile ? (
           <SessionsListView
             sessionsByDate={sessionsByDate}
             onAddSession={() => {}}

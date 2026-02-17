@@ -15,7 +15,7 @@ interface CalendarProps {
   onSelect?: (date: Date | undefined) => void
   disabled?: (date: Date) => boolean
   className?: string
-  datesWithSessions?: string[] // Array of date strings in YYYY-MM-DD format
+  datesWithSessions?: string[]
 }
 
 const theme = createTheme({
@@ -106,10 +106,9 @@ function Calendar({ selected, onSelect, disabled, className, datesWithSessions =
   }, [selected])
 
   const handleChange = (newValue: Dayjs | null) => {
+    if (!newValue) return
     setValue(newValue)
-    if (onSelect) {
-      onSelect(newValue ? newValue.toDate() : undefined)
-    }
+    onSelect?.(newValue.toDate())
   }
 
   const shouldDisableDate = (date: Dayjs) => {
@@ -117,7 +116,6 @@ function Calendar({ selected, onSelect, disabled, className, datesWithSessions =
     return disabled(date.toDate())
   }
 
-  // Custom day component with dot indicator
   const CustomDay = React.useCallback((props: PickersDayProps) => {
     const { day, ...other } = props
     const dateKey = day.format('YYYY-MM-DD')

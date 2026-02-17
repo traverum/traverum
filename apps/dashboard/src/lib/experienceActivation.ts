@@ -16,8 +16,10 @@ export interface ActivationValidationInput {
   pricingType: PricingType;
   basePriceCents: string;
   extraPersonCents: string;
+  pricePerDayCents: string;
   includedParticipants: string;
   minDays: string;
+  maxDays: string;
 
   // Availability (only required when allowsRequests)
   allowsRequests: boolean;
@@ -79,6 +81,7 @@ export function validateExperienceForActivation(
   // Pricing
   const baseP = Math.round((parseFloat(input.basePriceCents) || 0) * 100);
   const extraP = Math.round((parseFloat(input.extraPersonCents) || 0) * 100);
+  const perDayP = Math.round((parseFloat(input.pricePerDayCents) || 0) * 100);
   const inclP = parseInt(input.includedParticipants, 10) || 0;
   const minD = parseInt(input.minDays, 10) || 0;
 
@@ -90,8 +93,11 @@ export function validateExperienceForActivation(
     if (baseP < 100 || inclP < 1)
       errors.push('Valid base price and included participants');
   } else if (input.pricingType === 'per_day') {
-    if (extraP < 100 || minD < 1)
+    if (perDayP < 100 || minD < 1)
       errors.push('Valid price per day and minimum days');
+    const maxD = parseInt(input.maxDays, 10) || 0;
+    if (maxD > 0 && maxD < minD)
+      errors.push('Maximum days must be greater than or equal to minimum days');
   }
 
   // Cancellation policy (always required, pre-set to moderate by default)

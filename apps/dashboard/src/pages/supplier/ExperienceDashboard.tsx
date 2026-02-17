@@ -128,6 +128,9 @@ function ExperienceDashboardInner() {
   const [extraPersonCents, setExtraPersonCents] = useState(() =>
     ((exp?.extra_person_cents / 100) || (experience?.price_cents ? experience.price_cents / 100 : 0)).toString()
   );
+  const [pricePerDayCents, setPricePerDayCents] = useState(() =>
+    ((exp?.price_per_day_cents ? exp.price_per_day_cents / 100 : 0) || (exp?.extra_person_cents / 100) || 0).toString()
+  );
   const [minDays, setMinDays] = useState(() => (exp?.min_days || 1).toString());
   const [maxDays, setMaxDays] = useState(() => (exp?.max_days || '').toString());
   
@@ -159,7 +162,7 @@ function ExperienceDashboardInner() {
     formValuesRef.current = {
       title, category, description, durationMinutes, locationAddress, locationLat, locationLng,
       meetingPoint, minParticipants, maxParticipants, pricingType, basePriceCents,
-      includedParticipants, extraPersonCents, minDays, maxDays,
+      includedParticipants, extraPersonCents, pricePerDayCents, minDays, maxDays,
       cancellationPolicy, forceMajeureRefund, allowsRequests, availableLanguages,
       weekdays, startTime, endTime, validFrom, validUntil,
     };
@@ -188,8 +191,9 @@ function ExperienceDashboardInner() {
       const minP = parseInt(vals.minParticipants) || 1;
       const baseP = Math.round((parseFloat(vals.basePriceCents) || 0) * 100);
       const extraP = Math.round((parseFloat(vals.extraPersonCents) || 0) * 100);
+      const perDayP = Math.round((parseFloat(vals.pricePerDayCents) || 0) * 100);
       const inclP = parseInt(vals.includedParticipants) || 0;
-      const legacyPriceCents = vals.pricingType === 'per_person' || vals.pricingType === 'per_day' ? extraP : baseP;
+      const legacyPriceCents = vals.pricingType === 'per_person' ? extraP : vals.pricingType === 'per_day' ? perDayP : baseP;
 
       let locationData: any = {};
       if (vals.locationAddress?.trim() && vals.locationLat !== null && vals.locationLng !== null) {
@@ -211,7 +215,8 @@ function ExperienceDashboardInner() {
         pricing_type: vals.pricingType,
         base_price_cents: vals.pricingType === 'flat_rate' || vals.pricingType === 'base_plus_extra' ? baseP : 0,
         included_participants: vals.pricingType === 'base_plus_extra' ? inclP : (vals.pricingType === 'flat_rate' ? maxP : 0),
-        extra_person_cents: vals.pricingType === 'per_person' || vals.pricingType === 'base_plus_extra' || vals.pricingType === 'per_day' ? extraP : 0,
+        extra_person_cents: vals.pricingType === 'per_person' || vals.pricingType === 'base_plus_extra' ? extraP : 0,
+        price_per_day_cents: vals.pricingType === 'per_day' ? perDayP : 0,
         cancellation_policy: vals.cancellationPolicy,
         force_majeure_refund: vals.forceMajeureRefund,
         allows_requests: vals.allowsRequests,
@@ -303,6 +308,7 @@ function ExperienceDashboardInner() {
       setBasePriceCents(((experience as any).base_price_cents / 100 || 0).toString());
       setIncludedParticipants(((experience as any).included_participants || 0).toString());
       setExtraPersonCents(((experience as any).extra_person_cents / 100 || experience.price_cents / 100).toString());
+      setPricePerDayCents(((experience as any).price_per_day_cents ? (experience as any).price_per_day_cents / 100 : (experience as any).extra_person_cents / 100 || 0).toString());
       setMinDays(((experience as any).min_days || 1).toString());
       setMaxDays(((experience as any).max_days || '').toString());
       
@@ -375,6 +381,7 @@ function ExperienceDashboardInner() {
   const debouncedBasePrice = useDebounce(basePriceCents, 2000);
   const debouncedIncludedParticipants = useDebounce(includedParticipants, 2000);
   const debouncedExtraPersonPrice = useDebounce(extraPersonCents, 2000);
+  const debouncedPricePerDay = useDebounce(pricePerDayCents, 2000);
   const debouncedMinDays = useDebounce(minDays, 2000);
   const debouncedMaxDays = useDebounce(maxDays, 2000);
   const debouncedCancellationPolicy = useDebounce(cancellationPolicy, 2000);
@@ -402,6 +409,7 @@ function ExperienceDashboardInner() {
         const minP = parseInt(debouncedMinParticipants) || 1;
         const baseP = Math.round((parseFloat(debouncedBasePrice) || 0) * 100);
         const extraP = Math.round((parseFloat(debouncedExtraPersonPrice) || 0) * 100);
+        const perDayP = Math.round((parseFloat(debouncedPricePerDay) || 0) * 100);
         const inclP = parseInt(debouncedIncludedParticipants) || 0;
         const minD = debouncedPricingType === 'per_day' ? (parseInt(debouncedMinDays) || 1) : null;
         let maxD: number | null = null;
@@ -412,7 +420,7 @@ function ExperienceDashboardInner() {
             maxD = isNaN(parsed) ? null : parsed;
           }
         }
-        const legacyPriceCents = debouncedPricingType === 'per_person' || debouncedPricingType === 'per_day' ? extraP : baseP;
+        const legacyPriceCents = debouncedPricingType === 'per_person' ? extraP : debouncedPricingType === 'per_day' ? perDayP : baseP;
 
         // Prepare location data if available
         let locationData: any = {};
@@ -437,20 +445,19 @@ function ExperienceDashboardInner() {
           pricing_type: debouncedPricingType,
           base_price_cents: debouncedPricingType === 'flat_rate' || debouncedPricingType === 'base_plus_extra' ? baseP : 0,
           included_participants: debouncedPricingType === 'base_plus_extra' ? inclP : (debouncedPricingType === 'flat_rate' ? maxP : 0),
-          extra_person_cents: debouncedPricingType === 'per_person' || debouncedPricingType === 'base_plus_extra' || debouncedPricingType === 'per_day' ? extraP : 0,
+          extra_person_cents: debouncedPricingType === 'per_person' || debouncedPricingType === 'base_plus_extra' ? extraP : 0,
+          price_per_day_cents: debouncedPricingType === 'per_day' ? perDayP : 0,
           cancellation_policy: debouncedCancellationPolicy,
           force_majeure_refund: debouncedForceMajeure,
           allows_requests: debouncedAllowsRequests,
           available_languages: debouncedAvailableLanguages,
         };
 
-        // Add rental pricing fields only for per_day type
-        // Only include these fields if the pricing type is per_day to avoid errors if columns don't exist
+        // Add rental pricing fields for per_day type
         if (debouncedPricingType === 'per_day') {
           experienceData.min_days = minD;
           experienceData.max_days = maxD;
         }
-        // Note: We don't set them to null for other types to avoid errors if columns don't exist yet
 
         const { error } = await supabase
           .from('experiences')
@@ -494,7 +501,7 @@ function ExperienceDashboardInner() {
     experienceId,
     debouncedTitle, debouncedCategory, debouncedDescription, debouncedLocationAddress, debouncedLocationLat, debouncedLocationLng, debouncedMeetingPoint, debouncedDuration,
     debouncedMinParticipants, debouncedMaxParticipants, debouncedPricingType,
-    debouncedBasePrice, debouncedIncludedParticipants, debouncedExtraPersonPrice,
+    debouncedBasePrice, debouncedIncludedParticipants, debouncedExtraPersonPrice, debouncedPricePerDay,
     debouncedMinDays, debouncedMaxDays,
     debouncedCancellationPolicy, debouncedForceMajeure, debouncedAllowsRequests, debouncedAvailableLanguages,
     // refetchExperiences intentionally omitted — uses refetchRef.current to avoid unstable reference triggering extra saves
@@ -640,8 +647,10 @@ function ExperienceDashboardInner() {
         pricingType,
         basePriceCents,
         extraPersonCents,
+        pricePerDayCents,
         includedParticipants,
         minDays,
+        maxDays,
         allowsRequests,
         weekdays,
         startTime,
@@ -711,6 +720,23 @@ function ExperienceDashboardInner() {
           setDeleting(false);
           return;
         }
+      }
+
+      // Also block delete if there are sessionless reservations (e.g. pending rental requests)
+      const { count: sessionlessCount } = await supabase
+        .from('reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('experience_id', experienceId)
+        .is('session_id', null)
+        .in('reservation_status', ['pending', 'approved']);
+      if (sessionlessCount && sessionlessCount > 0) {
+        toast({
+          title: 'Cannot delete experience',
+          description: 'There are pending or approved reservations for this experience. Handle those first before deleting.',
+          variant: 'destructive',
+        });
+        setDeleting(false);
+        return;
       }
 
       const { data: mediaData } = await supabase
@@ -1011,8 +1037,8 @@ function ExperienceDashboardInner() {
                   </RadioGroup>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
-                  {pricingType !== 'per_day' && (
+                {pricingType !== 'per_day' && (
+                  <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
                     <div className="space-y-2">
                       <Label htmlFor="minParticipants" className="text-sm">Minimum Guests</Label>
                       <Input
@@ -1024,22 +1050,22 @@ function ExperienceDashboardInner() {
                         className="h-8"
                       />
                       <p className="text-[11px] text-muted-foreground">
-                        Guests always pay for at least this many people, even if fewer show up. Set to 1 for no minimum.
+                        Guests must book at least this many people. They won't be able to select fewer in the widget.
                       </p>
                     </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="maxParticipants" className="text-sm">Max Participants *</Label>
-                    <Input
-                      id="maxParticipants"
-                      type="number"
-                      min="1"
-                      value={maxParticipants}
-                      onChange={(e) => setMaxParticipants(e.target.value)}
-                      className="h-8"
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="maxParticipants" className="text-sm">Max Participants *</Label>
+                      <Input
+                        id="maxParticipants"
+                        type="number"
+                        min="1"
+                        value={maxParticipants}
+                        onChange={(e) => setMaxParticipants(e.target.value)}
+                        className="h-8"
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {pricingType === 'per_person' && (
                   <div className="space-y-2 pt-2 border-t border-border">
@@ -1124,22 +1150,38 @@ function ExperienceDashboardInner() {
                 )}
 
                 {pricingType === 'per_day' && (
-                  <div className="space-y-2 pt-2 border-t border-border">
-                    <div className="space-y-2">
-                      <Label htmlFor="pricePerDay" className="text-sm">Price per day (EUR) *</Label>
-                      <Input
-                        id="pricePerDay"
-                        type="number"
-                        min="1"
-                        step="0.01"
-                        value={extraPersonCents}
-                        onChange={(e) => setExtraPersonCents(e.target.value)}
-                        className="h-8"
-                      />
+                  <div className="space-y-4 pt-2 border-t border-border">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="pricePerDay" className="text-sm">Price per unit per day (EUR) *</Label>
+                        <Input
+                          id="pricePerDay"
+                          type="number"
+                          min="1"
+                          step="0.01"
+                          value={pricePerDayCents}
+                          onChange={(e) => setPricePerDayCents(e.target.value)}
+                          className="h-8"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="maxParticipants" className="text-sm">Max quantity per booking *</Label>
+                        <Input
+                          id="maxParticipants"
+                          type="number"
+                          min="1"
+                          value={maxParticipants}
+                          onChange={(e) => setMaxParticipants(e.target.value)}
+                          className="h-8"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                          Maximum units a guest can request at once (e.g. 5 vespas).
+                        </p>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="minDays" className="text-sm">Minimum rental period (days) *</Label>
+                        <Label htmlFor="minDays" className="text-sm">Minimum days *</Label>
                         <Input
                           id="minDays"
                           type="number"
@@ -1151,7 +1193,7 @@ function ExperienceDashboardInner() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="maxDays" className="text-sm">Maximum rental period (days)</Label>
+                        <Label htmlFor="maxDays" className="text-sm">Maximum days</Label>
                         <Input
                           id="maxDays"
                           type="number"

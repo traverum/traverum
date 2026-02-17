@@ -13,6 +13,7 @@ import { X, ChevronDown, Users, Euro, Repeat, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { generateRecurringSessions, type Experience } from '@/hooks/useExperienceSessions';
 import { getLanguageName } from '@/components/LanguageSelector';
+import { getUnitLabel, getDefaultUnitPrice, formatPrice } from '@/lib/pricing';
 
 interface SessionData {
   single: true;
@@ -455,10 +456,10 @@ export function SessionCreatePopup({
                       min="0"
                       value={customPrice}
                       onChange={(e) => setCustomPrice(e.target.value)}
-                      placeholder={selectedExperience ? ((selectedExperience.price_cents || 0) / 100).toFixed(0) : '—'}
+                      placeholder={selectedExperience ? (getDefaultUnitPrice({ pricing_type: (selectedExperience as any).pricing_type || 'per_person', base_price_cents: (selectedExperience as any).base_price_cents || 0, included_participants: (selectedExperience as any).included_participants || 0, extra_person_cents: (selectedExperience as any).extra_person_cents || 0, price_per_day_cents: (selectedExperience as any).price_per_day_cents || 0, min_participants: (selectedExperience as any).min_participants || 1, max_participants: selectedExperience.max_participants || 1 } as any) / 100).toFixed(0) : '—'}
                       className={cn(inputClass, "w-20 text-xs")}
                     />
-                    <span className="text-xs text-muted-foreground">per person</span>
+                    <span className="text-xs text-muted-foreground">{selectedExperience ? getUnitLabel(((selectedExperience as any).pricing_type || 'per_person') as any) : 'per person'}</span>
                   </div>
                 </div>
               </div>

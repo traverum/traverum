@@ -16,6 +16,9 @@ export interface CalendarRequest {
   response_deadline: string;
   reservation_status: string;
   created_at: string;
+  rental_start_date: string | null;
+  rental_end_date: string | null;
+  isRental: boolean;
   experience: {
     id: string;
     title: string;
@@ -44,7 +47,7 @@ export function useCalendarRequests(currentMonth: Date) {
       // Get all experiences for this partner
       const { data: experiences } = await supabase
         .from('experiences')
-        .select('id, title, slug, currency')
+        .select('id, title, slug, currency, pricing_type')
         .eq('partner_id', activePartnerId);
 
       if (!experiences || experiences.length === 0) return {};
@@ -89,6 +92,9 @@ export function useCalendarRequests(currentMonth: Date) {
             response_deadline: reservation.response_deadline,
             reservation_status: reservation.reservation_status,
             created_at: reservation.created_at || '',
+            rental_start_date: (reservation as any).rental_start_date || null,
+            rental_end_date: (reservation as any).rental_end_date || null,
+            isRental: exp.pricing_type === 'per_day',
             experience: {
               id: exp.id,
               title: exp.title,

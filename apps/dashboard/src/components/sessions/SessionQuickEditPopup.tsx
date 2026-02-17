@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { X, Users, Euro, Globe, ExternalLink, Trash2, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatPrice } from '@/lib/pricing';
+import { formatPrice, getUnitLabel, getDefaultUnitPrice } from '@/lib/pricing';
 import { getLanguageName } from '@/components/LanguageSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -54,8 +54,20 @@ export function SessionQuickEditPopup({
 
   const isBooked = session?.session_status === 'booked';
   const isCancelled = session?.session_status === 'cancelled';
-  const experiencePrice = session?.experience?.price_cents || 0;
+  const pricingType = (session?.experience as any)?.pricing_type || 'per_person';
+  const experiencePrice = (() => {
+    const exp = session?.experience as any;
+    if (!exp) return 0;
+    switch (pricingType) {
+      case 'per_person': return exp.extra_person_cents || exp.price_cents || 0;
+      case 'flat_rate': return exp.base_price_cents || exp.price_cents || 0;
+      case 'base_plus_extra': return exp.base_price_cents || exp.price_cents || 0;
+      case 'per_day': return exp.price_per_day_cents || exp.extra_person_cents || exp.price_cents || 0;
+      default: return exp.price_cents || 0;
+    }
+  })();
   const currentPrice = session?.price_override_cents !== null ? session?.price_override_cents : experiencePrice;
+  const unitLabel = getUnitLabel(pricingType);
 
   // Reset edit state on open
   useEffect(() => {
@@ -258,7 +270,7 @@ export function SessionQuickEditPopup({
                     className={cn(inputClass, "w-16 text-xs")}
                     autoFocus
                   />
-                  <span className="text-xs text-muted-foreground">/person</span>
+                  <span className="text-xs text-muted-foreground">{unitLabel}</span>
                   <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={handleSavePrice} disabled={saving}>
                     Save
                   </Button>
@@ -270,7 +282,7 @@ export function SessionQuickEditPopup({
                 <>
                   <span>
                     <span className="font-medium">{formatPrice(currentPrice || 0)}</span>
-                    <span className="text-muted-foreground">/person</span>
+                    <span className="text-muted-foreground">{unitLabel}</span>
                   </span>
                   {session.price_override_cents !== null && (
                     <span className="text-[10px] text-muted-foreground">(custom)</span>

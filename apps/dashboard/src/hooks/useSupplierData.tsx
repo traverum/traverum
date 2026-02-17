@@ -28,7 +28,7 @@ export interface Experience {
   experience_status: string;
   created_at: string | null;
   // Pricing fields
-  pricing_type: 'per_person' | 'flat_rate' | 'base_plus_extra';
+  pricing_type: 'per_person' | 'flat_rate' | 'base_plus_extra' | 'per_day';
   base_price_cents: number;
   included_participants: number;
   extra_person_cents: number;

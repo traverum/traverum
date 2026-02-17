@@ -23,6 +23,9 @@ export interface PendingRequest {
   is_request: boolean;
   preferred_language: string | null;
   created_at: string;
+  rental_start_date: string | null;
+  rental_end_date: string | null;
+  isRental: boolean;
   experience: {
     id: string;
     title: string;
@@ -83,7 +86,7 @@ export function useBookingManagement() {
     queryFn: async () => {
       const { data } = await supabase
         .from('experiences')
-        .select('id, title, price_cents, currency')
+        .select('id, title, price_cents, currency, pricing_type')
         .eq('partner_id', partnerId!);
       return data || [];
     },
@@ -118,25 +121,31 @@ export function useBookingManagement() {
 
       const experienceMap = new Map(experiences.map(e => [e.id, e]));
 
-      return (reservations || []).map(r => ({
-        id: r.id,
-        guest_name: r.guest_name,
-        guest_email: r.guest_email,
-        guest_phone: r.guest_phone,
-        participants: r.participants,
-        total_cents: r.total_cents,
-        requested_date: r.requested_date,
-        requested_time: r.requested_time || null,
-        time_preference: r.time_preference || null,
-        session_id: r.session_id,
-        response_deadline: r.response_deadline,
-        reservation_status: r.reservation_status,
-        is_request: r.is_request ?? false,
-        preferred_language: r.preferred_language || null,
-        created_at: r.created_at || '',
-        experience: experienceMap.get(r.experience_id)!,
-        session: r.experience_sessions,
-      })) as PendingRequest[];
+      return (reservations || []).map(r => {
+        const exp = experienceMap.get(r.experience_id)!;
+        return {
+          id: r.id,
+          guest_name: r.guest_name,
+          guest_email: r.guest_email,
+          guest_phone: r.guest_phone,
+          participants: r.participants,
+          total_cents: r.total_cents,
+          requested_date: r.requested_date,
+          requested_time: r.requested_time || null,
+          time_preference: r.time_preference || null,
+          session_id: r.session_id,
+          response_deadline: r.response_deadline,
+          reservation_status: r.reservation_status,
+          is_request: r.is_request ?? false,
+          preferred_language: r.preferred_language || null,
+          created_at: r.created_at || '',
+          rental_start_date: (r as any).rental_start_date || null,
+          rental_end_date: (r as any).rental_end_date || null,
+          isRental: (exp as any).pricing_type === 'per_day',
+          experience: exp,
+          session: r.experience_sessions,
+        };
+      }) as PendingRequest[];
     },
     enabled: experienceIds.length > 0,
   });

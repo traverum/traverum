@@ -25,7 +25,7 @@ Reviewed by Elias on 07-02-2026
 - **Available Languages**
 - **Location**
 - **Meeting Point** (optional text input)
-- **Min Participants** (required for going live, number, hidden when pricing type is "Per day (Rental)")
+- **Minimum Guests** (required for going live, number, hidden when pricing type is "Per day (Rental)" — guests cannot select fewer than this in the widget)
 - **Max Participants** (required for going live, number)
 
 ---
@@ -50,9 +50,13 @@ Reviewed by Elias on 07-02-2026
 - Extra person price (EUR, optional)
 
 **When "Per day (Rental)" selected:**
-- Price per day (EUR, required, min €1.00)
-- Minimum rental period (days, required, min 1)
-- Maximum rental period (days, optional)
+- Price per day (EUR, required, min €1.00) — stored in `price_per_day_cents`
+- Minimum rental period (days, required, min 1) — stored in `min_days`
+- Maximum rental period (days, optional) — stored in `max_days`
+
+**Session Price Override** (in session create/edit popups):
+- Label is dynamic based on pricing type: "per person" / "total" / "per day"
+- Override replaces the unit price and scales with quantity (not a flat total)
 
 ---
 

@@ -64,6 +64,7 @@ export async function GET(
         price_cents,
         base_price_cents,
         extra_person_cents,
+        price_per_day_cents,
         pricing_type,
         currency,
         experience_status,
@@ -126,6 +127,12 @@ export async function GET(
           priceDisplay = {
             amount: exp.base_price_cents || exp.price_cents,
             suffix: '/ group',
+          }
+          break
+        case 'per_day':
+          priceDisplay = {
+            amount: exp.price_per_day_cents || exp.price_cents,
+            suffix: '/ day',
           }
           break
         case 'flat_rate':
