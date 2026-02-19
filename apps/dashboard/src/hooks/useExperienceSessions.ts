@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, format, addDays, getDay } from 'date-fns';
+import { parseLocalDate } from '@/lib/date-utils';
 
 export interface Session {
   id: string;
@@ -166,7 +167,7 @@ export function useExperienceSessions({ experienceId, currentMonth }: UseExperie
 
   // Find matching sessions for bulk delete (same weekday + time, future dates only)
   const findMatchingSessions = async (session: Session): Promise<Session[]> => {
-    const sessionDayOfWeek = getDay(new Date(session.session_date));
+    const sessionDayOfWeek = getDay(parseLocalDate(session.session_date));
     const today = format(new Date(), 'yyyy-MM-dd');
 
     const { data, error } = await supabase
@@ -179,9 +180,9 @@ export function useExperienceSessions({ experienceId, currentMonth }: UseExperie
 
     if (error) throw error;
 
-    // Filter by same day of week
-    return (data || []).filter(s => 
-      getDay(new Date(s.session_date)) === sessionDayOfWeek
+    // Filter by same day of week (use local date so timezone is correct)
+    return (data || []).filter(s =>
+      getDay(parseLocalDate(s.session_date)) === sessionDayOfWeek
     ) as Session[];
   };
 
@@ -217,18 +218,19 @@ export function generateRecurringSessions({
   frequency: 'daily' | 'weekly';
 }): Omit<Session, 'id' | 'created_at' | 'updated_at' | 'price_override_cents' | 'price_note'>[] {
   const sessions: Omit<Session, 'id' | 'created_at' | 'updated_at' | 'price_override_cents' | 'price_note'>[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  
-  // Get current date/time for filtering past sessions
+  // Parse as local dates so the range is correct in all timezones (new Date('yyyy-MM-dd') is UTC midnight)
+  const start = parseLocalDate(startDate);
+  const end = parseLocalDate(endDate);
+
+  // Get current date/time for filtering past sessions (supplier's local time)
   const now = new Date();
   const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const [timeHours, timeMinutes] = time.split(':').map(Number);
   const nowHours = now.getHours();
   const nowMinutes = now.getMinutes();
-  
+
   let currentDate = new Date(start);
-  
+
   while (currentDate <= end) {
     const sessionDateStr = format(currentDate, 'yyyy-MM-dd');
     

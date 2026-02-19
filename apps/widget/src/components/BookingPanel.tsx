@@ -62,17 +62,11 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
     }
     if (!hasDateSelection) return 'Select date'
     if (isCustomRequest && customDate) {
-      const date = new Date(customDate)
-      const day = date.getDate().toString().padStart(2, '0')
-      const month = (date.getMonth() + 1).toString().padStart(2, '0')
-      const year = date.getFullYear()
+      const [year, month, day] = customDate.split('-')
       return `${day}.${month}.${year} · ${requestTime || '...'}`
     }
     if (selectedSession) {
-      const date = new Date(selectedSession.session_date)
-      const day = date.getDate().toString().padStart(2, '0')
-      const month = (date.getMonth() + 1).toString().padStart(2, '0')
-      const year = date.getFullYear()
+      const [year, month, day] = selectedSession.session_date.split('-')
       return `${day}.${month}.${year} · ${selectedSession.start_time.slice(0, 5)}`
     }
     return 'Select date'

@@ -334,8 +334,6 @@ export async function POST(request: NextRequest) {
     const supplierEmailHtml = supplierNewRequest({
       experienceTitle: experience.title,
       guestName: cleanName,
-      guestEmail: cleanEmail,
-      guestPhone: cleanPhone,
       date: requestDate || date || '',
       time: isRental ? null : (requestTime || null),
       participants: isRental ? (quantity || 1) : participants,
@@ -348,12 +346,11 @@ export async function POST(request: NextRequest) {
       dashboardUrl,
       ...(isRental ? { rentalEndDate: rentalEndDate || undefined, rentalDays } : {}),
     })
-    
+
     await sendEmail({
       to: experience.supplier.email,
       subject: isRental ? `New rental request - ${experience.title}` : `New booking request - ${experience.title}`,
       html: supplierEmailHtml,
-      replyTo: cleanEmail,
     })
     
     return NextResponse.json({

@@ -1,0 +1,45 @@
+# Global Date/Time and Timezone Rules
+
+All date/time logic must work correctly for users and suppliers in **any timezone worldwide**. Session and request dates (`session_date`, `requested_date`) are **calendar dates** (YYYY-MM-DD) with no timezone info. They represent "this calendar day" in the experience/supplier context.
+
+## Absolute rules
+
+1. **Never** derive a calendar date with `toISOString().split('T')[0]` — it returns UTC and is wrong for local "today" in most timezones.
+2. **Never** use `new Date("yyyy-mm-dd")` when you need the correct calendar day for display, grouping, or comparison — it is parsed as UTC midnight and can shift the day in timezones west of UTC.
+3. **Always** use `parseLocalDate(dateStr)` or parse the string directly (`dateStr.split('-')`) when you need a `Date` from a calendar date string.
+4. **Always** use `getTodayLocal()` (or equivalent local date derivation) instead of UTC for "today" comparisons on the client.
+
+## Dashboard (supplier browser)
+
+- Use `getTodayLocal()`, `parseLocalDate()`, and `isSessionUpcoming()` from `@/lib/date-utils`.
+- For availability rule checks, compare with `format(date, 'yyyy-MM-dd')` (date-fns `format` uses local time).
+- For displaying `session_date` or `dateKey`, always parse as local: `format(parseLocalDate(dateStr), 'pattern')`.
+
+## Widget client (guest browser)
+
+- Use `getTodayLocal()` and `parseLocalDate()` from `@/lib/date-utils`.
+- Group sessions by `session.session_date` (the stored YYYY-MM-DD string), not by `format(new Date(session.session_date), ...)`.
+- For displaying dates from YYYY-MM-DD strings, parse the string directly or use `parseLocalDate()`.
+- `formatDate()` in `@/lib/utils` handles YYYY-MM-DD strings safely (no UTC parse).
+
+## Widget server / API routes
+
+- No user timezone is available on the server. For session fetches, use a conservative date range (e.g. from "yesterday" server time) so "today" in any guest timezone is always included.
+- For "days until experience" calculations (e.g. cancel window), compare calendar dates consistently: `differenceInDays(parseISO(experienceDate), parseISO(todayServer))` where `todayServer = format(new Date(), 'yyyy-MM-dd')`.
+- Crons (completion-check, auto-complete) use server (UTC) date. This means they can be up to one day early/late for experiences in other timezones. To fix in the future: store an IANA timezone per partner/experience and compute relative dates in that TZ.
+
+## Timestamps (deadlines, etc.)
+
+- `payment_deadline`, `response_deadline`, `created_at`, `updated_at` are ISO timestamps (UTC). Store and compare as UTC. Display converts to the viewer's local time automatically. No special handling needed.
+
+## Helper locations
+
+- **Dashboard:** `apps/dashboard/src/lib/date-utils.ts` — `getTodayLocal`, `parseLocalDate`, `isSessionUpcoming`
+- **Widget:** `apps/widget/src/lib/date-utils.ts` — `getTodayLocal`, `parseLocalDate`
+
+## When adding new date/time logic
+
+- Ask: "Does this use a calendar date (YYYY-MM-DD) or a timestamp (ISO)?"
+- Calendar dates: follow the rules above (local parse, local "today").
+- Timestamps: store/compare as UTC ISO strings.
+- If in doubt, never use `toISOString()` or `new Date("yyyy-mm-dd")` for calendar dates.

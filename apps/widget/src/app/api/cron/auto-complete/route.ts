@@ -20,7 +20,9 @@ export async function POST(request: NextRequest) {
   
   const supabase = createAdminClient()
   
-  // Find confirmed bookings where experience was 7+ days ago
+  // Uses server (UTC) calendar date; auto-complete/transfer can be up to one
+  // day early or late for experiences in other timezones. To fix, store an IANA
+  // timezone per partner/experience and compute the cutoff in that TZ.
   const sevenDaysAgo = format(subDays(new Date(), 7), 'yyyy-MM-dd')
   
   const { data: bookings, error } = await supabase

@@ -117,7 +117,10 @@ export const DEFAULT_TIME_GROUPS = {
 }
 
 function formatDateForComparison(date: Date): string {
-  return date.toISOString().split('T')[0]
+  const y = date.getFullYear()
+  const m = (date.getMonth() + 1).toString().padStart(2, '0')
+  const d = date.getDate().toString().padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 // Cancellation policy (matches dashboard/availability.ts)

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getTodayLocal } from '@/lib/date-utils';
 import { useActivePartner } from './useActivePartner';
 
 export interface Partner {
@@ -178,15 +179,15 @@ export function useSupplierData() {
     enabled: !!partnerId && experiences.length > 0,
   });
 
-  // Get upcoming sessions count
+  // Get upcoming sessions count (key includes today so it refetches at midnight local)
   const { data: upcomingSessionsCount = 0 } = useQuery({
-    queryKey: ['upcomingSessionsCount', partnerId],
+    queryKey: ['upcomingSessionsCount', partnerId, getTodayLocal()],
     queryFn: async () => {
       if (!partnerId || experiences.length === 0) return 0;
       
       const experienceIds = experiences.map(e => e.id);
-      const today = new Date().toISOString().split('T')[0];
-      
+      const today = getTodayLocal();
+
       const { count, error } = await supabase
         .from('experience_sessions')
         .select('*', { count: 'exact', head: true })

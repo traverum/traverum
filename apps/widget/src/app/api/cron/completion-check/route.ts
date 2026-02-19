@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient()
   const appUrl = getAppUrl()
   
-  // Find confirmed bookings where the experience was yesterday
+  // Uses server (UTC) calendar date; completion emails can be up to one day
+  // early or late for experiences in other timezones. To fix, store an IANA
+  // timezone per partner/experience and compute "yesterday" in that TZ.
   const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd')
   
   const { data: bookings, error } = await supabase

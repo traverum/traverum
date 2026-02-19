@@ -41,18 +41,22 @@ export function formatDuration(minutes: number): string {
  * Examples: "20.01.2025", "20.01" (short)
  */
 export function formatDate(date: Date | string, options?: { short?: boolean }): string {
+  // For YYYY-MM-DD strings, parse directly to avoid UTC-midnight timezone shift
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const [year, month, day] = date.split('-')
+    return options?.short ? `${day}.${month}` : `${day}.${month}.${year}`
+  }
+
   const d = typeof date === 'string' ? new Date(date) : date
-  
+
   const day = d.getDate().toString().padStart(2, '0')
   const month = (d.getMonth() + 1).toString().padStart(2, '0')
   const year = d.getFullYear()
-  
+
   if (options?.short) {
-    // Short format without year: "20.01"
     return `${day}.${month}`
   }
-  
-  // Full format: "20.01.2025"
+
   return `${day}.${month}.${year}`
 }
 

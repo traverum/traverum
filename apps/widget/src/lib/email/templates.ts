@@ -359,9 +359,8 @@ export function supplierNewBooking(data: BaseEmailData & {
 }
 
 // Supplier: New request (request-based, needs accept/decline)
+// Guest email/phone omitted so provider cannot bypass the platform.
 export function supplierNewRequest(data: BaseEmailData & {
-  guestEmail: string
-  guestPhone?: string | null
   acceptUrl: string
   declineUrl: string
   manageUrl?: string
@@ -423,15 +422,9 @@ export function supplierNewRequest(data: BaseEmailData & {
           <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Guest Email</span>
-          <span class="info-value">${escapeHtml(data.guestEmail)}</span>
+          <span class="info-label">Request from hotel</span>
+          <span class="info-value">${escapeHtml(data.hotelName)}</span>
         </div>
-        ${data.guestPhone ? `
-        <div class="info-row">
-          <span class="info-label">Guest Phone</span>
-          <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
-        </div>
-        ` : ''}
         ${dateRows}
         <div class="info-row">
           <span class="info-label">Total Price</span>

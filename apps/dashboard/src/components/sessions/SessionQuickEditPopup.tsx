@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -232,7 +233,7 @@ export function SessionQuickEditPopup({
         <div className="p-3 space-y-3">
           {/* Date & Time */}
           <div className="text-sm">
-            <span className="font-medium">{format(new Date(session.session_date), 'EEE, d MMM yyyy')}</span>
+            <span className="font-medium">{format(parseLocalDate(session.session_date), 'EEE, d MMM yyyy')}</span>
             <span className="text-muted-foreground ml-2">{session.start_time.slice(0, 5)}</span>
           </div>
 

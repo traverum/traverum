@@ -1,6 +1,6 @@
 import { createAdminClient } from './supabase/server'
 import type { ExperienceSession } from './supabase/types'
-import { startOfDay, addDays, format } from 'date-fns'
+import { startOfDay, addDays, subDays, format } from 'date-fns'
 
 /**
  * Fetch available sessions for an experience.
@@ -14,8 +14,9 @@ export async function getAvailableSessions(
 ): Promise<ExperienceSession[]> {
   const supabase = createAdminClient()
   
-  const startDate = fromDate || startOfDay(new Date())
-  const endDate = addDays(startDate, 90) // Show 90 days ahead
+  // Use "yesterday" server time when no fromDate, so "today" in any timezone is always included
+  const startDate = fromDate || startOfDay(subDays(new Date(), 1))
+  const endDate = addDays(startDate, 91)
   
   const { data, error } = await supabase
     .from('experience_sessions')

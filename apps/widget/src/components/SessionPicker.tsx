@@ -77,11 +77,11 @@ export function SessionPicker({
   // All sessions passed to this component are already available (filtered by session_status)
   const availableSessions = sessions
 
-  // Group sessions by date (YYYY-MM-DD format)
+  // Group sessions by date (session_date is already YYYY-MM-DD; no Date parsing needed)
   const sessionsByDate = useMemo(() => {
     const grouped: Record<string, ExperienceSession[]> = {}
     availableSessions.forEach(session => {
-      const dateKey = format(new Date(session.session_date), 'yyyy-MM-dd')
+      const dateKey = session.session_date
       if (!grouped[dateKey]) {
         grouped[dateKey] = []
       }

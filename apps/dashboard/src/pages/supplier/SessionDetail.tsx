@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { parseLocalDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -197,7 +198,7 @@ export default function SessionDetail() {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-xl font-semibold">
-                {format(new Date(session.session_date), 'EEEE, d MMMM yyyy')}
+                {format(parseLocalDate(session.session_date), 'EEEE, d MMMM yyyy')}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {session.start_time.slice(0, 5)} · {experience.duration_minutes} min

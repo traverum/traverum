@@ -1,5 +1,7 @@
 // Availability helper functions for experience scheduling
 
+import { format } from 'date-fns';
+
 export interface AvailabilityRule {
   id: string;
   experience_id: string;
@@ -151,7 +153,7 @@ export function getOperatingHours(
 
 // Helper functions
 function formatDateForComparison(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return format(date, 'yyyy-MM-dd');
 }
 
 function formatDisplayDate(dateStr: string): string {

@@ -4,7 +4,7 @@ import { verifyToken } from '@/lib/tokens'
 import { createRefund } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
 import { escapeHtml } from '@/lib/sanitize'
-import { differenceInDays, parseISO } from 'date-fns'
+import { differenceInDays, parseISO, format } from 'date-fns'
 import { canGuestCancel } from '@/lib/availability'
 
 interface RouteParams {
@@ -62,8 +62,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const experience = reservation.experience
   const experienceDate = session?.session_date || reservation.requested_date
 
-  // Check if within cancellation window (policy-aware: flexible=1d, moderate=7d, strict/non_refundable=no cancel)
-  const daysUntil = experienceDate ? differenceInDays(parseISO(experienceDate), new Date()) : 0
+  // Compare calendar dates consistently so "days until" is stable across day boundaries
+  const todayServer = format(new Date(), 'yyyy-MM-dd')
+  const daysUntil = experienceDate ? differenceInDays(parseISO(experienceDate), parseISO(todayServer)) : 0
   const { canCancel, message } = canGuestCancel(experience?.cancellation_policy ?? 'moderate', daysUntil)
   if (!canCancel) {
     return createResponse('error', message)

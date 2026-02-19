@@ -327,7 +327,7 @@ export function RequestQuickActionPopup({
   if (!isOpen || requests.length === 0) return null;
 
   const formattedDate = dateKey
-    ? format(new Date(dateKey), 'EEEE, d MMM yyyy')
+    ? format(new Date(dateKey + 'T12:00:00'), 'EEEE, d MMM yyyy')
     : '';
 
   return (
