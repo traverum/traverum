@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { sendEmail } from '@/lib/email/index'
+import { baseTemplate } from '@/lib/email/templates'
 import { escapeHtml } from '@/lib/sanitize'
 
 // Verify cron secret to prevent unauthorized access
@@ -69,15 +70,20 @@ export async function POST(request: NextRequest) {
         await sendEmail({
           to: reservation.guest_email,
           subject: `Booking request expired - ${experience.title}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #111;">Request Expired</h1>
+          html: baseTemplate(`
+            <div class="card">
+              <div class="header"><h1>Request Expired</h1></div>
               <p>Hi ${escapeHtml(reservation.guest_name)},</p>
               <p>Unfortunately, the experience provider did not respond to your booking request within 48 hours.</p>
-              <p><strong>Experience:</strong> ${experience.title}</p>
+              <div class="info-box">
+                <div class="info-row">
+                  <span class="info-label">Experience</span>
+                  <span class="info-value">${experience.title}</span>
+                </div>
+              </div>
               <p>We apologize for any inconvenience. Feel free to submit a new request or try a different time.</p>
             </div>
-          `,
+          `, 'Request Expired'),
         })
         
         pendingProcessed++
@@ -144,36 +150,47 @@ export async function POST(request: NextRequest) {
         
         const experience = reservation.experience as any
         
-        // Send email to guest
         await sendEmail({
           to: reservation.guest_email,
           subject: `Payment window closed - ${experience.title}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #111;">Payment Window Closed</h1>
+          html: baseTemplate(`
+            <div class="card">
+              <div class="header"><h1>Payment Window Closed</h1></div>
               <p>Hi ${escapeHtml(reservation.guest_name)},</p>
               <p>The payment window for your booking has closed. The provider approved your request, but payment was not completed within 24 hours.</p>
-              <p><strong>Experience:</strong> ${experience.title}</p>
+              <div class="info-box">
+                <div class="info-row">
+                  <span class="info-label">Experience</span>
+                  <span class="info-value">${experience.title}</span>
+                </div>
+              </div>
               <p>Feel free to submit a new booking request if you're still interested.</p>
             </div>
-          `,
+          `, 'Payment Window Closed'),
         })
         
-        // Send email to supplier
         if (experience.supplier?.email) {
           await sendEmail({
             to: experience.supplier.email,
             subject: `Guest did not complete payment - ${experience.title}`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                <h1 style="color: #111;">Payment Not Completed</h1>
+            html: baseTemplate(`
+              <div class="card">
+                <div class="header"><h1>Payment Not Completed</h1></div>
                 <p>Hi ${experience.supplier.name},</p>
                 <p>The guest did not complete payment within the 24-hour window.</p>
-                <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
-                <p><strong>Experience:</strong> ${experience.title}</p>
-                <p>The time slot has been released and is available for other bookings.</p>
+                <div class="info-box">
+                  <div class="info-row">
+                    <span class="info-label">Guest</span>
+                    <span class="info-value">${escapeHtml(reservation.guest_name)}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Experience</span>
+                    <span class="info-value">${experience.title}</span>
+                  </div>
+                </div>
+                <p class="text-muted">The time slot has been released and is available for other bookings.</p>
               </div>
-            `,
+            `, 'Payment Not Completed'),
           })
         }
         

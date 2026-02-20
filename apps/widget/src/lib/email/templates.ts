@@ -11,8 +11,7 @@ interface BaseEmailData {
   currency?: string
 }
 
-// Base template wrapper - follows dashboard design principles (warm white, muted palette, no emojis)
-function baseTemplate(content: string, title: string) {
+export function baseTemplate(content: string, title: string) {
   return `
 <!DOCTYPE html>
 <html>
@@ -21,32 +20,34 @@ function baseTemplate(content: string, title: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: rgba(55, 53, 47, 0.9); margin: 0; padding: 0; background-color: #FEFCF9; }
-    .container { max-width: 560px; margin: 0 auto; padding: 24px 16px; }
-    .card { background: #FEFCF9; border-radius: 4px; padding: 32px; margin: 24px 0; border: 1px solid rgba(55, 53, 47, 0.09); }
-    .header { text-align: center; margin-bottom: 24px; }
-    .header h1 { margin: 0; font-size: 20px; font-weight: 600; color: rgba(55, 53, 47, 0.95); }
-    .info-box { background: rgba(242, 241, 238, 0.6); border-radius: 4px; padding: 16px; margin: 20px 0; border: 1px solid rgba(55, 53, 47, 0.06); }
-    .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(55, 53, 47, 0.06); }
+    @import url('https://fonts.googleapis.com/css2?family=Finlandica:wght@300;500&display=swap');
+    body { font-family: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: rgb(55, 53, 47); margin: 0; padding: 0; background-color: #F4EFE6; }
+    .container { max-width: 560px; margin: 0 auto; padding: 40px 16px; }
+    .card { background: #FEFCF9; border-radius: 6px; padding: 36px 32px; margin: 0 0 24px; border: 1px solid rgba(55, 53, 47, 0.09); }
+    .header { text-align: center; margin-bottom: 28px; }
+    .header h1 { margin: 0; font-size: 22px; font-weight: 300; color: #5D4631; letter-spacing: -0.01em; }
+    .info-box { border-radius: 6px; padding: 4px 20px; margin: 24px 0; background: rgba(244, 239, 230, 0.5); }
+    .info-row { padding: 14px 0; border-bottom: 1px solid rgba(55, 53, 47, 0.06); }
     .info-row:last-child { border-bottom: none; }
-    .info-label { color: rgba(55, 53, 47, 0.5); font-size: 14px; }
-    .info-value { font-weight: 600; color: rgba(55, 53, 47, 0.9); font-size: 14px; }
-    .btn { display: inline-block; padding: 12px 24px; border-radius: 3px; text-decoration: none; font-weight: 600; font-size: 14px; margin: 8px 4px; }
-    .btn-primary { background: #0D9488; color: white; }
+    .info-label { display: block; color: rgba(55, 53, 47, 0.4); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px; font-weight: 500; }
+    .info-value { display: block; font-weight: 500; color: rgb(55, 53, 47); font-size: 15px; }
+    .btn { display: inline-block; padding: 12px 28px; border-radius: 4px; text-decoration: none; font-weight: 500; font-size: 14px; margin: 8px 4px; }
+    .btn-primary { background: #5A6B4E; color: white; }
     .btn-success { background: #6B8E6B; color: white; }
     .btn-danger { background: #B8866B; color: white; }
-    .btn-secondary { background: rgba(55, 53, 47, 0.4); color: white; }
-    .footer { text-align: center; color: rgba(55, 53, 47, 0.4); font-size: 12px; margin-top: 32px; }
+    .btn-secondary { background: rgba(55, 53, 47, 0.35); color: white; }
+    .footer { text-align: center; color: rgba(55, 53, 47, 0.3); font-size: 12px; margin-top: 32px; letter-spacing: 0.02em; }
     .text-center { text-align: center; }
     .mt-4 { margin-top: 16px; }
-    .text-muted { color: rgba(55, 53, 47, 0.5); font-size: 14px; }
+    .text-muted { color: rgba(55, 53, 47, 0.45); font-size: 13px; line-height: 1.5; }
+    p { color: rgb(55, 53, 47); font-size: 15px; font-weight: 300; }
   </style>
 </head>
 <body>
   <div class="container">
     ${content}
     <div class="footer">
-      <p>Powered by Traverum</p>
+      <p style="font-size: 12px; color: rgba(55, 53, 47, 0.3);">Powered by Traverum</p>
     </div>
   </div>
 </body>
@@ -199,7 +200,7 @@ export function guestBookingApproved(data: BaseEmailData & {
       </div>
       
       <div class="text-center mt-4">
-        <a href="${data.paymentUrl}" class="btn btn-primary">Complete Payment</a>
+        <a href="${data.paymentUrl}" class="btn btn-primary" style="color: white;">Complete Payment</a>
       </div>
       
       <p class="text-muted text-center mt-4">Payment must be completed by ${formatEmailDate(data.paymentDeadline)} to secure your booking.</p>
@@ -242,7 +243,7 @@ export function guestRequestDeclined(data: BaseEmailData & {
       <p>There may be other available sessions for this experience.</p>
       
       <div class="text-center mt-4">
-        <a href="${data.experienceUrl || '#'}" class="btn btn-primary">View Available Sessions</a>
+        <a href="${data.experienceUrl || '#'}" class="btn btn-primary" style="color: white;">View Available Sessions</a>
       </div>
       
       <p class="text-muted text-center mt-4">Browse the latest availability and book a time that works for you.</p>
@@ -266,7 +267,7 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
     ? `
       <p class="text-muted">Need to cancel? ${data.cancellationPolicyText}</p>
       <div class="text-center mt-4">
-        <a href="${data.cancelUrl}" class="btn btn-secondary">Cancel Booking</a>
+        <a href="${data.cancelUrl}" class="btn btn-secondary" style="color: white;">Cancel Booking</a>
       </div>
     `
     : `<p class="text-muted">${data.cancellationPolicyText}</p>`
@@ -367,7 +368,7 @@ export function guestInstantBooking(data: BaseEmailData & {
       </div>
       
       <div class="text-center mt-4">
-        <a href="${data.paymentUrl}" class="btn btn-primary">Pay Now</a>
+        <a href="${data.paymentUrl}" class="btn btn-primary" style="color: white;">Pay Now</a>
       </div>
       
       <p class="text-muted text-center mt-4">Complete payment by ${formatEmailDate(data.paymentDeadline)} to secure your spot.</p>
@@ -507,8 +508,8 @@ export function supplierNewRequest(data: BaseEmailData & {
       </div>
       
       <div class="text-center mt-4">
-        <a href="${data.acceptUrl}" class="btn btn-success">Accept</a>
-        <a href="${data.declineUrl}" class="btn btn-danger">Decline</a>
+        <a href="${data.acceptUrl}" class="btn btn-success" style="color: white;">Accept</a>
+        <a href="${data.declineUrl}" class="btn btn-danger" style="color: white;">Decline</a>
       </div>
       
       ${data.manageUrl ? `
@@ -610,8 +611,8 @@ export function supplierCompletionCheck(data: BaseEmailData & {
       <p>Please confirm whether this experience took place:</p>
       
       <div class="text-center mt-4">
-        <a href="${data.completeUrl}" class="btn btn-success">Yes, it happened</a>
-        <a href="${data.noExperienceUrl}" class="btn btn-danger">No, it didn't</a>
+        <a href="${data.completeUrl}" class="btn btn-success" style="color: white;">Yes, it happened</a>
+        <a href="${data.noExperienceUrl}" class="btn btn-danger" style="color: white;">No, it didn't</a>
       </div>
       
       <p class="text-muted text-center mt-4">If you confirm, payment will be transferred to your account. If you click "No", the guest will receive a full refund.</p>
@@ -661,7 +662,7 @@ export function guestPaymentFailed(data: BaseEmailData & {
       <p>Please try again with a different payment method or contact your bank if the issue persists.</p>
       
       <div class="text-center mt-4">
-        <a href="${data.paymentUrl}" class="btn btn-primary">Try Again</a>
+        <a href="${data.paymentUrl}" class="btn btn-primary" style="color: white;">Try Again</a>
       </div>
       
       <p class="text-muted text-center mt-4">Your reservation is still held. Please complete payment soon to secure your booking.</p>

@@ -29,6 +29,7 @@ import {
   Users,
   AlertTriangle,
   Mail,
+  Phone,
   Copy,
   Check,
 } from 'lucide-react';
@@ -336,16 +337,21 @@ function SessionCard({
                           {guest.preferred_language && (
                             <span>{getLanguageName(guest.preferred_language)}</span>
                           )}
-                          {canShowContact(guest) && (
-                            <>
-                              <span className="flex items-center gap-0.5">
-                                <Mail className="w-3 h-3" />
-                                {guest.guest_email}
-                              </span>
-                              {guest.guest_phone && <span>{guest.guest_phone}</span>}
-                            </>
-                          )}
                         </div>
+                        {canShowContact(guest) && (
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-1.5">
+                            <a href={`mailto:${guest.guest_email}`} className="flex items-center gap-1 text-foreground hover:text-primary transition-colors">
+                              <Mail className="w-3 h-3 text-muted-foreground" />
+                              {guest.guest_email}
+                            </a>
+                            {guest.guest_phone && (
+                              <a href={`tel:${guest.guest_phone}`} className="flex items-center gap-1 text-foreground hover:text-primary transition-colors">
+                                <Phone className="w-3 h-3 text-muted-foreground" />
+                                {guest.guest_phone}
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-sm font-medium">{formatPrice(guest.total_cents)}</p>

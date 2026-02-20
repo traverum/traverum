@@ -7,7 +7,7 @@
 **WHY:** Hotels sell experiences to guests via widget. Suppliers manage everything via email + dashboard. No dashboard required for core flows (accept/decline via email one-click).
 
 **Key principles:**
-- Supplier never sees guest email until after payment. All communication mediated via Traverum email system with signed action tokens.
+- Supplier never sees guest contact info (email, phone) until after payment. Before payment, all communication is mediated via Traverum email system with signed action tokens. After payment, contact info is revealed in both the supplier confirmation email and the supplier dashboard.
 - One group per session. When a guest books a session, it's theirs — no other parties join.
 - `max_participants` is a group-size cap, not a shared-spots pool.
 
@@ -219,6 +219,26 @@ If supplier needs to cancel: contacts guest directly (has email after payment), 
 
 **No response within 7 days:**
 - Auto-complete, proceed with payout (assume it happened)
+
+---
+
+## Guest Contact Info Visibility
+
+Guest contact info (email, phone) is hidden from suppliers before payment to prevent platform bypass. After payment, contact info is revealed so the supplier can coordinate with the guest.
+
+| Context | Before Payment | After Payment |
+|---------|---------------|---------------|
+| **Supplier email: new request** | Name only (no email/phone) | N/A |
+| **Supplier email: payment confirmed** | N/A | Email + phone shown |
+| **Dashboard: pending requests tab** | Name only | N/A |
+| **Dashboard: upcoming sessions tab** | N/A | Email + phone shown (clickable mailto/tel links) |
+| **Dashboard: past sessions tab** | N/A | Email + phone shown |
+| **Dashboard: copy emails button** | N/A | Copies paid guest emails |
+
+**Implementation:**
+- `supplierNewRequest` email template omits `guestEmail` and `guestPhone`
+- `supplierBookingConfirmed` email template includes `guestEmail` and `guestPhone`
+- Dashboard `BookingManagement.tsx` uses `canShowContact(guest)` which returns true only when `guest.booking.booking_status` is `confirmed` or `completed`
 
 ---
 

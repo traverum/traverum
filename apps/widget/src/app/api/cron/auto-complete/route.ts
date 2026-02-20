@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { createTransfer } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
+import { baseTemplate } from '@/lib/email/templates'
 import { escapeHtml } from '@/lib/sanitize'
 import { format, subDays } from 'date-fns'
 
@@ -91,22 +92,32 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', booking.id)
       
-      // Send notification to supplier
       if (supplier?.email) {
         await sendEmail({
           to: supplier.email,
-          subject: `Auto-completed: Payment transferred - ${experience.title}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h1 style="color: #111;">Payment Transferred</h1>
+          subject: `Payment transferred - ${experience.title}`,
+          html: baseTemplate(`
+            <div class="card">
+              <div class="header"><h1>Payment Transferred</h1></div>
               <p>Hi ${supplier.name},</p>
-              <p>A booking has been automatically marked as completed (7 days after the experience date with no response).</p>
-              <p><strong>Experience:</strong> ${experience.title}</p>
-              <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
-              <p><strong>Amount transferred:</strong> ${new Intl.NumberFormat('en', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</p>
-              <p style="color: #666; margin-top: 20px;">If the experience did not happen, please contact support.</p>
+              <p>A booking has been automatically completed and your payment has been transferred.</p>
+              <div class="info-box">
+                <div class="info-row">
+                  <span class="info-label">Experience</span>
+                  <span class="info-value">${experience.title}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Guest</span>
+                  <span class="info-value">${escapeHtml(reservation.guest_name)}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Amount Transferred</span>
+                  <span class="info-value">${new Intl.NumberFormat('fi-FI', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</span>
+                </div>
+              </div>
+              <p class="text-muted">If the experience did not happen, please contact support.</p>
             </div>
-          `,
+          `, 'Payment Transferred'),
         })
       }
       

@@ -166,12 +166,13 @@ function generateSuccessHtml(title: string, message: string) {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>${title}</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
-        .card { background: white; padding: 48px; border-radius: 16px; text-align: center; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .icon { width: 64px; height: 64px; background: #f3f4f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
-        .icon svg { width: 32px; height: 32px; color: #6b7280; }
-        h1 { margin: 0 0 12px; font-size: 24px; color: #111; }
-        p { margin: 0; color: #666; }
+        @import url('https://fonts.googleapis.com/css2?family=Finlandica:wght@300;500&display=swap');
+        body { font-family: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F4EFE6; }
+        .card { background: #FEFCF9; padding: 48px; border-radius: 6px; text-align: center; max-width: 400px; border: 1px solid rgba(55, 53, 47, 0.09); }
+        .icon { width: 64px; height: 64px; background: rgba(107, 142, 107, 0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
+        .icon svg { width: 32px; height: 32px; color: #6B8E6B; }
+        h1 { margin: 0 0 12px; font-size: 22px; font-weight: 300; color: #5D4631; }
+        p { margin: 0; color: rgba(55, 53, 47, 0.7); font-weight: 300; font-size: 15px; }
       </style>
     </head>
     <body>
@@ -198,12 +199,13 @@ function generateErrorHtml(title: string, message: string) {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>${title}</title>
       <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #f5f5f5; }
-        .card { background: white; padding: 48px; border-radius: 16px; text-align: center; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .icon { width: 64px; height: 64px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
-        .icon svg { width: 32px; height: 32px; color: #dc2626; }
-        h1 { margin: 0 0 12px; font-size: 24px; color: #111; }
-        p { margin: 0; color: #666; }
+        @import url('https://fonts.googleapis.com/css2?family=Finlandica:wght@300;500&display=swap');
+        body { font-family: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F4EFE6; }
+        .card { background: #FEFCF9; padding: 48px; border-radius: 6px; text-align: center; max-width: 400px; border: 1px solid rgba(55, 53, 47, 0.09); }
+        .icon { width: 64px; height: 64px; background: rgba(184, 134, 107, 0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
+        .icon svg { width: 32px; height: 32px; color: #B8866B; }
+        h1 { margin: 0 0 12px; font-size: 22px; font-weight: 300; color: #5D4631; }
+        p { margin: 0; color: rgba(55, 53, 47, 0.7); font-weight: 300; font-size: 15px; }
       </style>
     </head>
     <body>
