@@ -92,7 +92,7 @@ export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo
                   className="rounded-lg object-contain"
                 />
               ) : null}
-              <h1 className="text-lg font-heading text-foreground truncate">{hotelName}</h1>
+              <h1 className="text-lg font-heading text-heading-foreground truncate">{hotelName}</h1>
             </button>
           )}
         </div>

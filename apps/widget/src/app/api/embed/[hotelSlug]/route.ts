@@ -160,6 +160,7 @@ export async function GET(
   // Build theme config
   const theme = {
     accentColor: hotel.accent_color || '#2563eb',
+    headingColor: hotel.heading_color || hotel.text_color || '#1a1a1a',
     textColor: hotel.text_color || '#1a1a1a',
     backgroundColor: hotel.background_color || '#ffffff',
     cardRadius: hotel.card_radius || '12px',

@@ -85,7 +85,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
             
             <div className="mt-5">
               <h1 
-                className="font-heading text-foreground"
+                className="font-heading text-heading-foreground"
                 style={{ fontSize: 'var(--font-size-h1)' }}
               >
                 {experience.title}
@@ -110,7 +110,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
             <div className="mt-6 pt-6 border-t border-border space-y-4">
               <div>
                 <h3 
-                  className="font-body text-foreground"
+                  className="font-body text-heading-foreground"
                   style={{ fontSize: 'var(--font-size-h3)' }}
                 >
                   Booking
@@ -124,7 +124,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
               </div>
               <div>
                 <h3 
-                  className="font-body text-foreground"
+                  className="font-body text-heading-foreground"
                   style={{ fontSize: 'var(--font-size-h3)' }}
                 >
                   Cancellation
@@ -139,7 +139,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
               {experience.meeting_point && (
                 <div>
                   <h3 
-                    className="font-body text-foreground"
+                    className="font-body text-heading-foreground"
                     style={{ fontSize: 'var(--font-size-h3)' }}
                   >
                     Meeting point

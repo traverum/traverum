@@ -31,6 +31,7 @@ const config: Config = {
           alt: 'hsl(var(--background-alt))',
         },
         foreground: 'hsl(var(--foreground))',
+        'heading-foreground': 'hsl(var(--heading-foreground, var(--foreground)))',
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           hover: 'hsl(var(--accent-hover))',

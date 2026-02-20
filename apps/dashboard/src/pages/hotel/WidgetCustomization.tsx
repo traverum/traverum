@@ -103,6 +103,7 @@ const TITLE_SIZE_PRESETS = [
 
 interface ThemeState {
   accent_color: string;
+  heading_color: string;
   text_color: string;
   background_color: string;
   card_radius: string;
@@ -124,6 +125,7 @@ interface ThemeState {
 
 const DEFAULT_THEME: ThemeState = {
   accent_color: '#2563eb',
+  heading_color: '#1a1a1a',
   text_color: '#1a1a1a',
   background_color: '#ffffff',
   card_radius: '12px',
@@ -270,7 +272,7 @@ function LivePreview({ theme, hotelName }: { theme: ThemeState; hotelName: strin
               fontWeight: parseInt(theme.heading_font_weight) || 200,
               fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)',
               margin: '0 0 0.125rem',
-              color: theme.text_color,
+              color: theme.heading_color,
               lineHeight: 1.2,
             }}
           >
@@ -445,6 +447,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
         setHotelSlug(d.slug || '');
         setTheme({
           accent_color: d.accent_color || DEFAULT_THEME.accent_color,
+          heading_color: d.heading_color || d.text_color || DEFAULT_THEME.heading_color,
           text_color: d.text_color || DEFAULT_THEME.text_color,
           background_color: d.background_color || DEFAULT_THEME.background_color,
           card_radius: d.card_radius || DEFAULT_THEME.card_radius,
@@ -494,6 +497,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
           .from('hotel_configs')
           .update({
             accent_color: newTheme.accent_color,
+            heading_color: newTheme.heading_color,
             text_color: newTheme.text_color,
             background_color: newTheme.background_color,
             card_radius: newTheme.card_radius,
@@ -627,15 +631,20 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
             <section className="space-y-3">
               <SectionLabel>Brand</SectionLabel>
 
-              {/* Colors — single row */}
-              <div className="grid grid-cols-3 gap-3">
+              {/* Colors */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <ColorPicker
                   label="Accent"
                   value={theme.accent_color}
                   onChange={(v) => updateField('accent_color', v)}
                 />
                 <ColorPicker
-                  label="Text"
+                  label="Headings"
+                  value={theme.heading_color}
+                  onChange={(v) => updateField('heading_color', v)}
+                />
+                <ColorPicker
+                  label="Body text"
                   value={theme.text_color}
                   onChange={(v) => updateField('text_color', v)}
                 />

@@ -86,7 +86,7 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
             >
               <h1 
                 className={cn(
-                  "font-heading text-foreground",
+                  "font-heading text-heading-foreground",
                   embedMode === 'section' && hotelSlug === 'hotel-rosa' && 'embed-section-title'
                 )}
                 style={{ 

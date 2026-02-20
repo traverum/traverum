@@ -160,6 +160,7 @@
       var accent = theme.accentColor;
       var accentHover = darken(accent);
       var accentFg = textOnBg(accent);
+      var headingColor = theme.headingColor || theme.textColor;
       var textColor = theme.textColor;
       var bgColor = theme.backgroundColor;
       var cardRadius = theme.cardRadius;
@@ -195,6 +196,7 @@
         '  --_accent: var(--trv-accent, ' + accent + ');\n' +
         '  --_accent-hover: var(--trv-accent-hover, ' + accentHover + ');\n' +
         '  --_accent-fg: var(--trv-accent-fg, ' + accentFg + ');\n' +
+        '  --_heading-text: var(--trv-heading-text, ' + headingColor + ');\n' +
         '  --_text: var(--trv-text, ' + textColor + ');\n' +
         '  --_bg: var(--trv-bg, ' + bgColor + ');\n' +
         '  --_radius: var(--trv-radius, ' + cardRadius + ');\n' +
@@ -227,7 +229,7 @@
         '  font-weight: var(--_heading-weight);\n' +
         '  font-size: clamp(1.5rem, 3vw, 2.5rem);\n' +
         '  margin: 0 0 0.25rem;\n' +
-        '  color: var(--_text);\n' +
+        '  color: var(--_heading-text);\n' +
         '  line-height: 1.2;\n' +
         '}\n' +
         '.trv-subtitle {\n' +

@@ -131,7 +131,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
           Back to experience
         </Link>
         
-        <h1 className="text-2xl text-foreground mb-6">
+        <h1 className="text-2xl text-heading-foreground mb-6">
           {isRequest ? 'Complete Your Request' : 'Complete Your Booking'}
         </h1>
         

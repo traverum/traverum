@@ -78,6 +78,10 @@ export default async function HotelLayout({ children, params }: HotelLayoutProps
   // Auto-calculate link color: black if bg is light, white if dark
   const linkColor = bgL > 50 ? '0 0% 10%' : '0 0% 95%'
   
+  // Heading color: separate from body text so headings can use brand colors
+  const headingColor = hotel.heading_color || textColor
+  const headingHsl = hexToHsl(headingColor)
+
   // Calculate muted text color (appropriate contrast for background)
   const [textH, textS, textL] = textHsl.split(' ').map(v => parseFloat(v.replace('%', '')))
   const mutedTextL = isDarkBackground 
@@ -144,6 +148,7 @@ export default async function HotelLayout({ children, params }: HotelLayoutProps
     '--link-color': linkColor,
     '--ring': accentHsl,
     '--foreground': textHsl,
+    '--heading-foreground': headingHsl,
     '--background': backgroundHsl,
     '--background-alt': `${bgH} ${bgS}% ${backgroundAltL}%`,
     '--card': cardBgHsl,

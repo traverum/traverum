@@ -15,7 +15,8 @@
 
 ## 2. Set branding fields
 - **`accent_color`** — Brand hex for buttons/interactive elements (e.g. `#2563eb`)
-- **`text_color`** — Main text color (e.g. `#1a1a1a`)
+- **`heading_color`** — Color for h1/h2/h3 headings (e.g. `#cba366`). Falls back to `text_color` if not set. Use this when the hotel uses a brand color for headings that differs from body text.
+- **`text_color`** — Body text color, should be dark/readable (e.g. `#1a1a1a`, `#333333`)
 - **`background_color`** — Main background (e.g. `#ffffff`)
 - **`card_radius`** — Card border radius (e.g. `12px`)
 - **`heading_font_family`** — CSS font stack for headings (default: Poppins)
