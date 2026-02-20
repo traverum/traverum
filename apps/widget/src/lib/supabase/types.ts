@@ -372,6 +372,7 @@ export type Database = {
           text_color: string | null
           title_font_size: string | null
           updated_at: string | null
+          website_url: string | null
           widget_cta_margin: string | null
           widget_grid_gap: string | null
           widget_grid_min_width: string | null
@@ -405,6 +406,7 @@ export type Database = {
           text_color?: string | null
           title_font_size?: string | null
           updated_at?: string | null
+          website_url?: string | null
           widget_cta_margin?: string | null
           widget_grid_gap?: string | null
           widget_grid_min_width?: string | null
@@ -438,6 +440,7 @@ export type Database = {
           text_color?: string | null
           title_font_size?: string | null
           updated_at?: string | null
+          website_url?: string | null
           widget_cta_margin?: string | null
           widget_grid_gap?: string | null
           widget_grid_min_width?: string | null

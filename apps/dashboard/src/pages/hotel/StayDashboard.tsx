@@ -51,6 +51,7 @@ export default function StayDashboard() {
 
   const [activeTab, setActiveTab] = useState('details');
   const [displayName, setDisplayName] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [statusUpdating, setStatusUpdating] = useState(false);
@@ -60,6 +61,7 @@ export default function StayDashboard() {
   const hasInitialized = useRef(false);
 
   const debouncedDisplayName = useDebounce(displayName, 1500);
+  const debouncedWebsiteUrl = useDebounce(websiteUrl, 1500);
 
   // Set the active hotel config from route param
   useEffect(() => {
@@ -75,6 +77,7 @@ export default function StayDashboard() {
   useEffect(() => {
     if (hotelConfig && !hasInitialized.current) {
       setDisplayName(hotelConfig.display_name || '');
+      setWebsiteUrl((hotelConfig as any).website_url || '');
       setIsActive(hotelConfig.is_active ?? true);
       hasInitialized.current = true;
     }
@@ -117,6 +120,7 @@ export default function StayDashboard() {
         const updateData: Record<string, any> = {
           display_name: name,
           slug,
+          website_url: debouncedWebsiteUrl.trim() || null,
           updated_at: new Date().toISOString(),
         };
 
@@ -144,7 +148,7 @@ export default function StayDashboard() {
     };
 
     autoSave();
-  }, [debouncedDisplayName, id, activePartnerId, queryClient, toast]);
+  }, [debouncedDisplayName, debouncedWebsiteUrl, id, activePartnerId, queryClient, toast]);
 
   // Status change (Active / Inactive)
   const handleStatusChange = async (value: 'active' | 'inactive') => {
@@ -342,6 +346,24 @@ export default function StayDashboard() {
                   placeholder="e.g. Hotel, Resort, B&B"
                   className="h-8"
                 />
+              </div>
+
+              {/* Website URL */}
+              <div className="space-y-2">
+                <Label htmlFor="website-url" className="text-sm">
+                  Website URL
+                </Label>
+                <Input
+                  id="website-url"
+                  type="url"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="https://www.yourhotel.com"
+                  className="h-8"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used for the &ldquo;back to hotel&rdquo; button on the booking page.
+                </p>
               </div>
 
               {hotelConfig?.slug && (

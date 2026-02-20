@@ -81,7 +81,9 @@ export default async function ConfirmationPage({ params, searchParams }: Confirm
         logoUrl={hotel.logo_url}
         hotelSlug={hotelSlug}
         showBack={true}
-        backTo={returnUrl ? `/${hotelSlug}?embed=full&returnUrl=${encodeURIComponent(returnUrl)}` : `/${hotelSlug}?embed=full`}
+        backTo={returnUrl ? `/${hotelSlug}?returnUrl=${encodeURIComponent(returnUrl)}` : `/${hotelSlug}`}
+        returnUrl={returnUrl}
+        websiteUrl={hotel.website_url}
       />
       
       <main className="max-w-2xl mx-auto px-4 py-12">

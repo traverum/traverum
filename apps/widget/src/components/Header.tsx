@@ -10,14 +10,15 @@ interface HeaderProps {
   showBack?: boolean
   backTo?: string
   returnUrl?: string | null
+  websiteUrl?: string | null
 }
 
-export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo, returnUrl }: HeaderProps) {
+export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo, returnUrl, websiteUrl }: HeaderProps) {
   const router = useRouter()
 
   const homeHref = returnUrl
-    ? `/${hotelSlug}?embed=full&returnUrl=${encodeURIComponent(returnUrl)}`
-    : `/${hotelSlug}?embed=full`
+    ? `/${hotelSlug}?returnUrl=${encodeURIComponent(returnUrl)}`
+    : `/${hotelSlug}`
 
   const isSafeHttpUrl = (url: string) => {
     try {
@@ -29,7 +30,6 @@ export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo
   }
 
   const handleBackClick = () => {
-    // If backTo is provided, use it (for detail page -> full list)
     if (backTo) {
       if (isSafeHttpUrl(backTo)) {
         window.location.assign(backTo)
@@ -38,24 +38,19 @@ export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo
       }
       return
     }
-
-    // Fallback: go to experiences list
     router.push(homeHref)
   }
 
   const handleHotelButtonClick = () => {
-    // On full experiences page: return to hotel site (via returnUrl)
+    // Priority: returnUrl > websiteUrl > do nothing
     const target =
       (returnUrl && isSafeHttpUrl(returnUrl) ? returnUrl : null) ||
-      (backTo && isSafeHttpUrl(backTo) ? backTo : null)
+      (websiteUrl && isSafeHttpUrl(websiteUrl) ? websiteUrl : null)
 
     if (target) {
       window.location.assign(target)
       return
     }
-
-    // Fallback: internal navigation to hotel experiences page
-    router.push(homeHref)
   }
 
   return (

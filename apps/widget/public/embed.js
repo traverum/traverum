@@ -188,6 +188,7 @@
       }
 
       var bookingBase = WIDGET_URL + '/' + hotelSlug;
+      var parentUrl = encodeURIComponent(window.location.href);
 
       // Build scoped CSS
       var css = '\n' +
@@ -400,18 +401,7 @@
         '  to   { opacity: 1; transform: translateY(0); }\n' +
         '}\n' +
 
-        /* ── Powered by ── */
-        '.trv-powered {\n' +
-        '  text-align: var(--_text-align);\n' +
-        '  margin-top: 1.25rem;\n' +
-        '  font-size: 0.7rem;\n' +
-        '  opacity: 0.35;\n' +
-        '}\n' +
-        '.trv-powered a {\n' +
-        '  color: inherit;\n' +
-        '  text-decoration: none;\n' +
-        '}\n' +
-        '.trv-powered a:hover { opacity: 0.8; }\n';
+        '';
 
       // Build HTML
       var html = '';
@@ -433,7 +423,7 @@
         html += '<div class="trv-grid">';
         for (var i = 0; i < experiences.length; i++) {
           var exp = experiences[i];
-          var href = bookingBase + '/' + exp.slug + '?embed=full';
+          var href = bookingBase + '/' + exp.slug + '?returnUrl=' + parentUrl;
           var delay = (i * 60) + 'ms';
 
           html += '<a class="trv-card trv-fade-in" href="' + this._esc(href) + '" target="_blank" rel="noopener noreferrer" style="animation-delay:' + delay + '">';
@@ -463,7 +453,7 @@
 
         // "See all" CTA if there are more experiences
         if (widget.totalExperiences > experiences.length) {
-          var ctaHref = bookingBase + '?embed=full';
+          var ctaHref = bookingBase + '?returnUrl=' + parentUrl;
           html += '<div class="trv-cta-wrap">';
           html += '<a class="trv-cta" href="' + this._esc(ctaHref) + '" target="_blank" rel="noopener noreferrer">';
           html += this._esc(buttonLabel);
@@ -472,9 +462,6 @@
           html += '</div>';
         }
       }
-
-      // Powered by
-      html += '<div class="trv-powered"><a href="https://traverum.com" target="_blank" rel="noopener noreferrer">Powered by Traverum</a></div>';
 
       this._shadow.innerHTML = '<style>' + css + '</style>' + html;
     }

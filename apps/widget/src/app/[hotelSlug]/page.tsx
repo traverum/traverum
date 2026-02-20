@@ -53,6 +53,7 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
           hotelSlug={hotelSlug}
           showBack={false}
           returnUrl={returnUrl}
+          websiteUrl={hotel.website_url}
         />
       )}
       
@@ -144,8 +145,8 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
                 <Link
                   href={
                     returnUrl
-                      ? `/${hotelSlug}?embed=full&returnUrl=${encodeURIComponent(returnUrl)}`
-                      : `/${hotelSlug}?embed=full`
+                      ? `/${hotelSlug}?returnUrl=${encodeURIComponent(returnUrl)}`
+                      : `/${hotelSlug}`
                   }
                   target="_blank"
                   rel="noopener noreferrer"

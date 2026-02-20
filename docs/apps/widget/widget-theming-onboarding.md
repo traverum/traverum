@@ -50,7 +50,7 @@ Inspect the hotel's site where the widget will be placed, then set:
 | `widget_grid_min_width` | `280px` |
 
 ## 4. Test embeds
-- **Full-page:** Visit `/{hotelSlug}?embed=full` — check colors, fonts, title
+- **Full-page:** Visit `/{hotelSlug}` — check colors, fonts, title
 - **Section embed:** Use snippet from `/dashboard/embed` on a test page — check cards, clicks, theme
 - **API:** Check `GET /api/embed/{hotelSlug}` returns correct JSON
 

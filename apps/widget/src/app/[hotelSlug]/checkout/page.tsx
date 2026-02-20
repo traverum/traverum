@@ -110,8 +110,9 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
           logoUrl={hotel.logo_url}
           hotelSlug={hotelSlug}
           showBack={true}
-          backTo={returnUrl ? `/${hotelSlug}?embed=full&returnUrl=${encodeURIComponent(returnUrl)}` : `/${hotelSlug}?embed=full`}
+          backTo={returnUrl ? `/${hotelSlug}?returnUrl=${encodeURIComponent(returnUrl)}` : `/${hotelSlug}`}
           returnUrl={returnUrl}
+          websiteUrl={hotel.website_url}
         />
       )}
       

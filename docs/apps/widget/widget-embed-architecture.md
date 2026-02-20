@@ -32,7 +32,16 @@ WordPress: use a **Custom HTML** block.
 
 ### 3. Guest clicks a card
 
-Opens `book.traverum.com/{hotelSlug}/{experienceSlug}?embed=full` in a **new tab** → full Next.js booking flow.
+Opens `book.traverum.com/{hotelSlug}/{experienceSlug}?returnUrl=...` in a **new tab** → full Next.js booking flow. The `returnUrl` is automatically set to the hotel page URL where the widget is embedded.
+
+### Navigation & Return URLs
+
+The header's hotel name button navigates back to the hotel's website. The target URL is resolved in priority order:
+
+1. **`returnUrl` query param** — Set automatically by `embed.js` from `window.location.href` when a guest clicks a card. Preserved across all internal navigation.
+2. **`website_url` column** in `hotel_configs` — Admin-configured fallback for direct visits (e.g. someone opens `book.traverum.com/hotel-rosa` directly without coming from the hotel site).
+
+If neither is available, the button does nothing.
 
 ## API Endpoint
 
