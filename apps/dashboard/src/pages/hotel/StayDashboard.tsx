@@ -4,7 +4,6 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useDebounce } from '@/hooks/useDebounce';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -59,9 +58,8 @@ export default function StayDashboard() {
   const [showDeletePropertyConfirm, setShowDeletePropertyConfirm] = useState(false);
   const [deletePropertyConfirmText, setDeletePropertyConfirmText] = useState('');
   const hasInitialized = useRef(false);
-
-  const debouncedDisplayName = useDebounce(displayName, 1500);
-  const debouncedWebsiteUrl = useDebounce(websiteUrl, 1500);
+  const userHasEdited = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   // Set the active hotel config from route param
   useEffect(() => {
@@ -86,16 +84,22 @@ export default function StayDashboard() {
   // Reset initialization when ID changes
   useEffect(() => {
     hasInitialized.current = false;
+    userHasEdited.current = false;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
   }, [id]);
 
-  // Auto-save details (slug auto-generated from display name)
+  // Auto-save details (slug auto-generated from display name).
+  // Uses a single debounce timer so both fields are always saved together
+  // with their current values, avoiding stale-value races.
   useEffect(() => {
-    if (!hasInitialized.current || !id) return;
+    if (!hasInitialized.current || !id || !userHasEdited.current) return;
 
-    const autoSave = async () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+
+    saveTimerRef.current = setTimeout(async () => {
       setSaveStatus('saving');
       try {
-        const name = debouncedDisplayName.trim() || 'Untitled Property';
+        const name = displayName.trim() || 'Untitled Property';
         const baseSlug = name
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
@@ -120,7 +124,7 @@ export default function StayDashboard() {
         const updateData: Record<string, any> = {
           display_name: name,
           slug,
-          website_url: debouncedWebsiteUrl.trim() || null,
+          website_url: websiteUrl.trim() || null,
           updated_at: new Date().toISOString(),
         };
 
@@ -145,10 +149,12 @@ export default function StayDashboard() {
         });
         setSaveStatus('idle');
       }
-    };
+    }, 1500);
 
-    autoSave();
-  }, [debouncedDisplayName, debouncedWebsiteUrl, id, activePartnerId, queryClient, toast]);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [displayName, websiteUrl, id, activePartnerId, queryClient, toast]);
 
   // Status change (Active / Inactive)
   const handleStatusChange = async (value: 'active' | 'inactive') => {
@@ -342,7 +348,7 @@ export default function StayDashboard() {
                 <Input
                   id="display-name"
                   value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  onChange={(e) => { userHasEdited.current = true; setDisplayName(e.target.value); }}
                   placeholder="e.g. Hotel, Resort, B&B"
                   className="h-8"
                 />
@@ -357,7 +363,7 @@ export default function StayDashboard() {
                   id="website-url"
                   type="url"
                   value={websiteUrl}
-                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  onChange={(e) => { userHasEdited.current = true; setWebsiteUrl(e.target.value); }}
                   placeholder="https://www.yourhotel.com"
                   className="h-8"
                 />
