@@ -1,4 +1,5 @@
 import type { Experience, ExperienceSession } from './supabase/types'
+import { formatPrice } from './utils'
 
 export interface PriceCalculation {
   basePrice: number
@@ -172,34 +173,36 @@ export function getPriceDisplay(experience: Pick<Experience, 'pricing_type' | 'p
 /**
  * Get the display price for booking panels (matching demo format)
  */
-export function getDisplayPrice(experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants' | 'price_per_day_cents'>): {
+export function getDisplayPrice(experience: Pick<Experience, 'pricing_type' | 'price_cents' | 'base_price_cents' | 'extra_person_cents' | 'included_participants' | 'price_per_day_cents' | 'currency'>): {
   price: string
   suffix: string
 } {
+  const currency = experience.currency || 'EUR'
+
   switch (experience.pricing_type) {
     case 'per_person': {
       const perPersonCents = experience.extra_person_cents || experience.price_cents
       return {
-        price: (perPersonCents / 100).toFixed(0),
+        price: formatPrice(perPersonCents, currency),
         suffix: '/ person',
       }
     }
     case 'base_plus_extra':
       return {
-        price: ((experience.base_price_cents || experience.price_cents) / 100).toFixed(0),
+        price: formatPrice(experience.base_price_cents || experience.price_cents, currency),
         suffix: `for ${experience.included_participants}`,
       }
     case 'per_day': {
       const perDayCents = experience.price_per_day_cents || experience.extra_person_cents || experience.price_cents
       return {
-        price: (perDayCents / 100).toFixed(0),
+        price: formatPrice(perDayCents, currency),
         suffix: '/ day',
       }
     }
     case 'flat_rate':
     default:
       return {
-        price: ((experience.base_price_cents || experience.price_cents) / 100).toFixed(0),
+        price: formatPrice(experience.base_price_cents || experience.price_cents, currency),
         suffix: 'total',
       }
   }

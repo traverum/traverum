@@ -37,7 +37,7 @@ export function MobileBookingBar({
           {hasRentalDates && priceCalc ? (
             <span className="font-bold text-foreground tabular-nums">{formatPrice(priceCalc.totalPrice, experience.currency)}</span>
           ) : (
-            <span className="font-bold text-foreground tabular-nums">{displayPrice.price}€ <span className="text-sm font-normal text-muted-foreground">{displayPrice.suffix}</span></span>
+            <span className="font-bold text-foreground tabular-nums">{displayPrice.price} <span className="text-sm font-normal text-muted-foreground">{displayPrice.suffix}</span></span>
           )}
         </div>
         <button

@@ -54,6 +54,80 @@ function baseTemplate(content: string, title: string) {
 `
 }
 
+// Guest: Request received (sent when guest submits a request-based booking)
+export function guestRequestReceived(data: BaseEmailData & {
+  hotelName: string
+  rentalEndDate?: string | null
+  rentalDays?: number
+}) {
+  const isRental = !!(data.rentalDays && data.rentalDays > 0)
+
+  const detailsHtml = isRental ? `
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays} ${data.rentalDays === 1 ? 'day' : 'days'}</span>
+        </div>
+        ${data.rentalEndDate ? `
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate)}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Quantity</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+  ` : `
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Requested Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        ${data.time ? `
+        <div class="info-row">
+          <span class="info-label">Requested Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+  `
+
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Request Received</h1>
+      </div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>Your booking request has been submitted successfully. The experience provider will review it and respond within 48 hours.</p>
+      
+      <div class="info-box">
+        ${detailsHtml}
+        <div class="info-row">
+          <span class="info-label">Total Price</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+      </div>
+      
+      <p class="text-muted text-center mt-4">You'll receive an email once the provider accepts or declines your request. No payment is required until the request is approved.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Request Received')
+}
+
 // Guest: Booking approved
 export function guestBookingApproved(data: BaseEmailData & { 
   paymentUrl: string

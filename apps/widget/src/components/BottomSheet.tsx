@@ -244,7 +244,7 @@ export function BottomSheet({
             <div className="p-4 border-t border-border bg-background">
               {isRental && rentalDate && (
                 <div className="flex justify-between text-sm text-muted-foreground mb-2">
-                  <span>{displayPrice.price}€ × {rentalDays} {rentalDays === 1 ? 'day' : 'days'}{quantity > 1 ? ` × ${quantity}` : ''}</span>
+                  <span>{displayPrice.price} × {rentalDays} {rentalDays === 1 ? 'day' : 'days'}{quantity > 1 ? ` × ${quantity}` : ''}</span>
                   <span className="tabular-nums">{formatPrice(priceCalc.totalPrice, experience.currency)}</span>
                 </div>
               )}

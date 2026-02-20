@@ -4,6 +4,7 @@ import { generateAcceptToken, generateDeclineToken } from '@/lib/tokens'
 import { sendEmail, getAppUrl } from '@/lib/email/index'
 import { 
   supplierNewRequest,
+  guestRequestReceived,
   guestInstantBooking,
   supplierNewBooking,
 } from '@/lib/email/templates'
@@ -351,6 +352,24 @@ export async function POST(request: NextRequest) {
       to: experience.supplier.email,
       subject: isRental ? `New rental request - ${experience.title}` : `New booking request - ${experience.title}`,
       html: supplierEmailHtml,
+    })
+
+    const guestEmailHtml = guestRequestReceived({
+      experienceTitle: experience.title,
+      guestName: cleanName,
+      date: requestDate || date || '',
+      time: isRental ? null : (requestTime || null),
+      participants: isRental ? (quantity || 1) : participants,
+      totalCents: expectedTotal,
+      currency: experience.currency,
+      hotelName: hotel.display_name,
+      ...(isRental ? { rentalEndDate: rentalEndDate || undefined, rentalDays } : {}),
+    })
+
+    await sendEmail({
+      to: cleanEmail,
+      subject: `Your request has been received - ${experience.title}`,
+      html: guestEmailHtml,
     })
     
     return NextResponse.json({

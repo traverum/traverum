@@ -176,7 +176,7 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
           {isRental && rentalDate && (
             <div className="mb-3 space-y-1">
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>{displayPrice.price}€ × {rentalDays} {rentalDays === 1 ? 'day' : 'days'}{quantity > 1 ? ` × ${quantity}` : ''}</span>
+                <span>{displayPrice.price} × {rentalDays} {rentalDays === 1 ? 'day' : 'days'}{quantity > 1 ? ` × ${quantity}` : ''}</span>
                 <span className="tabular-nums">{formatPrice(priceCalc.totalPrice, experience.currency)}</span>
               </div>
             </div>
