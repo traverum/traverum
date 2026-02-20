@@ -359,6 +359,7 @@ export type Database = {
           display_name: string
           font_size_base: string | null
           font_weight: string | null
+          heading_color: string | null
           heading_font_family: string | null
           heading_font_weight: string | null
           id: string
@@ -391,6 +392,7 @@ export type Database = {
           display_name: string
           font_size_base?: string | null
           font_weight?: string | null
+          heading_color?: string | null
           heading_font_family?: string | null
           heading_font_weight?: string | null
           id?: string
@@ -423,6 +425,7 @@ export type Database = {
           display_name?: string
           font_size_base?: string | null
           font_weight?: string | null
+          heading_color?: string | null
           heading_font_family?: string | null
           heading_font_weight?: string | null
           id?: string
@@ -1867,6 +1870,7 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
 
 // Convenience types
 export type Booking = Database['public']['Tables']['bookings']['Row']
