@@ -13,9 +13,26 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { formatPrice } from '@/lib/pricing';
 import { LocationAutocomplete } from '@/components/LocationAutocomplete';
-import { Search, Clock, Users, MapPin, CheckCircle2, Loader2, Check } from 'lucide-react';
+import { Search, Clock, Users, MapPin, CheckCircle2, Loader2, Check, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDebounce } from '@/hooks/useDebounce';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface AvailableExperience {
   id: string;
@@ -37,6 +54,139 @@ interface AvailableExperience {
   isSelected: boolean;
   distributionId: string | null;
   distance_km: number | null;
+  sort_order: number;
+}
+
+// ── Sortable card for drag-and-drop reordering ──
+function SortableExperienceCard({
+  exp,
+  index,
+  partnerId,
+  onRemove,
+  isRemoving,
+  formatDuration,
+}: {
+  exp: AvailableExperience;
+  index: number;
+  partnerId: string | undefined;
+  onRemove: () => void;
+  isRemoving: boolean;
+  formatDuration: (m: number) => string;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: exp.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <Card
+      ref={setNodeRef}
+      style={style}
+      className="bg-primary/5 border-primary/30"
+    >
+      <CardContent className="p-4">
+        <div className="flex gap-3">
+          <div className="flex flex-col items-center gap-1 flex-shrink-0 pt-0.5">
+            <span className="text-xs font-medium text-muted-foreground tabular-nums w-5 text-center">
+              {index + 1}
+            </span>
+            <div
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing p-0.5 rounded hover:bg-accent"
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="flex-shrink-0">
+            {exp.image_url ? (
+              <img
+                src={exp.image_url}
+                alt={exp.title}
+                className="w-24 h-24 rounded object-cover"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded bg-muted flex items-center justify-center">
+                <span className="text-xs text-muted-foreground">No image</span>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3 mb-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-semibold text-foreground line-clamp-1 text-sm">
+                    {exp.title}
+                  </h3>
+                  <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                  {exp.supplier?.id === partnerId && (
+                    <Badge variant="secondary" className="text-xs font-normal">Your Experience</Badge>
+                  )}
+                </div>
+                {exp.supplier?.name && (
+                  <p className="text-xs text-secondary">
+                    {exp.supplier.name}
+                    {exp.supplier.city && ` · ${exp.supplier.city}`}
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-base font-semibold text-primary whitespace-nowrap">
+                  {formatPrice(exp.price_cents)}
+                </span>
+                <Checkbox
+                  checked={true}
+                  onCheckedChange={onRemove}
+                  disabled={isRemoving}
+                  className="h-4 w-4"
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatDuration(exp.duration_minutes)}
+              </span>
+              <span className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {exp.max_participants}
+              </span>
+              {exp.distance_km !== null && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  {exp.distance_km < 1
+                    ? `${Math.round(exp.distance_km * 1000)}m`
+                    : `${exp.distance_km.toFixed(1)} km`}
+                </span>
+              )}
+            </div>
+            {exp.tags.length > 0 && exp.tags[0] && (
+              <div className="mt-2">
+                <Badge
+                  variant="outline"
+                  className="text-xs font-normal border-border/50"
+                >
+                  <span className="mr-1">{getCategoryIcon(exp.tags[0])}</span>
+                  {getCategoryLabel(exp.tags[0])}
+                </Badge>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 interface ExperienceSelectionProps {
@@ -241,7 +391,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
 
       const { data, error } = await supabase
         .from('distributions')
-        .select('id, experience_id, is_active, hotel_config_id')
+        .select('id, experience_id, is_active, hotel_config_id, sort_order')
         .eq('hotel_id', partnerId);
 
       if (error) {
@@ -260,21 +410,27 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
   const isLoading = experiencesLoading || distributionsLoading;
 
   const distributionMap = new Map(
-    distributions.map((d: any) => [d.experience_id, { id: d.id, isActive: d.is_active }])
+    distributions.map((d: any) => [d.experience_id, { id: d.id, isActive: d.is_active, sort_order: d.sort_order ?? 0 }])
   );
 
-  const experiences: AvailableExperience[] = experienceResults
+  const allExperiences: AvailableExperience[] = experienceResults
     .map((exp: any) => {
       const dist = distributionMap.get(exp.id);
       return {
         ...exp,
         isSelected: dist?.isActive ?? false,
         distributionId: dist?.id || null,
+        sort_order: dist?.sort_order ?? 0,
       };
-    })
-    // Sort: selected first, then by distance, then alphabetically
+    });
+
+  const selectedExperiences = allExperiences
+    .filter(e => e.isSelected)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const availableExperiences = allExperiences
+    .filter(e => !e.isSelected)
     .sort((a, b) => {
-      if (a.isSelected !== b.isSelected) return a.isSelected ? -1 : 1;
       if (a.distance_km !== null && b.distance_km !== null) return a.distance_km - b.distance_km;
       if (a.distance_km !== null) return -1;
       if (b.distance_km !== null) return 1;
@@ -297,9 +453,12 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
           .eq('id', distributionId);
         if (error) throw error;
       } else if (!isSelected && distributionId) {
+        const nextOrder = selectedExperiences.length > 0
+          ? Math.max(...selectedExperiences.map(e => e.sort_order)) + 1
+          : 1;
         const { error } = await supabase
           .from('distributions')
-          .update({ is_active: true })
+          .update({ is_active: true, sort_order: nextOrder })
           .eq('id', distributionId);
         if (error) throw error;
       } else {
@@ -316,6 +475,10 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
 
         if (!activeHotelConfigId) throw new Error('No hotel property selected');
 
+        const nextOrder = selectedExperiences.length > 0
+          ? Math.max(...selectedExperiences.map(e => e.sort_order)) + 1
+          : 1;
+
         const { error } = await supabase
           .from('distributions')
           .insert({
@@ -326,6 +489,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
             commission_hotel: commissionRates.hotel,
             commission_platform: commissionRates.platform,
             is_active: true,
+            sort_order: nextOrder,
           });
         if (error) throw error;
       }
@@ -351,6 +515,54 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
     });
   };
 
+  // ── Reorder mutation ──
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      const promises = updates.map(({ id, sort_order }) =>
+        supabase
+          .from('distributions')
+          .update({ sort_order })
+          .eq('id', id)
+      );
+      const results = await Promise.all(promises);
+      const failed = results.find(r => r.error);
+      if (failed?.error) throw failed.error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hotelDistributions', partnerId, activeHotelConfigId] });
+    },
+    onError: (error) => {
+      toast({
+        title: 'Error',
+        description: 'Failed to save order. Please try again.',
+        variant: 'destructive',
+      });
+      console.error('Reorder error:', error);
+    },
+  });
+
+  // ── Drag-and-drop ──
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = selectedExperiences.findIndex(e => e.id === active.id);
+    const newIndex = selectedExperiences.findIndex(e => e.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(selectedExperiences, oldIndex, newIndex);
+    const updates = reordered.map((exp, i) => ({
+      id: exp.distributionId!,
+      sort_order: i + 1,
+    }));
+    reorderMutation.mutate(updates);
+  };
+
   // ── Location handlers ──
   const handleLocationSelect = (address: string, lat: number, lng: number) => {
     setLocationAddress(address);
@@ -365,7 +577,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
   };
 
   // ── Client-side text search ──
-  const filteredExperiences = experiences.filter(exp => {
+  const matchesSearch = (exp: AvailableExperience) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -373,9 +585,12 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
       (exp.supplier?.name || '').toLowerCase().includes(query) ||
       exp.tags.some(tag => tag.toLowerCase().includes(query))
     );
-  });
+  };
 
-  const selectedCount = experiences.filter(e => e.isSelected).length;
+  const filteredSelected = selectedExperiences.filter(matchesSearch);
+  const filteredAvailable = availableExperiences.filter(matchesSearch);
+
+  const selectedCount = selectedExperiences.length;
 
   const formatDuration = (minutes: number) => {
     if (minutes >= 480) return 'All day';
@@ -488,7 +703,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
             {/* Result count when filtering */}
             {hasLocation && !isLoading && (
               <p className="text-xs text-muted-foreground pt-1 border-t border-border">
-                {experiences.length} experience{experiences.length !== 1 ? 's' : ''} within {radiusKm} km
+                {allExperiences.length} experience{allExperiences.length !== 1 ? 's' : ''} within {radiusKm} km
               </p>
             )}
           </CardContent>
@@ -507,12 +722,12 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
           </div>
         </div>
 
-        {/* Experience List */}
+        {/* Experience Lists */}
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
-        ) : filteredExperiences.length === 0 ? (
+        ) : filteredSelected.length === 0 && filteredAvailable.length === 0 ? (
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-sm text-secondary mb-1">
@@ -525,115 +740,142 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
-            {filteredExperiences.map((exp) => (
-              <Card
-                key={exp.id}
-                className={cn(
-                  "bg-card cursor-pointer transition-ui",
-                  exp.isSelected
-                    ? "bg-primary/5 border-primary/30"
-                    : "hover:bg-accent/50"
-                )}
-                onClick={() => handleToggle(exp)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex gap-3">
-                    {/* Checkbox */}
-                    <div className="flex-shrink-0 pt-0.5">
-                      <Checkbox
-                        checked={exp.isSelected}
-                        onCheckedChange={() => handleToggle(exp)}
-                        onClick={(e) => e.stopPropagation()}
-                        disabled={toggleMutation.isPending}
-                        className="h-4 w-4"
-                      />
-                    </div>
-
-                    {/* Image */}
-                    <div className="flex-shrink-0">
-                      {exp.image_url ? (
-                        <img
-                          src={exp.image_url}
-                          alt={exp.title}
-                          className="w-24 h-24 rounded object-cover"
+          <>
+            {/* ── Selected experiences (sortable) ── */}
+            {filteredSelected.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-sm font-medium text-muted-foreground mb-2">
+                  Your experiences · Drag to reorder
+                </h2>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={filteredSelected.map(e => e.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {filteredSelected.map((exp, index) => (
+                        <SortableExperienceCard
+                          key={exp.id}
+                          exp={exp}
+                          index={index}
+                          partnerId={partnerId}
+                          onRemove={() => handleToggle(exp)}
+                          isRemoving={toggleMutation.isPending}
+                          formatDuration={formatDuration}
                         />
-                      ) : (
-                        <div className="w-24 h-24 rounded bg-muted flex items-center justify-center">
-                          <span className="text-xs text-muted-foreground">No image</span>
-                        </div>
-                      )}
+                      ))}
                     </div>
+                  </SortableContext>
+                </DndContext>
+              </div>
+            )}
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-foreground line-clamp-1 text-sm">
-                              {exp.title}
-                            </h3>
-                            {exp.isSelected && (
-                              <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
-                            )}
-                            {exp.supplier?.id === partnerId && (
-                              <Badge variant="secondary" className="text-xs font-normal">Your Experience</Badge>
+            {/* ── Available experiences ── */}
+            {filteredAvailable.length > 0 && (
+              <div>
+                {filteredSelected.length > 0 && (
+                  <h2 className="text-sm font-medium text-muted-foreground mb-2">
+                    Available experiences
+                  </h2>
+                )}
+                <div className="space-y-3">
+                  {filteredAvailable.map((exp) => (
+                    <Card
+                      key={exp.id}
+                      className="bg-card cursor-pointer transition-ui hover:bg-accent/50"
+                      onClick={() => handleToggle(exp)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex gap-3">
+                          <div className="flex-shrink-0 pt-0.5">
+                            <Checkbox
+                              checked={false}
+                              onCheckedChange={() => handleToggle(exp)}
+                              onClick={(e) => e.stopPropagation()}
+                              disabled={toggleMutation.isPending}
+                              className="h-4 w-4"
+                            />
+                          </div>
+                          <div className="flex-shrink-0">
+                            {exp.image_url ? (
+                              <img
+                                src={exp.image_url}
+                                alt={exp.title}
+                                className="w-24 h-24 rounded object-cover"
+                              />
+                            ) : (
+                              <div className="w-24 h-24 rounded bg-muted flex items-center justify-center">
+                                <span className="text-xs text-muted-foreground">No image</span>
+                              </div>
                             )}
                           </div>
-                          {exp.supplier?.name && (
-                            <p className="text-xs text-secondary">
-                              {exp.supplier.name}
-                              {exp.supplier.city && ` · ${exp.supplier.city}`}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="font-semibold text-foreground line-clamp-1 text-sm">
+                                    {exp.title}
+                                  </h3>
+                                  {exp.supplier?.id === partnerId && (
+                                    <Badge variant="secondary" className="text-xs font-normal">Your Experience</Badge>
+                                  )}
+                                </div>
+                                {exp.supplier?.name && (
+                                  <p className="text-xs text-secondary">
+                                    {exp.supplier.name}
+                                    {exp.supplier.city && ` · ${exp.supplier.city}`}
+                                  </p>
+                                )}
+                              </div>
+                              <span className="text-base font-semibold text-primary whitespace-nowrap flex-shrink-0">
+                                {formatPrice(exp.price_cents)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-secondary line-clamp-2 mb-2">
+                              {exp.description}
                             </p>
-                          )}
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {formatDuration(exp.duration_minutes)}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                {exp.max_participants}
+                              </span>
+                              {exp.distance_km !== null && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  {exp.distance_km < 1
+                                    ? `${Math.round(exp.distance_km * 1000)}m`
+                                    : `${exp.distance_km.toFixed(1)} km`}
+                                </span>
+                              )}
+                            </div>
+                            {exp.tags.length > 0 && exp.tags[0] && (
+                              <div className="mt-2">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs font-normal border-border/50"
+                                >
+                                  <span className="mr-1">{getCategoryIcon(exp.tags[0])}</span>
+                                  {getCategoryLabel(exp.tags[0])}
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-base font-semibold text-primary whitespace-nowrap flex-shrink-0">
-                          {formatPrice(exp.price_cents)}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-secondary line-clamp-2 mb-2">
-                        {exp.description}
-                      </p>
-
-                      {/* Meta Info */}
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {formatDuration(exp.duration_minutes)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {exp.max_participants}
-                        </span>
-                        {exp.distance_km !== null && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {exp.distance_km < 1
-                              ? `${Math.round(exp.distance_km * 1000)}m`
-                              : `${exp.distance_km.toFixed(1)} km`}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Category Badge */}
-                      {exp.tags.length > 0 && exp.tags[0] && (
-                        <div className="mt-2">
-                          <Badge
-                            variant="outline"
-                            className="text-xs font-normal border-border/50"
-                          >
-                            <span className="mr-1">{getCategoryIcon(exp.tags[0])}</span>
-                            {getCategoryLabel(exp.tags[0])}
-                          </Badge>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

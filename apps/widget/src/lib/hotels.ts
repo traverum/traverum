@@ -90,6 +90,7 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
     `)
     .eq('hotel_config_id', hotel.id)
     .eq('is_active', true)
+    .order('sort_order', { ascending: true })
   
   if (distError || !distributionsData) {
     return null

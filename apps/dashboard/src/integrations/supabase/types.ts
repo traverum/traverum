@@ -100,6 +100,7 @@ export type Database = {
           hotel_id: string
           id: string
           is_active: boolean | null
+          sort_order: number
         }
         Insert: {
           commission_hotel?: number
@@ -111,6 +112,7 @@ export type Database = {
           hotel_id: string
           id?: string
           is_active?: boolean | null
+          sort_order?: number
         }
         Update: {
           commission_hotel?: number
@@ -122,6 +124,7 @@ export type Database = {
           hotel_id?: string
           id?: string
           is_active?: boolean | null
+          sort_order?: number
         }
         Relationships: [
           {
