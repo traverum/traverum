@@ -11,7 +11,8 @@ import { ChevronRight, Compass, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { getTodayLocal, isSessionUpcoming } from '@/lib/date-utils';
+import { getTodayLocal, isSessionUpcoming, parseLocalDate } from '@/lib/date-utils';
+import { useUpcomingRentals } from '@/hooks/useUpcomingRentals';
 
 export default function SupplierDashboard() {
   const navigate = useNavigate();
@@ -22,7 +23,8 @@ export default function SupplierDashboard() {
     hasStripe,
   } = useSupplierData();
   const { requests: pendingRequests, isLoading: requestsLoading } = usePendingRequests();
-  
+  const { rentals: upcomingRentals, isLoading: rentalsLoading } = useUpcomingRentals();
+
   // Check if Stripe onboarding is needed
   const needsStripeOnboarding = !hasStripe;
 
@@ -83,7 +85,7 @@ export default function SupplierDashboard() {
     const date = parseISO(dateStr);
     if (isToday(date)) return 'Today';
     if (isTomorrow(date)) return 'Tomorrow';
-    return format(date, 'dd.MM');
+    return format(date, 'd.M.yyyy');
   };
 
   const formatTime = (time: string) => {
@@ -101,6 +103,14 @@ export default function SupplierDashboard() {
       default:
         return 'bg-muted-foreground';
     }
+  };
+
+  const formatRentalRange = (startDate: string, endDate: string) => {
+    const start = parseLocalDate(startDate);
+    const end = parseLocalDate(endDate);
+    const sameYear = start.getFullYear() === end.getFullYear();
+    const startFmt = sameYear ? format(start, 'd.M') : format(start, 'd.M.yyyy');
+    return `${startFmt}–${format(end, 'd.M.yyyy')}`;
   };
 
   // Only show loading if query is actually enabled and loading
@@ -166,7 +176,7 @@ export default function SupplierDashboard() {
                   <Card
                     key={request.id}
                     className="border border-primary/30 bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[180px]"
-                    onClick={() => navigate('/supplier/bookings?tab=pending')}
+                    onClick={() => navigate('/supplier/bookings?tab=requests')}
                   >
                     <CardContent className="p-3 flex flex-col gap-0.5">
                       <h3 className="text-sm font-medium text-foreground line-clamp-2 leading-snug">
@@ -180,7 +190,7 @@ export default function SupplierDashboard() {
               {pendingRequests.length > 6 && (
                 <Card
                   className="border border-primary/30 bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[100px] flex items-center justify-center"
-                  onClick={() => navigate('/supplier/bookings?tab=pending')}
+                  onClick={() => navigate('/supplier/bookings?tab=requests')}
                 >
                   <CardContent className="p-3 text-center">
                     <ChevronRight className="h-5 w-5 text-muted-foreground mx-auto mb-0.5" />
@@ -212,10 +222,15 @@ export default function SupplierDashboard() {
           ) : (
             <div className="relative">
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-                {upcomingSessions.map((session: any) => (
+                {upcomingSessions.map((session: any) => {
+                  const isActive = isToday(parseISO(session.session_date));
+                  return (
                   <Card
                     key={session.id}
-                    className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[200px]"
+                    className={cn(
+                      'bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[200px] border',
+                      isActive ? 'border-success/30' : 'border-border'
+                    )}
                     onClick={() => navigate(`/supplier/bookings?session=${session.id}`)}
                   >
                     <CardContent className="p-3">
@@ -227,13 +242,60 @@ export default function SupplierDashboard() {
                       </p>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
               {/* Fade overlay on right */}
               <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
             </div>
           )}
         </div>
+
+        {/* Active & Upcoming Rentals — hidden when empty */}
+        {upcomingRentals.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-sm font-medium text-foreground">Active & Upcoming Rentals</h2>
+              <button
+                onClick={() => navigate('/supplier/sessions')}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                View calendar
+              </button>
+            </div>
+            <div className="relative">
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
+                {upcomingRentals.map((rental) => {
+                  const today = getTodayLocal();
+                  const isActive = rental.rentalStartDate <= today && rental.rentalEndDate >= today;
+                  return (
+                  <Card
+                    key={rental.reservationId}
+                    className={cn(
+                      'bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[200px] border',
+                      isActive ? 'border-success/30' : 'border-border'
+                    )}
+                    onClick={() => navigate('/supplier/bookings?tab=upcoming')}
+                  >
+                    <CardContent className="p-3">
+                      <h3 className="text-sm font-medium text-foreground truncate">
+                        {rental.experience.title}
+                      </h3>
+                      <p className="text-xs text-secondary mt-1">
+                        {formatRentalRange(rental.rentalStartDate, rental.rentalEndDate)}
+                      </p>
+                      <p className="text-xs text-secondary mt-0.5">
+                        {rental.participants} {rental.participants === 1 ? 'unit' : 'units'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  );
+                })}
+              </div>
+              <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+            </div>
+          </div>
+        )}
 
         {/* Experiences Section */}
         <div className="space-y-3">
