@@ -58,8 +58,12 @@ export default function StayDashboard() {
   const [showDeletePropertyConfirm, setShowDeletePropertyConfirm] = useState(false);
   const [deletePropertyConfirmText, setDeletePropertyConfirmText] = useState('');
   const hasInitialized = useRef(false);
-  const userHasEdited = useRef(false);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const displayNameRef = useRef(displayName);
+  const websiteUrlRef = useRef(websiteUrl);
+
+  displayNameRef.current = displayName;
+  websiteUrlRef.current = websiteUrl;
 
   // Set the active hotel config from route param
   useEffect(() => {
@@ -81,25 +85,26 @@ export default function StayDashboard() {
     }
   }, [hotelConfig]);
 
-  // Reset initialization when ID changes
+  // Reset initialization when ID changes; clear any pending save
   useEffect(() => {
     hasInitialized.current = false;
-    userHasEdited.current = false;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
   }, [id]);
 
-  // Auto-save details (slug auto-generated from display name).
-  // Uses a single debounce timer so both fields are always saved together
-  // with their current values, avoiding stale-value races.
-  useEffect(() => {
-    if (!hasInitialized.current || !id || !userHasEdited.current) return;
+  // Clear pending save on unmount
+  useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); }, []);
 
+  // Debounced save triggered directly from onChange handlers.
+  // Reads from refs so the timer always saves the latest values,
+  // independent of React's effect scheduling or re-renders.
+  const scheduleSave = () => {
+    if (!hasInitialized.current || !id) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     saveTimerRef.current = setTimeout(async () => {
       setSaveStatus('saving');
       try {
-        const name = displayName.trim() || 'Untitled Property';
+        const name = displayNameRef.current.trim() || 'Untitled Property';
         const baseSlug = name
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, '')
@@ -124,7 +129,7 @@ export default function StayDashboard() {
         const updateData: Record<string, any> = {
           display_name: name,
           slug,
-          website_url: websiteUrl.trim() || null,
+          website_url: websiteUrlRef.current.trim() || null,
           updated_at: new Date().toISOString(),
         };
 
@@ -150,11 +155,7 @@ export default function StayDashboard() {
         setSaveStatus('idle');
       }
     }, 1500);
-
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, [displayName, websiteUrl, id, activePartnerId, queryClient, toast]);
+  };
 
   // Status change (Active / Inactive)
   const handleStatusChange = async (value: 'active' | 'inactive') => {
@@ -348,7 +349,7 @@ export default function StayDashboard() {
                 <Input
                   id="display-name"
                   value={displayName}
-                  onChange={(e) => { userHasEdited.current = true; setDisplayName(e.target.value); }}
+                  onChange={(e) => { setDisplayName(e.target.value); scheduleSave(); }}
                   placeholder="e.g. Hotel, Resort, B&B"
                   className="h-8"
                 />
@@ -363,7 +364,7 @@ export default function StayDashboard() {
                   id="website-url"
                   type="url"
                   value={websiteUrl}
-                  onChange={(e) => { userHasEdited.current = true; setWebsiteUrl(e.target.value); }}
+                  onChange={(e) => { setWebsiteUrl(e.target.value); scheduleSave(); }}
                   placeholder="https://www.yourhotel.com"
                   className="h-8"
                 />
