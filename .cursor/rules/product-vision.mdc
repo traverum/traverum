@@ -1,0 +1,47 @@
+---
+description: Traverum product vision — the north star for every code decision
+alwaysApply: true
+---
+
+# Traverum Vision
+
+## What we're building
+
+White-label booking infrastructure that makes local experiences bookable through hotels. Three parties, one platform:
+
+- **Suppliers** (tour operators, activity providers) create experiences and manage bookings. They gain hotel guests as customers without marketing costs.
+- **Hotels** embed a branded widget on their website. They earn commission on every booking without operating experiences.
+- **Guests** browse and book local experiences through their hotel's website. It feels like a hotel service, not a third-party marketplace.
+
+## Core promise
+
+**For hotels:** Zero effort. Embed a widget, earn commission, enhance guest experience.
+**For suppliers:** Access hotel guests. No marketing. Get paid after delivery.
+**For guests:** Trusted local experiences. Book through the hotel. Simple and beautiful.
+
+## What must always be true
+
+1. **The guest books through the hotel, not through Traverum.** The widget is white-labeled. Traverum is invisible infrastructure.
+2. **Two booking paths.** Session-based (instant) for scheduled experiences. Request-based (approval) for custom times and rentals. Both end in payment.
+3. **Supplier is protected.** Guest contact info hidden until payment. Deadlines create urgency. Auto-complete ensures suppliers get paid.
+4. **Every flow ends in a commission split.** Supplier + hotel + platform = 100%. This is the business model.
+5. **Design = effortlessly warm, quietly precise.** Nordic structure (sisu) + Italian warmth (sprezzatura). Never cold, never ornate.
+
+## North star change detection
+
+**IMPORTANT:** When implementing changes that affect any of the following, STOP and tell the user:
+- Booking flow behavior (status transitions, timing windows, payment flow)
+- Commission split logic or revenue distribution
+- Privacy rules (when guest info is revealed)
+- Core entity relationships (partners, experiences, sessions, reservations, bookings)
+
+Say: *"This change affects a north star (booking flow / vision). Should I update `docs/purpose/booking-flow.md` or the relevant cursor rule?"*
+
+## Purpose docs contract
+
+Purpose docs live in `docs/purpose/`. Each has a **Purpose** section (human-owned) and **Key decisions** section.
+
+- **Before editing a page or system**, check for a matching purpose doc. Read it.
+- **Never modify the Purpose section** without explicit user approval.
+- **Key decisions** can be updated as implementation evolves, but flag changes that contradict the Purpose.
+- **After significant changes**, ask: *"Should I update the Key Decisions in [doc]?"*

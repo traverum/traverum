@@ -1,4 +1,29 @@
-# Global Date/Time and Timezone Rules
+---
+description: European display conventions (dates, times, prices, calendar) and timezone handling
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: false
+---
+
+# European Display & Timezone Rules
+
+Traverum is European-first. All UI formatting follows European conventions.
+
+## European display conventions
+
+| What | Format | Example | Helper |
+|------|--------|---------|--------|
+| Dates | `dd.MM.yyyy` | `21.02.2026` | `formatDate()` from `@/lib/utils` |
+| Short dates | `dd.MM` | `21.02` | `formatDate()` with short flag |
+| Times | 24-hour `HH:MM` | `14:30` | `formatTime()` from `@/lib/utils` |
+| Prices | Symbol after, comma decimal | `45 €` or `45,00 €` | `formatPrice()` — `Intl.NumberFormat('fi-FI')` |
+| Calendar weeks | Start **Monday** | Mon → Sun | Never Sunday start |
+| Email dates | Long format (en-GB) | `Monday, 20 January 2025` | `formatEmailDate()` |
+| Email prices | With decimals | `45,00 €` | `formatEmailPrice()` |
+
+**Never** use American formats: no `MM/dd/yyyy`, no `2:30 PM`, no `$45`, no Sunday-start weeks.
+**Never** use English day/month names in the UI (except calendar headers). Use numeric dates like `21.02.2026`.
+
+## Timezone safety
 
 All date/time logic must work correctly for users and suppliers in **any timezone worldwide**. Session and request dates (`session_date`, `requested_date`) are **calendar dates** (YYYY-MM-DD) with no timezone info. They represent "this calendar day" in the experience/supplier context.
 

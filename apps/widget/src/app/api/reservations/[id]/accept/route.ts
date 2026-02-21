@@ -290,8 +290,8 @@ function generateSuccessHtml(title: string, message: string) {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>${title}</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Finlandica:wght@300;500&display=swap');
-        body { font-family: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F4EFE6; }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap');
+        body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F4EFE6; }
         .card { background: #FEFCF9; padding: 48px; border-radius: 6px; text-align: center; max-width: 400px; border: 1px solid rgba(55, 53, 47, 0.09); }
         .icon { width: 64px; height: 64px; background: rgba(107, 142, 107, 0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
         .icon svg { width: 32px; height: 32px; color: #6B8E6B; }
@@ -323,8 +323,8 @@ function generateErrorHtml(title: string, message: string) {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>${title}</title>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Finlandica:wght@300;500&display=swap');
-        body { font-family: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F4EFE6; }
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap');
+        body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #F4EFE6; }
         .card { background: #FEFCF9; padding: 48px; border-radius: 6px; text-align: center; max-width: 400px; border: 1px solid rgba(55, 53, 47, 0.09); }
         .icon { width: 64px; height: 64px; background: rgba(184, 134, 107, 0.12); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
         .icon svg { width: 32px; height: 32px; color: #B8866B; }

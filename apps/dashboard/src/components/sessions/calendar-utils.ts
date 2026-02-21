@@ -1,3 +1,11 @@
+import { format, parseISO, isBefore, isAfter, differenceInCalendarDays } from 'date-fns';
+import type { CalendarRental } from '@/hooks/useCalendarRentals';
+
+/** Converts yyyy-MM-dd to dd.MM.yyyy */
+export function formatEuropeanDate(dateStr: string): string {
+  return format(parseISO(dateStr), 'dd.MM.yyyy');
+}
+
 // Shared calendar constants and utilities
 
 /** Business hours: 7am to 11pm */
@@ -57,69 +65,69 @@ interface ExperienceColorSet {
 }
 
 const EXPERIENCE_PALETTE: ExperienceColorSet[] = [
-  { // Sage
-    bgSolid: 'rgb(200, 220, 195)', bgGhost: 'rgba(200, 220, 195, 0.18)',
-    border: 'rgb(120, 150, 110)', textSolid: 'rgb(55, 75, 48)', textGhost: 'rgb(90, 115, 80)',
-    dot: 'rgb(120, 150, 110)',
-    darkBgSolid: 'rgba(120, 150, 110, 0.35)', darkBgGhost: 'rgba(120, 150, 110, 0.10)',
-    darkBorder: 'rgb(140, 170, 130)', darkTextSolid: 'rgb(190, 215, 180)', darkTextGhost: 'rgb(155, 180, 145)',
-    darkDot: 'rgb(140, 170, 130)',
+  { // Olive — the Traverum color
+    bgSolid: 'rgb(200, 212, 188)', bgGhost: 'rgba(200, 212, 188, 0.18)',
+    border: 'rgb(95, 110, 75)', textSolid: 'rgb(52, 62, 40)', textGhost: 'rgb(82, 95, 68)',
+    dot: 'rgb(95, 110, 75)',
+    darkBgSolid: 'rgba(95, 110, 75, 0.32)', darkBgGhost: 'rgba(95, 110, 75, 0.10)',
+    darkBorder: 'rgb(130, 148, 108)', darkTextSolid: 'rgb(192, 208, 178)', darkTextGhost: 'rgb(148, 165, 132)',
+    darkDot: 'rgb(130, 148, 108)',
   },
-  { // Slate Blue
-    bgSolid: 'rgb(190, 210, 225)', bgGhost: 'rgba(190, 210, 225, 0.18)',
-    border: 'rgb(100, 135, 165)', textSolid: 'rgb(45, 70, 95)', textGhost: 'rgb(80, 110, 140)',
-    dot: 'rgb(100, 135, 165)',
-    darkBgSolid: 'rgba(100, 135, 165, 0.35)', darkBgGhost: 'rgba(100, 135, 165, 0.10)',
-    darkBorder: 'rgb(125, 160, 190)', darkTextSolid: 'rgb(185, 210, 230)', darkTextGhost: 'rgb(145, 175, 200)',
-    darkDot: 'rgb(125, 160, 190)',
+  { // Terracotta — warm earth orange
+    bgSolid: 'rgb(225, 198, 182)', bgGhost: 'rgba(225, 198, 182, 0.18)',
+    border: 'rgb(175, 115, 82)', textSolid: 'rgb(102, 55, 32)', textGhost: 'rgb(148, 95, 68)',
+    dot: 'rgb(175, 115, 82)',
+    darkBgSolid: 'rgba(175, 115, 82, 0.32)', darkBgGhost: 'rgba(175, 115, 82, 0.10)',
+    darkBorder: 'rgb(198, 142, 108)', darkTextSolid: 'rgb(228, 198, 178)', darkTextGhost: 'rgb(190, 152, 128)',
+    darkDot: 'rgb(198, 142, 108)',
   },
-  { // Terracotta
-    bgSolid: 'rgb(225, 195, 180)', bgGhost: 'rgba(225, 195, 180, 0.18)',
-    border: 'rgb(180, 115, 85)', textSolid: 'rgb(105, 55, 35)', textGhost: 'rgb(155, 95, 70)',
-    dot: 'rgb(180, 115, 85)',
-    darkBgSolid: 'rgba(180, 115, 85, 0.35)', darkBgGhost: 'rgba(180, 115, 85, 0.10)',
-    darkBorder: 'rgb(200, 140, 110)', darkTextSolid: 'rgb(230, 195, 175)', darkTextGhost: 'rgb(195, 155, 135)',
-    darkDot: 'rgb(200, 140, 110)',
+  { // Gold — muted amber
+    bgSolid: 'rgb(228, 216, 178)', bgGhost: 'rgba(228, 216, 178, 0.18)',
+    border: 'rgb(178, 148, 68)', textSolid: 'rgb(98, 78, 28)', textGhost: 'rgb(138, 115, 52)',
+    dot: 'rgb(178, 148, 68)',
+    darkBgSolid: 'rgba(178, 148, 68, 0.32)', darkBgGhost: 'rgba(178, 148, 68, 0.10)',
+    darkBorder: 'rgb(198, 172, 95)', darkTextSolid: 'rgb(228, 215, 178)', darkTextGhost: 'rgb(188, 170, 125)',
+    darkDot: 'rgb(198, 172, 95)',
   },
-  { // Goldenrod
-    bgSolid: 'rgb(230, 215, 175)', bgGhost: 'rgba(230, 215, 175, 0.18)',
-    border: 'rgb(185, 155, 75)', textSolid: 'rgb(100, 80, 30)', textGhost: 'rgb(145, 120, 55)',
-    dot: 'rgb(185, 155, 75)',
-    darkBgSolid: 'rgba(185, 155, 75, 0.35)', darkBgGhost: 'rgba(185, 155, 75, 0.10)',
-    darkBorder: 'rgb(200, 175, 100)', darkTextSolid: 'rgb(230, 215, 180)', darkTextGhost: 'rgb(195, 175, 130)',
-    darkDot: 'rgb(200, 175, 100)',
+  { // Sage — soft green, lighter than olive
+    bgSolid: 'rgb(195, 215, 200)', bgGhost: 'rgba(195, 215, 200, 0.18)',
+    border: 'rgb(95, 135, 108)', textSolid: 'rgb(42, 68, 52)', textGhost: 'rgb(75, 112, 88)',
+    dot: 'rgb(95, 135, 108)',
+    darkBgSolid: 'rgba(95, 135, 108, 0.32)', darkBgGhost: 'rgba(95, 135, 108, 0.10)',
+    darkBorder: 'rgb(128, 165, 138)', darkTextSolid: 'rgb(188, 212, 195)', darkTextGhost: 'rgb(145, 172, 152)',
+    darkDot: 'rgb(128, 165, 138)',
   },
-  { // Plum
-    bgSolid: 'rgb(210, 195, 215)', bgGhost: 'rgba(210, 195, 215, 0.18)',
-    border: 'rgb(140, 110, 150)', textSolid: 'rgb(75, 50, 85)', textGhost: 'rgb(120, 90, 130)',
-    dot: 'rgb(140, 110, 150)',
-    darkBgSolid: 'rgba(140, 110, 150, 0.35)', darkBgGhost: 'rgba(140, 110, 150, 0.10)',
-    darkBorder: 'rgb(165, 135, 175)', darkTextSolid: 'rgb(210, 195, 220)', darkTextGhost: 'rgb(175, 155, 185)',
-    darkDot: 'rgb(165, 135, 175)',
+  { // Walnut — deep warm brown
+    bgSolid: 'rgb(218, 202, 188)', bgGhost: 'rgba(218, 202, 188, 0.18)',
+    border: 'rgb(118, 85, 58)', textSolid: 'rgb(72, 48, 30)', textGhost: 'rgb(108, 82, 58)',
+    dot: 'rgb(118, 85, 58)',
+    darkBgSolid: 'rgba(118, 85, 58, 0.32)', darkBgGhost: 'rgba(118, 85, 58, 0.10)',
+    darkBorder: 'rgb(152, 118, 88)', darkTextSolid: 'rgb(218, 202, 185)', darkTextGhost: 'rgb(175, 155, 135)',
+    darkDot: 'rgb(152, 118, 88)',
   },
-  { // Ocean
-    bgSolid: 'rgb(185, 215, 220)', bgGhost: 'rgba(185, 215, 220, 0.18)',
-    border: 'rgb(85, 140, 155)', textSolid: 'rgb(40, 80, 90)', textGhost: 'rgb(70, 120, 135)',
-    dot: 'rgb(85, 140, 155)',
-    darkBgSolid: 'rgba(85, 140, 155, 0.35)', darkBgGhost: 'rgba(85, 140, 155, 0.10)',
-    darkBorder: 'rgb(110, 165, 180)', darkTextSolid: 'rgb(185, 215, 225)', darkTextGhost: 'rgb(140, 180, 195)',
-    darkDot: 'rgb(110, 165, 180)',
+  { // Moss — earthy yellow-green
+    bgSolid: 'rgb(212, 215, 188)', bgGhost: 'rgba(212, 215, 188, 0.18)',
+    border: 'rgb(118, 122, 72)', textSolid: 'rgb(62, 65, 35)', textGhost: 'rgb(98, 102, 58)',
+    dot: 'rgb(118, 122, 72)',
+    darkBgSolid: 'rgba(118, 122, 72, 0.32)', darkBgGhost: 'rgba(118, 122, 72, 0.10)',
+    darkBorder: 'rgb(148, 155, 98)', darkTextSolid: 'rgb(208, 212, 185)', darkTextGhost: 'rgb(162, 168, 128)',
+    darkDot: 'rgb(148, 155, 98)',
   },
-  { // Clay
-    bgSolid: 'rgb(220, 200, 185)', bgGhost: 'rgba(220, 200, 185, 0.18)',
-    border: 'rgb(165, 120, 90)', textSolid: 'rgb(90, 60, 40)', textGhost: 'rgb(140, 100, 75)',
-    dot: 'rgb(165, 120, 90)',
-    darkBgSolid: 'rgba(165, 120, 90, 0.35)', darkBgGhost: 'rgba(165, 120, 90, 0.10)',
-    darkBorder: 'rgb(185, 145, 115)', darkTextSolid: 'rgb(225, 205, 190)', darkTextGhost: 'rgb(185, 160, 140)',
-    darkDot: 'rgb(185, 145, 115)',
+  { // Sienna — warm reddish-brown
+    bgSolid: 'rgb(222, 198, 192)', bgGhost: 'rgba(222, 198, 192, 0.18)',
+    border: 'rgb(158, 105, 88)', textSolid: 'rgb(92, 48, 38)', textGhost: 'rgb(138, 88, 72)',
+    dot: 'rgb(158, 105, 88)',
+    darkBgSolid: 'rgba(158, 105, 88, 0.32)', darkBgGhost: 'rgba(158, 105, 88, 0.10)',
+    darkBorder: 'rgb(182, 132, 112)', darkTextSolid: 'rgb(225, 198, 188)', darkTextGhost: 'rgb(182, 148, 135)',
+    darkDot: 'rgb(182, 132, 112)',
   },
-  { // Dusty Rose
-    bgSolid: 'rgb(220, 195, 200)', bgGhost: 'rgba(220, 195, 200, 0.18)',
-    border: 'rgb(165, 110, 120)', textSolid: 'rgb(95, 50, 60)', textGhost: 'rgb(140, 90, 100)',
-    dot: 'rgb(165, 110, 120)',
-    darkBgSolid: 'rgba(165, 110, 120, 0.35)', darkBgGhost: 'rgba(165, 110, 120, 0.10)',
-    darkBorder: 'rgb(185, 135, 145)', darkTextSolid: 'rgb(225, 200, 205)', darkTextGhost: 'rgb(185, 150, 160)',
-    darkDot: 'rgb(185, 135, 145)',
+  { // Stone — warm neutral gray
+    bgSolid: 'rgb(215, 210, 202)', bgGhost: 'rgba(215, 210, 202, 0.18)',
+    border: 'rgb(128, 118, 105)', textSolid: 'rgb(68, 62, 52)', textGhost: 'rgb(108, 100, 88)',
+    dot: 'rgb(128, 118, 105)',
+    darkBgSolid: 'rgba(128, 118, 105, 0.32)', darkBgGhost: 'rgba(128, 118, 105, 0.10)',
+    darkBorder: 'rgb(158, 148, 132)', darkTextSolid: 'rgb(212, 206, 198)', darkTextGhost: 'rgb(170, 162, 148)',
+    darkDot: 'rgb(158, 148, 132)',
   },
 ];
 
@@ -146,4 +154,119 @@ export function getExperienceColor(experienceId: string): ExperienceColorSet {
 /** Get just the dot color for legends/dropdowns */
 export function getExperienceDotColor(experienceId: string): string {
   return getExperienceColor(experienceId).dot;
+}
+
+// ─── Multi-Day Rental Bar Layout ────────────────────────────────────────────
+// Pure functions for splitting rentals into per-week segments and packing
+// them into rows using a greedy first-fit algorithm.
+
+export interface BarSegment {
+  rentalId: string;
+  rental: CalendarRental;
+  startCol: number;  // 1-based for CSS grid
+  span: number;      // number of columns to span
+  row: number;       // assigned by packSegmentsIntoRows
+  isStart: boolean;  // rental truly starts in this week
+  isEnd: boolean;    // rental truly ends in this week
+}
+
+/**
+ * Convert one rental into a bar segment for a given week.
+ * Returns null if the rental doesn't overlap this week.
+ * rentalEndDate is treated as exclusive (day after last active day).
+ */
+export function splitRentalIntoSegment(
+  rental: CalendarRental,
+  weekDays: Date[],
+): Omit<BarSegment, 'row'> | null {
+  const weekStartStr = format(weekDays[0], 'yyyy-MM-dd');
+  const weekEndStr = format(weekDays[6], 'yyyy-MM-dd');
+
+  if (rental.rentalStartDate > weekEndStr || rental.rentalEndDate <= weekStartStr) {
+    return null;
+  }
+
+  const rentalStart = parseISO(rental.rentalStartDate);
+  const rentalEnd = parseISO(rental.rentalEndDate);
+
+  // Last active day (endDate is exclusive)
+  const lastActiveDate = new Date(rentalEnd);
+  lastActiveDate.setDate(lastActiveDate.getDate() - 1);
+
+  const isStart = !isBefore(rentalStart, weekDays[0]);
+  const isEnd = !isAfter(lastActiveDate, weekDays[6]);
+
+  const startCol = isStart
+    ? weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === rental.rentalStartDate) + 1
+    : 1;
+
+  const lastActiveDateStr = format(lastActiveDate, 'yyyy-MM-dd');
+  const endColExclusive = isEnd
+    ? weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === lastActiveDateStr) + 2
+    : 8;
+
+  const span = endColExclusive - startCol;
+  if (span <= 0) return null;
+
+  return {
+    rentalId: rental.bookingId,
+    rental,
+    startCol,
+    span,
+    isStart,
+    isEnd,
+  };
+}
+
+/**
+ * Greedy first-fit row packing. Sort by startCol ASC, span DESC (wider first).
+ * For each segment, find lowest row where all spanned columns are free.
+ */
+export function packSegmentsIntoRows(
+  segments: Omit<BarSegment, 'row'>[],
+): BarSegment[] {
+  const sorted = [...segments].sort(
+    (a, b) => a.startCol - b.startCol || b.span - a.span,
+  );
+
+  const occupied: Set<number>[] = Array.from({ length: 8 }, () => new Set());
+  const packed: BarSegment[] = [];
+
+  for (const seg of sorted) {
+    let row = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let free = true;
+      for (let c = seg.startCol; c < seg.startCol + seg.span; c++) {
+        if (occupied[c]?.has(row)) { free = false; break; }
+      }
+      if (free) break;
+      row++;
+    }
+
+    for (let c = seg.startCol; c < seg.startCol + seg.span; c++) {
+      occupied[c]?.add(row);
+    }
+    packed.push({ ...seg, row });
+  }
+
+  return packed;
+}
+
+/** Number of visual rows needed after packing. */
+export function getPackedRowCount(segments: BarSegment[]): number {
+  if (segments.length === 0) return 0;
+  return Math.max(...segments.map(s => s.row)) + 1;
+}
+
+/** Compute day-of-rental info: "Day X of Y" */
+export function getRentalDayContext(
+  rental: CalendarRental,
+  date: Date,
+): { dayNumber: number; totalDays: number } {
+  const start = parseISO(rental.rentalStartDate);
+  const end = parseISO(rental.rentalEndDate);
+  const totalDays = differenceInCalendarDays(end, start);
+  const dayNumber = differenceInCalendarDays(date, start) + 1;
+  return { dayNumber, totalDays };
 }

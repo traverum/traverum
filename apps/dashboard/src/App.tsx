@@ -21,7 +21,7 @@ import BookingManagement from "./pages/supplier/BookingManagement";
 // SessionDetail redirect - old route now points to BookingManagement
 function SessionDetailRedirect() {
   const { sessionId } = useParams();
-  return <Navigate to={`/supplier/bookings?tab=upcoming&session=${sessionId}`} replace />;
+  return <Navigate to={`/supplier/bookings?tab=upcoming`} replace />;
 }
 import StripeConnect from "./pages/supplier/StripeConnect";
 import ExperienceSelection from "./pages/hotel/ExperienceSelection";

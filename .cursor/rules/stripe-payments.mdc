@@ -1,0 +1,61 @@
+---
+description: Stripe integration patterns for payments, refunds, and transfers
+globs: "**/*stripe*, **/webhooks/**, **/checkout/**"
+alwaysApply: false
+---
+
+# Stripe Integration
+
+All Stripe logic in `apps/widget/src/lib/stripe.ts`. Webhook at `apps/widget/src/app/api/webhooks/stripe/route.ts`.
+
+## Payment flow
+
+Both booking paths (session-based and request-based) use the same payment mechanism:
+
+1. Reservation created with status `approved` → `createPaymentLink()` generates a Stripe Payment Link
+2. Guest clicks the link (redirected immediately for session bookings, or via email for request-based)
+3. Guest pays → webhook `checkout.session.completed` → creates booking record
+
+**Why Payment Links:** Request-based bookings need a stable URL to send via email (supplier accepts → guest gets "Pay Now" link hours later). Payment Links provide this. We use the same approach for session bookings to keep one consistent payment path.
+
+**Per-booking pricing:** Each booking creates a new Stripe Price (dynamic pricing from `calculatePrice()`).
+**Metadata:** `reservationId` is included in both payment link metadata AND `payment_intent_data.metadata` for webhook extraction.
+
+## Webhook handling
+
+Verify signature: `stripe.webhooks.constructEvent(payload, signature, STRIPE_WEBHOOK_SECRET)`.
+Extract `reservationId` from `session.metadata` or `payment_intent.metadata`.
+On payment success: create booking, update reservation status, decrement session spots, send confirmation emails.
+
+## Commission & transfers
+
+- Commission split calculated from `distributions` table via `calculateCommissionSplit()` in `@/lib/commission`
+- Booking stores split: `supplier_amount_cents`, `hotel_amount_cents`, `platform_amount_cents`
+- Supplier payout: `createTransfer()` to connected Stripe account after completion
+- Transfer uses `source_transaction` (charge ID) in test mode
+
+## Stripe Connect
+
+- Suppliers connect via Express accounts
+- Onboarding via `create-connect-account` Supabase Edge Function
+- Check `partners.stripe_onboarding_complete` before accepting bookings
+- `partners.stripe_account_id` stores connected account ID
+
+## Refunds & cancellations
+
+- `createRefund(chargeId)` — full refund via charge ID
+- Guest cancellation per experience policy (flexible/moderate/strict/non-refundable)
+- Supplier cancellation: always full refund
+
+## Cron jobs (settlement)
+
+- `completion-check`: sends supplier email 1 day after experience asking to confirm completion
+- `auto-complete`: marks bookings completed + triggers payout 7 days after experience
+- `expire-unpaid`: expires reservations past `payment_deadline`
+- `expire-reservations`: expires requests past `response_deadline`
+
+## Reference
+
+- `docs/technical/systems/stripe/STRIPE_SETUP.md` — account setup and configuration
+- `docs/purpose/booking-flow.md` — purpose + key decisions
+- `docs/technical/booking-flow-specs.md` — payment phase details and edge cases

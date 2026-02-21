@@ -4,8 +4,7 @@ import { format } from 'date-fns';
 import { parseLocalDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { X, Users, Euro, Globe, ExternalLink, Trash2, Copy } from 'lucide-react';
+import { X, Euro, Globe, Trash2, Copy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPrice, getUnitLabel, getDefaultUnitPrice } from '@/lib/pricing';
 import { getLanguageName } from '@/components/LanguageSelector';
@@ -52,6 +51,7 @@ export function SessionQuickEditPopup({
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [pendingReservationCount, setPendingReservationCount] = useState(0);
 
   const isBooked = session?.session_status === 'booked';
   const isCancelled = session?.session_status === 'cancelled';
@@ -163,9 +163,29 @@ export function SessionQuickEditPopup({
     }
   };
 
+  const checkPendingReservations = async () => {
+    if (!session) return;
+    const { count } = await supabase
+      .from('reservations')
+      .select('id', { count: 'exact', head: true })
+      .eq('session_id', session.id)
+      .in('reservation_status', ['pending', 'approved']);
+    setPendingReservationCount(count || 0);
+    setShowDeleteConfirm(true);
+  };
+
   const handleDelete = async () => {
     setSaving(true);
     try {
+      if (pendingReservationCount > 0) {
+        const { error: declineErr } = await supabase
+          .from('reservations')
+          .update({ reservation_status: 'declined', updated_at: new Date().toISOString() })
+          .eq('session_id', session.id)
+          .in('reservation_status', ['pending', 'approved']);
+        if (declineErr) throw declineErr;
+      }
+
       const { error } = await supabase
         .from('experience_sessions')
         .delete()
@@ -180,19 +200,6 @@ export function SessionQuickEditPopup({
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
       setSaving(false);
-    }
-  };
-
-  const getStatusBadge = () => {
-    switch (session.session_status) {
-      case 'available':
-        return <Badge className="bg-success/10 text-success hover:bg-success/20 text-[10px] h-5">Available</Badge>;
-      case 'booked':
-        return <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-[10px] h-5">Booked</Badge>;
-      case 'cancelled':
-        return <Badge variant="secondary" className="text-[10px] h-5">Cancelled</Badge>;
-      default:
-        return null;
     }
   };
 
@@ -215,12 +222,9 @@ export function SessionQuickEditPopup({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-medium text-sm truncate">
-              {session.experience?.title || 'Session'}
-            </span>
-            {getStatusBadge()}
-          </div>
+          <span className="font-medium text-sm truncate min-w-0">
+            {session.experience?.title || 'Session'}
+          </span>
           <button
             type="button"
             onClick={onClose}
@@ -230,91 +234,85 @@ export function SessionQuickEditPopup({
           </button>
         </div>
 
-        <div className="p-3 space-y-3">
+        <div className="p-3 space-y-2.5">
           {/* Date & Time */}
           <div className="text-sm">
-            <span className="font-medium">{format(parseLocalDate(session.session_date), 'EEE, d MMM yyyy')}</span>
+            <span className="font-medium">{format(parseLocalDate(session.session_date), 'd.M.yyyy')}</span>
             <span className="text-muted-foreground ml-2">{session.start_time.slice(0, 5)}</span>
           </div>
 
-          {/* Language */}
+          {/* Language — only if set */}
           {(session as any).session_language && (
-            <div className="flex items-center gap-2 text-sm">
-              <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Globe className="w-3.5 h-3.5" />
               <span>{getLanguageName((session as any).session_language)}</span>
             </div>
           )}
 
-          {/* Booking Status */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <Users className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="font-medium">
-                {isBooked ? 'Booked' : isCancelled ? 'Cancelled' : 'Available'}
-              </span>
-            </div>
+          {/* Price */}
+          <div className="flex items-center gap-2 text-sm">
+            <Euro className="w-3.5 h-3.5 text-muted-foreground" />
+            {editingField === 'price' ? (
+              <div className="flex items-center gap-1.5">
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editPrice}
+                  onChange={(e) => setEditPrice(e.target.value)}
+                  placeholder={(experiencePrice / 100).toFixed(0)}
+                  className={cn(inputClass, "w-16 text-xs")}
+                  autoFocus
+                />
+                <span className="text-xs text-muted-foreground">{unitLabel}</span>
+                <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={handleSavePrice} disabled={saving}>
+                  Save
+                </Button>
+                <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setEditingField(null)}>
+                  ×
+                </Button>
+              </div>
+            ) : (
+              <>
+                <span>
+                  <span className="font-medium">{formatPrice(currentPrice || 0)}</span>
+                  <span className="text-muted-foreground">{unitLabel}</span>
+                </span>
+                {session.price_override_cents !== null && (
+                  <span className="text-[10px] text-muted-foreground">(custom)</span>
+                )}
+                {!isCancelled && (
+                  <button
+                    onClick={() => {
+                      setEditPrice(session.price_override_cents !== null ? (session.price_override_cents / 100).toString() : '');
+                      setEditingField('price');
+                    }}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Edit
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
-          {/* Price */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm">
-              <Euro className="w-3.5 h-3.5 text-muted-foreground" />
-              {editingField === 'price' ? (
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={editPrice}
-                    onChange={(e) => setEditPrice(e.target.value)}
-                    placeholder={(experiencePrice / 100).toFixed(0)}
-                    className={cn(inputClass, "w-16 text-xs")}
-                    autoFocus
-                  />
-                  <span className="text-xs text-muted-foreground">{unitLabel}</span>
-                  <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={handleSavePrice} disabled={saving}>
-                    Save
-                  </Button>
-                  <Button size="sm" variant="ghost" className="h-6 px-1.5 text-xs" onClick={() => setEditingField(null)}>
-                    ×
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <span>
-                    <span className="font-medium">{formatPrice(currentPrice || 0)}</span>
-                    <span className="text-muted-foreground">{unitLabel}</span>
-                  </span>
-                  {session.price_override_cents !== null && (
-                    <span className="text-[10px] text-muted-foreground">(custom)</span>
-                  )}
-                  {!isCancelled && (
-                    <button
-                      onClick={() => {
-                        setEditPrice(session.price_override_cents !== null ? (session.price_override_cents / 100).toString() : '');
-                        setEditingField('price');
-                      }}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Edit
-                    </button>
-                  )}
-                </>
-              )}
+          {/* Status context — only when meaningful */}
+          {isBooked && (
+            <button
+              onClick={() => navigate(`/supplier/bookings?tab=upcoming`)}
+              className="text-xs text-primary hover:underline text-left"
+            >
+              View booking details
+            </button>
+          )}
+          {isCancelled && (
+            <div className="text-xs text-muted-foreground italic">
+              This session has been cancelled
             </div>
-          </div>
+          )}
 
           {/* Actions */}
-          <div className="flex items-center gap-2 pt-1 border-t border-border">
-            <Button
-              size="sm"
-              variant="outline"
-              className="flex-1 h-7 text-xs"
-              onClick={() => navigate(`/supplier/bookings?session=${session.id}`)}
-            >
-              <ExternalLink className="w-3 h-3 mr-1" />
-              Full Details
-            </Button>
+          <div className="flex items-center gap-2 pt-1.5 border-t border-border">
             {onDuplicate && (
               <Button
                 size="sm"
@@ -326,6 +324,7 @@ export function SessionQuickEditPopup({
                 <Copy className="w-3 h-3" />
               </Button>
             )}
+            <div className="flex-1" />
             {!isCancelled && (
               isBooked ? (
                 <Button
@@ -341,7 +340,7 @@ export function SessionQuickEditPopup({
                   size="sm"
                   variant="outline"
                   className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                  onClick={() => setShowDeleteConfirm(true)}
+                  onClick={checkPendingReservations}
                 >
                   <Trash2 className="w-3 h-3" />
                 </Button>
@@ -370,13 +369,16 @@ export function SessionQuickEditPopup({
       </AlertDialog>
 
       {/* Delete Confirmation */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => { setShowDeleteConfirm(open); if (!open) setDeleteConfirmText(''); }}>
+      <AlertDialog open={showDeleteConfirm} onOpenChange={(open) => { setShowDeleteConfirm(open); if (!open) { setDeleteConfirmText(''); setPendingReservationCount(0); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete session?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove this session. This action cannot be undone.
-              Type <strong>delete</strong> below to confirm.
+              {pendingReservationCount > 0
+                ? `This session has ${pendingReservationCount} pending ${pendingReservationCount === 1 ? 'request' : 'requests'}. Deleting will decline ${pendingReservationCount === 1 ? 'it' : 'them'} and remove the session permanently.`
+                : 'This will permanently remove this session. This action cannot be undone.'
+              }
+              {' '}Type <strong>delete</strong> below to confirm.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Input

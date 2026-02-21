@@ -4,12 +4,19 @@ import { Button } from '@/components/ui/button';
 import { CalendarDay } from './CalendarDay';
 import { DayTimeView } from './DayTimeView';
 import { WeekTimeView } from './WeekTimeView';
+import { RentalWeekBars } from './RentalWeekBars';
+import {
+  splitRentalIntoSegment,
+  packSegmentsIntoRows,
+  getPackedRowCount,
+} from './calendar-utils';
 import { SessionCreatePopup } from './SessionCreatePopup';
 import { SessionQuickEditPopup } from './SessionQuickEditPopup';
 import { RequestQuickActionPopup } from './RequestQuickActionPopup';
 import type { Experience } from '@/hooks/useExperienceSessions';
 import type { SessionWithExperience } from '@/hooks/useAllSessions';
 import type { CalendarRequest } from '@/hooks/useCalendarRequests';
+import type { CalendarRental } from '@/hooks/useCalendarRentals';
 import { AvailabilityRule } from '@/lib/availability';
 import { 
   format, 
@@ -55,6 +62,7 @@ interface SessionsCalendarProps {
   sessions: any[];
   sessionsByDate: Record<string, any[]>;
   requestsByDate?: Record<string, CalendarRequest[]>;
+  rentals?: CalendarRental[];
   experience: Experience | null;
   experiences?: Array<{ id: string; title: string; duration_minutes: number; max_participants?: number; price_cents?: number }>;
   currentMonth: Date;
@@ -125,12 +133,12 @@ function RequestUrgencyBanner({
       className={`
         w-full flex items-center gap-2 px-3 py-2 rounded-sm mb-3 text-left transition-colors
         ${isUrgent
-          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-900/50'
-          : 'bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/30'
+          ? 'bg-warning/15 dark:bg-warning/20 text-foreground hover:bg-warning/25 dark:hover:bg-warning/30'
+          : 'bg-warning/8 dark:bg-warning/10 text-foreground hover:bg-warning/15 dark:hover:bg-warning/20'
         }
       `}
     >
-      <AlertCircle className={`w-4 h-4 flex-shrink-0 ${isUrgent ? 'text-amber-600 dark:text-amber-400' : 'text-amber-500 dark:text-amber-400'}`} />
+      <AlertCircle className={`w-4 h-4 flex-shrink-0 ${isUrgent ? 'text-warning dark:text-warning' : 'text-warning/70 dark:text-warning/80'}`} />
       <div className="flex-1 min-w-0">
         <span className="text-sm">
           {allRequests.length} {allRequests.length === 1 ? 'request' : 'requests'} awaiting your response
@@ -150,6 +158,7 @@ function RequestUrgencyBanner({
 export function SessionsCalendar({
   sessionsByDate,
   requestsByDate = {},
+  rentals = [],
   currentMonth,
   onMonthChange,
   onCreateSession,
@@ -422,29 +431,57 @@ export function SessionsCalendar({
                 ))}
               </div>
 
-              {/* Calendar Grid */}
-              <div className="grid grid-cols-7 gap-px bg-border/50 rounded-sm overflow-hidden">
-                {calendarDays.map((day) => {
-                  const dateKey = format(day, 'yyyy-MM-dd');
-                  const daySessions = getDaySessions(day) || [];
+              {/* Calendar Grid — per-week rows with rental bars overlaid */}
+              <div className="bg-border/50 rounded-sm overflow-hidden">
+                {Array.from({ length: Math.ceil(calendarDays.length / 7) }, (_, weekIdx) => {
+                  const weekDays = calendarDays.slice(weekIdx * 7, weekIdx * 7 + 7);
 
-                  const dayRequests = getDayRequests(day);
+                  // Compute packed bar segments for this week
+                  const weekSegments = rentals.length > 0
+                    ? packSegmentsIntoRows(
+                        rentals
+                          .map(r => splitRentalIntoSegment(r, weekDays))
+                          .filter((s): s is Exclude<typeof s, null> => s !== null)
+                      )
+                    : [];
+                  const barRowCount = getPackedRowCount(weekSegments);
 
                   return (
-                    <CalendarDay
-                      key={dateKey}
-                      date={day}
-                      sessions={daySessions}
-                      requests={dayRequests}
-                      totalSessionCount={daySessions.length}
-                      currentMonth={currentMonth}
-                      onAddSession={handleMonthAddSession}
-                      onDayClick={handleDayClick}
-                      showExperienceTitle={showExperienceTitle}
-                      availabilityRules={availabilityRules || []}
-                      onSessionClick={handleSessionClickWithPosition}
-                      onRequestBadgeClick={handleRequestBadgeClick}
-                    />
+                    <div key={weekIdx} className="relative">
+                      <div className="grid grid-cols-7 gap-px">
+                        {weekDays.map((day) => {
+                          const dateKey = format(day, 'yyyy-MM-dd');
+                          const daySessions = getDaySessions(day) || [];
+                          const dayRequests = getDayRequests(day);
+
+                          return (
+                            <CalendarDay
+                              key={dateKey}
+                              date={day}
+                              sessions={daySessions}
+                              requests={dayRequests}
+                              totalSessionCount={daySessions.length}
+                              currentMonth={currentMonth}
+                              onAddSession={handleMonthAddSession}
+                              onDayClick={handleDayClick}
+                              showExperienceTitle={showExperienceTitle}
+                              availabilityRules={availabilityRules || []}
+                              onSessionClick={handleSessionClickWithPosition}
+                              onRequestBadgeClick={handleRequestBadgeClick}
+                              rentalBarSlots={barRowCount}
+                            />
+                          );
+                        })}
+                      </div>
+                      {weekSegments.length > 0 && (
+                        <div
+                          className="absolute left-0 right-0 z-10 pointer-events-none"
+                          style={{ top: 30 }}
+                        >
+                          <RentalWeekBars segments={weekSegments} />
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -456,6 +493,7 @@ export function SessionsCalendar({
               currentDate={currentMonth}
               sessionsByDate={sessionsByDate}
               requestsByDate={requestsByDate}
+              rentals={rentals}
               experiences={experiences}
               onTimeSlotClick={handleTimeSlotClick}
               onSessionClick={handleSessionClickWithPosition}
@@ -470,6 +508,7 @@ export function SessionsCalendar({
               date={selectedDay}
               sessions={getDaySessions(selectedDay)}
               requests={getDayRequests(selectedDay)}
+              rentals={rentals}
               experiences={experiences}
               onTimeSlotClick={handleTimeSlotClick}
               onSessionClick={handleSessionClickWithPosition}

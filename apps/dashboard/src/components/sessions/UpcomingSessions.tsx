@@ -29,7 +29,7 @@ export function UpcomingSessions({
   const getBookingStatus = (session: Session) => {
     if (session.session_status === 'booked') return { text: 'Booked', variant: 'booked' as const };
     if (session.session_status === 'cancelled') return { text: 'Cancelled', variant: 'cancelled' as const };
-    return { text: 'Available', variant: 'available' as const };
+    return null;
   };
 
   if (isLoading) {
@@ -94,20 +94,20 @@ export function UpcomingSessions({
                       {formatTime(session.start_time)}
                     </span>
                     
-                    {/* Booking status */}
-                    <div className="flex items-center justify-between pt-1">
-                      <span 
-                        className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                          status.variant === 'cancelled'
-                            ? 'bg-muted text-muted-foreground'
-                            : status.variant === 'booked'
-                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        }`}
-                      >
-                        {status.text}
-                      </span>
-                    </div>
+                    {/* Only show status when meaningful */}
+                    {status && (
+                      <div className="flex items-center justify-between pt-1">
+                        <span 
+                          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                            status.variant === 'cancelled'
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary'
+                          }`}
+                        >
+                          {status.text}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

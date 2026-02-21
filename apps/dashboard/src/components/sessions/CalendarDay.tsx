@@ -29,6 +29,8 @@ interface CalendarDayProps {
   availabilityRules?: AvailabilityRule[];
   onSessionClick?: (sessionId: string, position: { x: number; y: number }) => void;
   onRequestBadgeClick?: (dateKey: string, position: { x: number; y: number }) => void;
+  /** Extra top padding (px) to reserve space for rental spanning bars overlaid on top */
+  rentalBarSlots?: number;
 }
 
 export function CalendarDay({ 
@@ -43,6 +45,7 @@ export function CalendarDay({
   availabilityRules = [],
   onSessionClick,
   onRequestBadgeClick,
+  rentalBarSlots = 0,
 }: CalendarDayProps) {
   const displayedSessions = sessions.slice(0, 3);
   const actualTotal = totalSessionCount ?? sessions.length;
@@ -71,7 +74,7 @@ export function CalendarDay({
     <div
       onClick={handleDayClick}
       className={cn(
-        'group bg-background min-h-[110px] p-2 relative cursor-pointer hover:bg-accent/30 transition-colors',
+        'group bg-background min-h-[110px] px-1 pt-1 pb-1.5 relative cursor-pointer hover:bg-accent/30 transition-colors',
         today && 'bg-primary/[0.03]',
         pastDate && 'opacity-50',
         !inCurrentMonth && 'opacity-30',
@@ -79,8 +82,8 @@ export function CalendarDay({
       )}
     >
       {/* Date Number + Add button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between px-0.5">
+        <div className="flex items-center gap-1">
           <div
             className={cn(
               'text-[13px] font-normal tabular-nums',
@@ -90,13 +93,11 @@ export function CalendarDay({
           >
             {date.getDate()}
           </div>
-          {/* Unavailable indicator */}
           {!isAvailable && !pastDate && inCurrentMonth && (
             <span className="text-[10px] text-muted-foreground/60 font-normal">Closed</span>
           )}
         </div>
 
-        {/* "+" button — appears on hover, lets suppliers create from month view */}
         {!pastDate && inCurrentMonth && (
           <button
             type="button"
@@ -109,8 +110,13 @@ export function CalendarDay({
         )}
       </div>
 
+      {/* Spacer for rental spanning bars (overlaid absolutely by RentalWeekBars) */}
+      {rentalBarSlots > 0 && (
+        <div style={{ height: rentalBarSlots * 24 + 6 }} />
+      )}
+
       {/* Sessions and requests for this day */}
-      <div className="space-y-0.5 mt-1.5">
+      <div className="space-y-0.5 mt-1">
         {displayedSessions.map((session) => (
           <SessionPill
             key={session.id}
@@ -131,9 +137,9 @@ export function CalendarDay({
               }
             }}
             className={cn(
-              'w-full text-left px-1.5 py-0.5 rounded-sm text-[11px] font-normal truncate',
-              'bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors',
-              'dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40'
+              'w-full text-left px-1 py-0.5 rounded-sm text-[11px] font-normal truncate',
+              'bg-warning/10 text-warning hover:bg-warning/20 transition-colors',
+              'dark:bg-warning/15 dark:text-warning dark:hover:bg-warning/25'
             )}
           >
             {requests.length} {requests.length === 1 ? 'request' : 'requests'}

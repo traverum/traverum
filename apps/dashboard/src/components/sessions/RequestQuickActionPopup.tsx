@@ -22,7 +22,7 @@ const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traveru
 
 /** Format YYYY-MM-DD to "Mon 20 Feb" */
 function fmtDate(dateStr: string): string {
-  return format(new Date(dateStr + 'T12:00:00'), 'EEE d MMM');
+  return format(new Date(dateStr + 'T12:00:00'), 'd.M.yyyy');
 }
 
 interface RequestQuickActionPopupProps {
@@ -211,7 +211,7 @@ function RequestCard({
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="flex-1 h-8 text-xs bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleAccept}
               disabled={isAccepting || !canAccept}
             >
@@ -327,7 +327,7 @@ export function RequestQuickActionPopup({
   if (!isOpen || requests.length === 0) return null;
 
   const formattedDate = dateKey
-    ? format(new Date(dateKey + 'T12:00:00'), 'EEEE, d MMM yyyy')
+    ? format(new Date(dateKey + 'T12:00:00'), 'd.M.yyyy')
     : '';
 
   return (
@@ -346,12 +346,12 @@ export function RequestQuickActionPopup({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-amber-50 dark:bg-amber-900/20 rounded-t-lg">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-warning/8 dark:bg-warning/10 rounded-t-lg">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="font-medium text-sm text-amber-800 dark:text-amber-200">
+            <span className="font-medium text-sm text-foreground">
               {requests.length} {requests.length === 1 ? 'request' : 'requests'}
             </span>
-            <span className="text-xs text-amber-600 dark:text-amber-400">
+            <span className="text-xs text-muted-foreground">
               {formattedDate}
             </span>
           </div>

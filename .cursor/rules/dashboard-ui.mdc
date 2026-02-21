@@ -1,0 +1,33 @@
+---
+description: Dashboard UI patterns — Notion-style warm minimalism with shadcn/ui
+globs: "apps/dashboard/**/*.tsx, apps/dashboard/**/*.ts"
+alwaysApply: false
+---
+
+# Dashboard UI Rules
+
+## Core principles
+
+1. **Unified surface** — everything on same warm white background. Borders create distinction, **never** shadows or background color variation.
+2. **Icons only** — Lucide (`lucide-react`). **Never** emojis.
+3. **Visual over text** — badges, status dots, and color communicate state. Text only when essential.
+
+## Anti-patterns — never do these
+
+- Shadows for card distinction (use `border border-border` instead)
+- Different background colors to separate areas (unified surface)
+- Equal button padding (use 1.5:1 horizontal:vertical ratio)
+- Always-visible helper text (use hover tooltips)
+- Text labels where a visual indicator suffices
+- Slow transitions on buttons/hovers (use `transition-ui` for 20ms feedback)
+
+## Quick reference
+
+- **Spacing:** 8px grid — `gap-2` (8px), `gap-3` (12px), `gap-4` (16px). No arbitrary values.
+- **Border radius:** `rounded-sm` buttons → `rounded` cards → `rounded-md` floating → `rounded-lg` modals → `rounded-full` pills.
+- **Status colors:** Use semantic tokens (`bg-success/10 text-success`, `bg-warning/10 text-warning`, etc.), not raw hex values.
+
+## Design docs — read these for specifics
+
+- `docs/design/dashboard-design-principles.md` — full component spec (sizes, padding, colors, all Tailwind classes)
+- `docs/design/brand-essence.md` — color palette, typography weights, brand identity

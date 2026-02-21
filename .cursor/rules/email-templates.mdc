@@ -1,0 +1,39 @@
+---
+description: Email template patterns, notification conventions, and Resend integration
+globs: "**/email/**, **/templates**"
+alwaysApply: false
+---
+
+# Email Templates
+
+## Service
+
+Resend. From: `Traverum <bookings@veyond.eu>`. Sending via `sendEmail()` in `apps/widget/src/lib/email/index.ts`.
+
+## Template structure
+
+All templates use `baseTemplate(content, title)` wrapper from `apps/widget/src/lib/email/templates.ts`.
+Templates return HTML strings with **inline CSS** (not CSS classes — email clients strip `<style>` blocks).
+
+## Critical patterns
+
+- **Inline styles only** — no CSS classes for colors or layout. Email clients ignore them.
+- **Button text:** must use inline `style="color: white"` — Gmail/Outlook override `<a>` colors to blue.
+- **Info rows:** Stacked layout (label above value), not side-by-side. Flexbox breaks in email clients.
+- **Security:** **Always** use `escapeHtml()` from `@/lib/sanitize` for user-provided content (guest names, messages).
+
+## Formatting helpers (not the UI versions)
+
+- `formatEmailDate(date)` → `"Monday, 20 January 2025"` (en-GB, long format)
+- `formatEmailTime(time)` → `"14:30"` (24h)
+- `formatEmailPrice(cents, currency)` → `"45,00 €"` (fi-FI, includes decimals)
+
+## Tone
+
+Warm, direct, no corporate jargon, no emojis.
+
+## Design docs — read these for colors, typography, button types
+
+- `docs/design/email-design.md` — full template spec (colors, spacing, button types, layout rules)
+- `docs/design/brand-essence.md` — color palette, voice guidelines
+- `docs/purpose/emails.md` — purpose + key decisions

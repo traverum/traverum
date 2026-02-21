@@ -643,8 +643,8 @@ export default function ExperienceForm() {
               />
 
               {!isLocationComplete && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <p className="text-sm text-amber-900 dark:text-amber-100">
+                <div className="p-3 bg-warning/10 dark:bg-warning/15 border border-warning/20 dark:border-warning/30 rounded-lg">
+                  <p className="text-sm text-foreground dark:text-foreground">
                     <strong>Location is required.</strong> Hotels need to know where your experience is located to show it to their guests.
                   </p>
                 </div>

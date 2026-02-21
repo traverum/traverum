@@ -1,9 +1,28 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import type { Media } from '@/lib/supabase/types'
+
+const MAX_RETRIES = 2
+
+function useImageRetry() {
+  const retryCount = useRef<Record<string, number>>({})
+  
+  const handleError = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget
+    const src = img.src
+    const count = retryCount.current[src] || 0
+    if (count < MAX_RETRIES) {
+      retryCount.current[src] = count + 1
+      img.src = ''
+      img.src = src
+    }
+  }, [])
+  
+  return handleError
+}
 
 interface ImageGalleryProps {
   images: Media[]
@@ -14,6 +33,7 @@ interface ImageGalleryProps {
 export function ImageGallery({ images, fallbackImage, title }: ImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [lightboxOpen, setLightboxOpen] = useState(false)
+  const handleImgError = useImageRetry()
   
   // Combine media with fallback - ensure URLs are valid
   const allImages = images && images.length > 0 
@@ -83,7 +103,7 @@ export function ImageGallery({ images, fallbackImage, title }: ImageGalleryProps
       <div className="hidden md:block">
         <button
           onClick={openLightbox}
-          className="w-full aspect-video rounded-card overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="w-full aspect-video rounded-card overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-accent bg-muted"
         >
           <AnimatePresence mode="wait">
             <motion.img
@@ -95,6 +115,7 @@ export function ImageGallery({ images, fallbackImage, title }: ImageGalleryProps
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
+              onError={handleImgError}
             />
           </AnimatePresence>
         </button>
@@ -117,6 +138,7 @@ export function ImageGallery({ images, fallbackImage, title }: ImageGalleryProps
                   alt={`${title} thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
+                  onError={handleImgError}
                 />
               </button>
             ))}
@@ -128,7 +150,7 @@ export function ImageGallery({ images, fallbackImage, title }: ImageGalleryProps
       <div className="md:hidden relative">
         <button
           onClick={openLightbox}
-          className="w-full aspect-[4/3] overflow-hidden cursor-zoom-in focus:outline-none rounded-card"
+          className="w-full aspect-[4/3] overflow-hidden cursor-zoom-in focus:outline-none rounded-card bg-muted"
         >
           <AnimatePresence mode="wait">
             <motion.img
@@ -140,6 +162,7 @@ export function ImageGallery({ images, fallbackImage, title }: ImageGalleryProps
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
+              onError={handleImgError}
             />
           </AnimatePresence>
         </button>
@@ -258,6 +281,16 @@ function Lightbox({ images, currentIndex, isOpen, onClose, onPrevious, onNext, t
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.2 }}
             onClick={(e) => e.stopPropagation()}
+            onError={(e) => {
+              const img = e.currentTarget
+              const src = img.src
+              const count = parseInt(img.dataset.retry || '0', 10)
+              if (count < 2) {
+                img.dataset.retry = String(count + 1)
+                img.src = ''
+                img.src = src
+              }
+            }}
           />
 
           {/* Counter */}

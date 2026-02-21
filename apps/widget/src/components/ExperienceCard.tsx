@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -12,7 +13,19 @@ interface ExperienceCardProps {
   returnUrl?: string | null
 }
 
+const MAX_RETRIES = 2
+
 export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', returnUrl }: ExperienceCardProps) {
+  const [imgError, setImgError] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  
+  const handleImageError = useCallback(() => {
+    if (retryCount < MAX_RETRIES) {
+      setRetryCount(c => c + 1)
+    } else {
+      setImgError(true)
+    }
+  }, [retryCount])
   const params = new URLSearchParams()
   if (returnUrl) params.set('returnUrl', returnUrl)
 
@@ -34,15 +47,17 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
         embedMode === 'section' && 'hover:shadow-card-hover transition-shadow experience-card'
       )}
     >
-      <div className="relative aspect-[4/3] overflow-hidden">
-        {experience.coverImage ? (
+      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+        {experience.coverImage && !imgError ? (
           <Image
+            key={retryCount}
             src={experience.coverImage}
             alt={experience.title}
             fill
             className="object-cover"
             loading="lazy"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            onError={handleImageError}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-muted">

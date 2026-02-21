@@ -1,19 +1,24 @@
 import { useMemo, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { format, isToday as checkIsToday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { SessionWithExperience } from '@/hooks/useAllSessions';
 import type { CalendarRequest } from '@/hooks/useCalendarRequests';
+import type { CalendarRental } from '@/hooks/useCalendarRentals';
 import { useDragSession } from '@/hooks/useDragSession';
 import { TimeSlotSession } from './TimeSlotSession';
 import {
   START_HOUR, HOURS, HOUR_HEIGHT, MINUTE_HEIGHT,
-  TIME_LABELS, yToTime,
+  TIME_LABELS, yToTime, getExperienceColor, getRentalDayContext,
+  formatEuropeanDate,
 } from './calendar-utils';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 interface DayTimeViewProps {
   date: Date;
   sessions: SessionWithExperience[];
   requests?: CalendarRequest[];
+  rentals?: CalendarRental[];
   experiences: Array<{ id: string; title: string; duration_minutes: number; max_participants?: number; price_cents?: number }>;
   onTimeSlotClick: (date: Date, time: string, position?: { x: number; y: number }) => void;
   onSessionClick?: (sessionId: string, position?: { x: number; y: number }) => void;
@@ -26,6 +31,7 @@ export function DayTimeView({
   date,
   sessions,
   requests = [],
+  rentals = [],
   experiences,
   onTimeSlotClick,
   onSessionClick,
@@ -33,6 +39,7 @@ export function DayTimeView({
   showExperienceTitle = true,
   onSessionUpdate,
 }: DayTimeViewProps) {
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const isToday = checkIsToday(date);
@@ -58,10 +65,7 @@ export function DayTimeView({
   // Scroll to current time or 9am on mount
   useEffect(() => {
     if (scrollRef.current) {
-      const scrollTo = showCurrentTime
-        ? Math.max(0, currentTimeTop - 120)
-        : (9 - START_HOUR) * HOUR_HEIGHT;
-      scrollRef.current.scrollTop = scrollTo;
+      scrollRef.current.scrollTop = 0;
     }
   }, []);
 
@@ -116,12 +120,11 @@ export function DayTimeView({
       }
     });
 
-    // Calculate positions for overlapping sessions (side-by-side)
     groups.forEach((group) => {
-      const width = (100 - 2) / group.length;
+      const width = 100 / group.length;
       group.forEach((session, index) => {
-        session.left = 1 + (width * index);
-        session.width = width - 0.5;
+        session.left = width * index;
+        session.width = width;
       });
     });
 
@@ -158,9 +161,6 @@ export function DayTimeView({
           )}>
             {format(date, 'd')}
           </div>
-          <div className="text-xs text-muted-foreground/60 mt-1">
-            {sessions.length} {sessions.length === 1 ? 'session' : 'sessions'}
-          </div>
           {requests.length > 0 && (
             <button
               type="button"
@@ -170,13 +170,83 @@ export function DayTimeView({
                 const rect = (e.target as HTMLElement).getBoundingClientRect();
                 onRequestBadgeClick?.(dateKey, { x: rect.left, y: rect.bottom + 4 });
               }}
-              className="mt-1.5 inline-flex items-center px-2.5 py-1 rounded-sm text-xs font-normal bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
+              className="mt-1.5 inline-flex items-center px-2.5 py-1 rounded-sm text-xs font-normal bg-warning/10 text-warning hover:bg-warning/20 transition-colors dark:bg-warning/15 dark:text-warning dark:hover:bg-warning/25"
             >
               {requests.length} {requests.length === 1 ? 'request' : 'requests'}
             </button>
           )}
         </div>
       </div>
+
+      {/* All-day rental bars */}
+      {rentals.length > 0 && (() => {
+        const isDark = typeof window !== 'undefined' && document.documentElement.classList.contains('dark');
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const dayRentals = rentals.filter(r => r.rentalStartDate <= dateKey && r.rentalEndDate > dateKey);
+        if (dayRentals.length === 0) return null;
+        return (
+          <div className="flex border-b border-border">
+            <div className="w-16 flex-shrink-0 flex items-start pt-2">
+              <span className="text-[10px] text-muted-foreground/40 px-2 leading-none">
+                all-day
+              </span>
+            </div>
+            <div className="flex-1 py-1.5 space-y-0.5">
+              {dayRentals.map(rental => {
+                const expColor = getExperienceColor(rental.experience.id);
+                const { dayNumber, totalDays } = getRentalDayContext(rental, date);
+                return (
+                  <Popover key={rental.bookingId}>
+                    <PopoverTrigger asChild>
+                      <div
+                        className="flex items-center truncate"
+                        style={{
+                          height: 22,
+                          lineHeight: '22px',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          padding: '0 6px',
+                          backgroundColor: isDark ? expColor.darkBgSolid : expColor.bgSolid,
+                          color: isDark ? expColor.darkTextSolid : expColor.textSolid,
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          transition: 'filter 150ms ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.filter = 'brightness(0.88)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.filter = 'none'; }}
+                      >
+                        <span className="truncate">
+                          {rental.experience.title} — Day {dayNumber} of {totalDays}
+                        </span>
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="bottom"
+                      align="start"
+                      className="w-auto min-w-[200px] p-4"
+                    >
+                      <p className="text-sm font-medium tracking-[-0.01em]">{rental.experience.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        {rental.guestName} · {rental.participants} {rental.participants === 1 ? 'unit' : 'units'}
+                      </p>
+                      <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
+                        {formatEuropeanDate(rental.rentalStartDate)} → {formatEuropeanDate(rental.rentalEndDate)}
+                      </p>
+                      <button
+                        type="button"
+                        className="text-xs text-primary hover:text-primary/80 font-medium tracking-[-0.01em] transition-colors mt-3"
+                        onClick={() => navigate('/supplier/bookings?tab=upcoming')}
+                      >
+                        View booking →
+                      </button>
+                    </PopoverContent>
+                  </Popover>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Scrollable time grid */}
       <div

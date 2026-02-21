@@ -1,7 +1,8 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
-import { isSessionUpcoming } from '@/lib/date-utils';
+import { getTodayLocal } from '@/lib/date-utils';
 
 const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
 
@@ -39,6 +40,56 @@ export interface PendingRequest {
   } | null;
 }
 
+export interface AwaitingPaymentItem {
+  id: string;
+  guest_name: string;
+  participants: number;
+  total_cents: number;
+  requested_date: string | null;
+  requested_time: string | null;
+  payment_deadline: string;
+  rental_start_date: string | null;
+  rental_end_date: string | null;
+  isRental: boolean;
+  experience: {
+    id: string;
+    title: string;
+    currency: string;
+  };
+  session?: {
+    id: string;
+    session_date: string;
+    start_time: string;
+  } | null;
+}
+
+export interface BookingItem {
+  id: string;
+  reservationId: string;
+  bookingStatus: string;
+  amountCents: number;
+  paidAt: string;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  stripeRefundId: string | null;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string | null;
+  participants: number;
+  preferredLanguage: string | null;
+  date: string;
+  time: string | null;
+  rentalStartDate: string | null;
+  rentalEndDate: string | null;
+  isRental: boolean;
+  experience: {
+    id: string;
+    title: string;
+    priceCents: number;
+  };
+}
+
+// Legacy type kept for compatibility with other components
 export interface SessionGuest {
   id: string;
   guest_name: string;
@@ -80,7 +131,6 @@ export function useBookingManagement() {
   const { activePartnerId: partnerId } = useActivePartner();
   const queryClient = useQueryClient();
 
-  // Get experiences for this partner
   const { data: experiences = [] } = useQuery({
     queryKey: ['partner-experiences', partnerId],
     queryFn: async () => {
@@ -150,107 +200,134 @@ export function useBookingManagement() {
     enabled: experienceIds.length > 0,
   });
 
-  // --- Tab 2 & 3: Sessions with guests ---
+  // --- Tab 2 (Awaiting Payment) + Tab 3/4 (Bookings): Combined query ---
   const {
-    data: sessionsWithGuests = [],
-    isLoading: isLoadingSessions,
-    refetch: refetchSessions,
+    data: reservationsData,
+    isLoading: isLoadingReservations,
+    refetch: refetchReservations,
   } = useQuery({
-    queryKey: ['booking-mgmt-sessions', partnerId],
+    queryKey: ['booking-mgmt-reservations', partnerId],
     queryFn: async () => {
-      // Get all sessions
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('experience_sessions')
-        .select('*')
-        .in('experience_id', experienceIds)
-        .order('session_date', { ascending: false })
-        .order('start_time', { ascending: true });
-
-      if (sessionsError) throw sessionsError;
-      if (!sessions || sessions.length === 0) return [];
-
-      const sessionIds = sessions.map(s => s.id);
-
-      // Get reservations for these sessions
-      const { data: reservations, error: resError } = await supabase
+      // Fetch all non-pending reservations (approved, declined, expired) with session data
+      const { data: allReservations, error: resError } = await supabase
         .from('reservations')
-        .select('*')
-        .in('session_id', sessionIds);
+        .select(`
+          *,
+          experience_sessions (
+            id,
+            session_date,
+            start_time,
+            session_status
+          )
+        `)
+        .in('experience_id', experienceIds)
+        .neq('reservation_status', 'pending');
 
       if (resError) throw resError;
+      if (!allReservations || allReservations.length === 0) {
+        return { awaitingPayment: [] as AwaitingPaymentItem[], bookingItems: [] as BookingItem[] };
+      }
 
-      // Get bookings for these reservations
-      const reservationIds = (reservations || []).map(r => r.id);
+      // Fetch bookings for these reservations
+      const resIds = allReservations.map(r => r.id);
       let bookings: any[] = [];
-      if (reservationIds.length > 0) {
+      if (resIds.length > 0) {
         const { data: bookingsData } = await supabase
           .from('bookings')
           .select('*')
-          .in('reservation_id', reservationIds);
+          .in('reservation_id', resIds);
         bookings = bookingsData || [];
       }
 
       const bookingsMap = new Map(bookings.map(b => [b.reservation_id, b]));
       const experienceMap = new Map(experiences.map(e => [e.id, e]));
 
-      // Group reservations by session
-      const resBySession = new Map<string, any[]>();
-      (reservations || []).forEach(r => {
-        if (!r.session_id) return;
-        const existing = resBySession.get(r.session_id) || [];
-        existing.push(r);
-        resBySession.set(r.session_id, existing);
-      });
+      const awaitingPayment: AwaitingPaymentItem[] = [];
+      const bookingItems: BookingItem[] = [];
 
-      return sessions.map(session => {
-        const sessionReservations = resBySession.get(session.id) || [];
-        const guests: SessionGuest[] = sessionReservations.map(r => ({
-          id: r.id,
-          guest_name: r.guest_name,
-          guest_email: r.guest_email,
-          guest_phone: r.guest_phone,
-          participants: r.participants,
-          total_cents: r.total_cents,
-          reservation_status: r.reservation_status,
-          preferred_language: r.preferred_language || null,
-          booking: bookingsMap.get(r.id) ? {
-            id: bookingsMap.get(r.id).id,
-            booking_status: bookingsMap.get(r.id).booking_status,
-            amount_cents: bookingsMap.get(r.id).amount_cents,
-            paid_at: bookingsMap.get(r.id).paid_at,
-            completed_at: bookingsMap.get(r.id).completed_at,
-            cancelled_at: bookingsMap.get(r.id).cancelled_at,
-            stripe_refund_id: bookingsMap.get(r.id).stripe_refund_id,
-          } : null,
-        }));
+      for (const r of allReservations) {
+        const exp = experienceMap.get(r.experience_id);
+        if (!exp) continue;
 
-        return {
-          id: session.id,
-          experience_id: session.experience_id,
-          session_date: session.session_date,
-          start_time: session.start_time,
-          session_status: session.session_status,
-          experience: experienceMap.get(session.experience_id)!,
-          guests,
-          bookingsCount: guests.filter(g => g.booking).length,
-        } as SessionWithGuests;
-      });
+        const isRental = (exp as any).pricing_type === 'per_day';
+        const booking = bookingsMap.get(r.id);
+        const session = r.experience_sessions;
+
+        if (r.reservation_status === 'approved' && !booking) {
+          awaitingPayment.push({
+            id: r.id,
+            guest_name: r.guest_name,
+            participants: r.participants,
+            total_cents: r.total_cents,
+            requested_date: r.requested_date,
+            requested_time: r.requested_time || null,
+            payment_deadline: r.payment_deadline || '',
+            rental_start_date: (r as any).rental_start_date || null,
+            rental_end_date: (r as any).rental_end_date || null,
+            isRental,
+            experience: { id: exp.id, title: exp.title, currency: exp.currency },
+            session,
+          });
+        } else if (booking) {
+          const date = session?.session_date
+            || (r as any).rental_start_date
+            || r.requested_date
+            || '';
+          const time = session?.start_time || null;
+
+          bookingItems.push({
+            id: booking.id,
+            reservationId: r.id,
+            bookingStatus: booking.booking_status,
+            amountCents: booking.amount_cents,
+            paidAt: booking.paid_at,
+            completedAt: booking.completed_at,
+            cancelledAt: booking.cancelled_at,
+            stripeRefundId: booking.stripe_refund_id,
+            guestName: r.guest_name,
+            guestEmail: r.guest_email,
+            guestPhone: r.guest_phone,
+            participants: r.participants,
+            preferredLanguage: r.preferred_language || null,
+            date,
+            time,
+            rentalStartDate: (r as any).rental_start_date || null,
+            rentalEndDate: (r as any).rental_end_date || null,
+            isRental,
+            experience: { id: exp.id, title: exp.title, priceCents: exp.price_cents },
+          });
+        }
+      }
+
+      // Sort awaiting payment by payment deadline (soonest first)
+      awaitingPayment.sort((a, b) => a.payment_deadline.localeCompare(b.payment_deadline));
+
+      return { awaitingPayment, bookingItems };
     },
     enabled: experienceIds.length > 0,
   });
 
-  // Split sessions into upcoming / past (using shared date utility for local timezone)
-  const upcomingSessions = sessionsWithGuests
-    .filter(s => isSessionUpcoming(s.session_date, s.start_time))
-    .sort((a, b) => a.session_date.localeCompare(b.session_date) || a.start_time.localeCompare(b.start_time));
-  
-  const pastSessions = sessionsWithGuests
-    .filter(s => !isSessionUpcoming(s.session_date, s.start_time))
-    .sort((a, b) => b.session_date.localeCompare(a.session_date) || b.start_time.localeCompare(a.start_time));
+  const awaitingPayment = reservationsData?.awaitingPayment ?? [];
+  const allBookingItems = reservationsData?.bookingItems ?? [];
+
+  // Split bookings into upcoming / past
+  const today = getTodayLocal();
+  const upcomingBookings = useMemo(() =>
+    allBookingItems
+      .filter(b => b.date >= today && b.bookingStatus === 'confirmed')
+      .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
+    [allBookingItems, today]
+  );
+
+  const pastBookings = useMemo(() =>
+    allBookingItems
+      .filter(b => b.date < today || b.bookingStatus !== 'confirmed')
+      .sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')),
+    [allBookingItems, today]
+  );
 
   // --- Mutations ---
 
-  // Accept a pending request via widget API (accepts as-is using guest's requested date/time)
   const acceptRequest = useMutation({
     mutationFn: async (reservationId: string) => {
       const { data: { session: authSession } } = await supabase.auth.getSession();
@@ -271,13 +348,12 @@ export function useBookingManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['booking-mgmt-pending'] });
-      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-reservations'] });
       queryClient.invalidateQueries({ queryKey: ['pending-requests'] });
       queryClient.invalidateQueries({ queryKey: ['calendar-requests'] });
     },
   });
 
-  // Decline a pending request via widget API
   const declineRequest = useMutation({
     mutationFn: async ({ reservationId, message }: { reservationId: string; message?: string }) => {
       const { data: { session: authSession } } = await supabase.auth.getSession();
@@ -298,12 +374,12 @@ export function useBookingManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['booking-mgmt-pending'] });
+      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-reservations'] });
       queryClient.invalidateQueries({ queryKey: ['pending-requests'] });
       queryClient.invalidateQueries({ queryKey: ['calendar-requests'] });
     },
   });
 
-  // Cancel a session
   const cancelSession = useMutation({
     mutationFn: async (sessionId: string) => {
       const { error } = await supabase
@@ -319,31 +395,52 @@ export function useBookingManagement() {
       // TODO: Trigger refunds + emails for all confirmed bookings in this session
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-reservations'] });
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
   });
 
+  const cancelBooking = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error('Not authenticated');
+
+      const response = await fetch(`${WIDGET_BASE_URL}/api/dashboard/bookings/${bookingId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`,
+        },
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Failed to cancel booking');
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-reservations'] });
+    },
+  });
+
   const refetchAll = async () => {
-    await Promise.all([refetchPending(), refetchSessions()]);
+    await Promise.all([refetchPending(), refetchReservations()]);
   };
 
   return {
-    // Data
     pendingRequests,
-    upcomingSessions,
-    pastSessions,
+    awaitingPayment,
+    upcomingBookings,
+    pastBookings,
     experiences,
-    // Loading states
-    isLoading: isLoadingPending || isLoadingSessions,
+    isLoading: isLoadingPending || isLoadingReservations,
     isLoadingPending,
-    isLoadingSessions,
-    // Mutations
+    isLoadingReservations,
     acceptRequest,
     declineRequest,
     cancelSession,
-    // Refetch
+    cancelBooking,
     refetchAll,
     pendingCount: pendingRequests.length,
+    awaitingPaymentCount: awaitingPayment.length,
   };
 }

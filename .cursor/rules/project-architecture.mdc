@@ -1,0 +1,51 @@
+---
+description: Traverum monorepo architecture, tech stack, and project conventions
+alwaysApply: true
+---
+
+# Traverum Architecture
+
+Monorepo: **pnpm + Turborepo**
+
+| App | Stack | Purpose |
+|-----|-------|---------|
+| `apps/dashboard` | Vite + React SPA | Supplier & hotel management |
+| `apps/widget` | Next.js App Router | Guest booking, API routes, cron jobs, email |
+| `packages/shared` | TypeScript | Shared types, constants (`@traverum/shared`) |
+
+## Key libraries
+
+- **UI:** shadcn/ui + Tailwind CSS + Lucide icons (never emojis)
+- **State:** React Context (useAuth, useActivePartner, useActiveHotelConfig) — no Zustand
+- **DB:** Supabase (Postgres + RLS + PostGIS for location)
+- **Payments:** Stripe Connect (Payment Links, not Checkout Sessions)
+- **Email:** Resend (from `Traverum <bookings@veyond.eu>`)
+- **Dates:** date-fns — European format `dd.MM.yyyy`, see timezone-global rule
+- **Shared constants:** `@traverum/shared` for commission rates, currency, categories
+
+## Conventions
+
+- All API routes live in `apps/widget/src/app/api/`
+- Dashboard calls widget API routes (not Supabase directly for mutations)
+- Supabase types: `apps/widget/src/lib/supabase/types.ts` (generated)
+- RLS uses `get_user_partner_ids()` helper for multi-org access
+- **Never** use actual place names as placeholders. If absolutely necessary, use generic ones.
+- UUIDs for primary keys
+
+## Vercel deployment (CRITICAL)
+
+Two separate Vercel projects. **NEVER** mix them up.
+
+| Project | App | Framework | Root Directory | Domain |
+|---------|-----|-----------|----------------|--------|
+| Dashboard | `apps/dashboard` | Vite (React) | `apps/dashboard` | dashboard.traverum.com |
+| Widget | `apps/widget` | Next.js 14 | `apps/widget` | book.traverum.com |
+
+Dashboard has NO Next.js dependency. If you see Next.js errors on dashboard, the wrong app is deployed.
+
+## Documentation
+
+- Purpose docs: `docs/purpose/` — intent and key decisions (see `product-vision.mdc` for the AI contract)
+- Technical docs: `docs/technical/` — full specs and reference
+- Design: `docs/design/` — brand, dashboard UI, email design
+- Index: `docs/CONTEXT.md` — complete documentation map

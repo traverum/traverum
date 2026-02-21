@@ -75,17 +75,17 @@ export function SessionPill({ session, showExperienceTitle = false, isPast = fal
     }
     // Single-experience fallback with improved hierarchy
     if (isBooked) {
-      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 font-medium border-l-[3px] border-l-blue-500 dark:border-l-blue-400';
+      return 'bg-primary/10 dark:bg-primary/20 text-primary dark:text-primary font-medium border-l-[3px] border-l-primary dark:border-l-primary';
     }
     // Available — ghost, like empty scaffolding
-    return 'bg-teal-50/50 dark:bg-teal-900/10 text-teal-700/70 dark:text-teal-300/50 border-l-[3px] border-l-teal-500/40 dark:border-l-teal-400/30 border-dashed';
+    return 'bg-primary/5 dark:bg-primary/5 text-primary/50 dark:text-primary/40 border-l-[3px] border-l-primary/30 dark:border-l-primary/20 border-dashed';
   };
 
   return (
     <button
       onClick={handleClick}
       className={cn(
-        'w-full text-left px-2 py-1 rounded-sm text-xs tracking-[-0.01em] transition-colors cursor-pointer',
+        'w-full text-left px-1.5 py-0.5 rounded-sm text-xs tracking-[-0.01em] transition-colors cursor-pointer',
         'hover:brightness-[0.97]',
         getTailwindClasses(),
         isPast && !isCancelled && 'opacity-50'

@@ -20,8 +20,8 @@ export function baseTemplate(content: string, title: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Finlandica:wght@300;500&display=swap');
-    body { font-family: 'Finlandica', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: rgb(55, 53, 47); margin: 0; padding: 0; background-color: #F4EFE6; }
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;500&display=swap');
+    body { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: rgb(55, 53, 47); margin: 0; padding: 0; background-color: #F4EFE6; }
     .container { max-width: 560px; margin: 0 auto; padding: 40px 16px; }
     .card { background: #FEFCF9; border-radius: 6px; padding: 36px 32px; margin: 0 0 24px; border: 1px solid rgba(55, 53, 47, 0.09); }
     .header { text-align: center; margin-bottom: 28px; }

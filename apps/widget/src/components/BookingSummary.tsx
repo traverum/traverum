@@ -35,11 +35,21 @@ export function BookingSummary({
     <div className="bg-card rounded-card border border-border overflow-hidden sticky top-6">
       {/* Image */}
       {coverImage && (
-        <div className="relative aspect-[16/9]">
+        <div className="relative aspect-[16/9] bg-muted">
           <img
             src={coverImage}
             alt={experience.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              const img = e.currentTarget
+              const src = img.src
+              const count = parseInt(img.dataset.retry || '0', 10)
+              if (count < 2) {
+                img.dataset.retry = String(count + 1)
+                img.src = ''
+                img.src = src
+              }
+            }}
           />
         </div>
       )}

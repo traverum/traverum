@@ -45,7 +45,7 @@ Show what users need before they ask. We don't over-guide — we anticipate.
 ```
 NORDIC (the bones)              ITALIAN (the soul)
 ─────────────────               ──────────────────
-Finlandica font                 Warm ivory backgrounds
+DM Sans font                    Warm ivory backgrounds
 Clean structure                 Olive + walnut accents
 Functional minimalism           Golden hour warmth
 Direct, honest copy             Unhurried pacing
@@ -80,7 +80,7 @@ Every color is warm and muted. No bright, saturated accents. The entire palette 
 
 ## Typography
 
-**Font:** Finlandica — our Nordic skeleton. Clean, functional, Finnish.
+**Font:** DM Sans — geometric clarity with optical warmth. Clean, precise, quietly elegant.
 
 | Context | Weight |
 |---------|--------|

@@ -1,0 +1,45 @@
+---
+description: Currency storage, pricing models, and money formatting rules
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: false
+---
+
+# Currency & Pricing
+
+## Absolute rules
+
+1. **Always** store money as integer cents with `_cents` suffix (`price_cents`, `total_cents`, `amount_cents`)
+2. **Never** use floats for money calculations
+3. **Always** use `Math.round()` for commission splits, never `Math.floor()`
+4. Default currency: `EUR` (stored as string on `experiences.currency`)
+5. Display format: `formatPrice(cents, currency)` → `45 €` (Finnish/European style, not `€45`)
+
+## Formatting helpers
+
+- **Widget UI:** `formatPrice()` from `@/lib/utils` — uses `Intl.NumberFormat('fi-FI')`
+- **Emails:** `formatEmailPrice()` from `@/lib/email/index` — same format, includes decimals
+- **Shared:** `@traverum/shared` has `CURRENCY` constant and `formatPrice()` (symbol-prefix style, used less)
+
+## Four pricing types (`experiences.pricing_type`)
+
+| Type | Formula | Display |
+|------|---------|---------|
+| `per_person` | `extra_person_cents × participants` | `X € / person` |
+| `flat_rate` | `base_price_cents` (constant) | `X € total` |
+| `base_plus_extra` | `base_price_cents + extra_person_cents × (participants - included)` | `X € / group` |
+| `per_day` | `price_per_day_cents × days × quantity` | `X € / day` |
+
+Session price override (`price_override_cents`) replaces the unit price and scales with quantity.
+
+## Commission split
+
+Stored as integer percentages in `distributions` table. Default: supplier 80%, hotel 12%, platform 8%.
+Platform constant: `PLATFORM_COMMISSION = 8` in `@traverum/shared`.
+Rounding remainder goes to platform amount.
+
+## Reference
+
+- `calculatePrice()` in `apps/widget/src/lib/pricing.ts`
+- `calculateCommissionSplit()` in `apps/widget/src/lib/commission.ts`
+- `docs/purpose/pricing.md` — purpose + key decisions
+- `docs/technical/pricing-calculations.md` — formulas and examples for all pricing types

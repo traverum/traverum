@@ -1,0 +1,57 @@
+---
+description: Booking system data model, status flows, and entity relationships
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: false
+---
+
+# Booking Data Model
+
+## Entity hierarchy
+
+`partners` → `experiences` → `experience_sessions` → `reservations` → `bookings`
+
+Partners have `partner_type`: `'supplier'` (creates experiences) or `'hotel'` (distributes via widget).
+Users link to partners via `user_partners` junction table (multi-org support).
+
+## Three booking flows
+
+1. **Session-based (instant):** Guest picks a session → pays immediately → booking confirmed
+2. **Request-based (approval):** Guest requests date/time → supplier accepts/declines → guest pays → booking confirmed
+3. **Rental:** Per-day pricing, quantity-based, request flow, no session inventory
+
+`reservations.is_request` distinguishes flow type. `session_id` is NULL for request-based.
+
+## Status machines — never transition backwards
+
+**Reservation:** `pending` → `approved` | `declined` | `expired`
+**Booking:** `confirmed` → `completed` | `cancelled`
+**Session:** `available` → `booked` | `cancelled`
+**Experience:** `draft` → `active` → `archive`
+
+## Timing windows
+
+- Supplier must respond within **48 hours** (`response_deadline`)
+- Guest must pay within **24 hours** of approval (`payment_deadline`)
+- Guest cancellation window per policy: flexible (1 day), moderate (7 days), strict/non-refundable (no refund)
+- Completion check email sent **1 day** after experience date
+- Auto-complete: **7 days** after experience if no response
+
+## Privacy rule
+
+Guest contact info (email, phone) is **hidden** until payment is confirmed. Name, participants, time, and amount are always visible.
+
+## Booking reference
+
+Format: `TRV-XXXXXX` (first 8 chars of booking ID, uppercase).
+
+## Key helpers
+
+- `apps/widget/src/lib/pricing.ts` — `calculatePrice()`, `getPriceDisplay()`
+- `apps/widget/src/lib/commission.ts` — `calculateCommissionSplit()`
+- `packages/shared/src/constants.ts` — statuses, commission defaults, categories
+
+## Reference
+
+- `docs/purpose/booking-flow.md` — purpose + key decisions
+- `docs/technical/booking-flow-specs.md` — complete flow with edge cases
+- `docs/technical/glossary.md` — terminology definitions

@@ -1,0 +1,52 @@
+---
+description: Widget (Next.js) patterns for API routes, auth, guest-facing pages
+globs: "apps/widget/src/**/*.ts, apps/widget/src/**/*.tsx"
+alwaysApply: false
+---
+
+# Widget Conventions
+
+Next.js **App Router** (not Pages Router). All API routes in `apps/widget/src/app/api/`.
+
+## API route patterns
+
+**Auth (dashboard APIs):** Bearer token in Authorization header, verified via Supabase.
+```typescript
+const authHeader = request.headers.get('Authorization')
+if (!authHeader?.startsWith('Bearer ')) {
+  return NextResponse.json({ error: 'Missing authorization' }, { status: 401 })
+}
+```
+
+**Admin operations:** use `createAdminClient()` from `@/lib/supabase/server` for elevated permissions.
+
+**Cron jobs:** verify `Authorization: Bearer ${CRON_SECRET}`, return 401 if missing.
+
+**Responses:**
+- Success: `NextResponse.json({ success: true, data: ... })`
+- Error: `NextResponse.json({ error: 'message' }, { status: code })`
+
+**Rate limiting:** `reservationLimiter` from `@/lib/rate-limit` for guest-facing endpoints. Skip in dev if KV not configured.
+
+## Display formatting
+
+- Dates: `formatDate()` from `@/lib/utils` → `dd.MM.yyyy` (European)
+- Times: `formatTime()` from `@/lib/utils` → `HH:MM` (24h)
+- Prices: `formatPrice()` from `@/lib/utils` → `45 €` (Finnish locale)
+- Duration: `formatDuration()` from `@/lib/utils` → `2h 30min`
+
+## Supabase clients
+
+- Server (API routes): `createAdminClient()` or `createServerClient()` from `@/lib/supabase/server`
+- Browser: `createClient()` from `@/lib/supabase/client`
+
+## Embed system
+
+Shadow DOM Web Component for hotel websites. Embed script at `/api/embed/[hotelSlug]`.
+Widget attributes: `hotel` (required), `max`, `button-label`, `hide-title`.
+See `docs/purpose/embed-widget.md` and `docs/technical/embed-architecture.md`.
+
+## Input sanitization
+
+**Always** sanitize guest input: `sanitizeGuestText()`, `sanitizeGuestEmail()` from `@/lib/sanitize`.
+**Always** use `escapeHtml()` from `@/lib/sanitize` when inserting user content into email HTML.

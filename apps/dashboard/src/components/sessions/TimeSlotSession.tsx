@@ -87,22 +87,22 @@ export function TimeSlotSession({
       };
     }
 
-    // Single-experience fallback
+    // Single-experience fallback — olive-based (brand)
     return isBooked ? {
-      bg: 'rgb(191, 219, 254)',       // blue-200
-      border: 'rgb(59, 130, 246)',     // blue-500
-      text: 'rgb(30, 64, 175)',        // blue-800
-      darkBg: 'rgba(59, 130, 246, 0.30)',
-      darkBorder: 'rgb(96, 165, 250)',
-      darkText: 'rgb(191, 219, 254)',
+      bg: 'rgba(90, 107, 78, 0.12)',     // olive/12
+      border: 'rgb(90, 107, 78)',         // olive #5A6B4E
+      text: 'rgb(60, 74, 50)',            // darker olive
+      darkBg: 'rgba(90, 107, 78, 0.25)',
+      darkBorder: 'rgb(120, 140, 105)',
+      darkText: 'rgb(180, 200, 165)',
       borderStyle: 'solid' as const,
     } : {
-      bg: 'rgba(153, 246, 228, 0.18)',  // teal ghost
-      border: 'rgb(13, 148, 136)',       // teal-600
-      text: 'rgb(17, 94, 89)',           // teal-800
-      darkBg: 'rgba(20, 184, 166, 0.10)',
-      darkBorder: 'rgb(45, 212, 191)',
-      darkText: 'rgb(153, 246, 228)',
+      bg: 'rgba(90, 107, 78, 0.06)',     // olive ghost
+      border: 'rgba(90, 107, 78, 0.4)',   // olive muted
+      text: 'rgba(90, 107, 78, 0.5)',     // olive faded
+      darkBg: 'rgba(90, 107, 78, 0.08)',
+      darkBorder: 'rgba(120, 140, 105, 0.4)',
+      darkText: 'rgba(180, 200, 165, 0.5)',
       borderStyle: 'dashed' as const,
     };
   };
@@ -168,9 +168,8 @@ export function TimeSlotSession({
       style={{
         top: `${top + 1}px`,
         left: `${left}%`,
-        width: `calc(${width}% - 4px)`,
+        width: `calc(${width}% - 2px)`,
         height: `${displayHeight - 2}px`,
-        marginLeft: '2px',
         backgroundColor: bgColor,
         borderLeft: `4px ${styles.borderStyle} ${borderColor}`,
       }}
@@ -206,23 +205,21 @@ export function TimeSlotSession({
           </div>
         )}
 
-        {/* Booking status - show if enough space */}
-        {!isCompact && (
+        {/* Only show meaningful status — the visual style already signals available vs booked */}
+        {isBooked && !isCompact && (
           <div
             className="text-xs mt-auto pt-1 opacity-60"
             style={{ color: textColor }}
           >
-            {isBooked ? 'Booked' : isCancelled ? 'Cancelled' : 'Open'}
+            Booked
           </div>
         )}
-
-        {/* Compact booking indicator */}
-        {isCompact && !isVeryCompact && (
+        {isBooked && isCompact && !isVeryCompact && (
           <div
             className="text-[10px] mt-0.5 opacity-60"
             style={{ color: textColor }}
           >
-            {isBooked ? 'Booked' : isCancelled ? '—' : 'Open'}
+            Booked
           </div>
         )}
       </div>

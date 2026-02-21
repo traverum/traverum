@@ -65,14 +65,14 @@ Directly from brand-essence.md. No off-brand colors anywhere in emails.
 
 | Element | Font | Weight | Size |
 |---------|------|--------|------|
-| All text | Finlandica (via Google Fonts) | — | — |
-| Headings | Finlandica | 300 (light) | 22px |
-| Body paragraphs | Finlandica | 300 (light) | 15px |
-| Info labels | Finlandica | 500 (medium) | 11px, uppercase |
-| Info values | Finlandica | 500 (medium) | 15px |
-| Buttons | Finlandica | 500 (medium) | 14px |
-| Muted text | Finlandica | 300 (light) | 13px |
-| Footer | Finlandica | — | 12px |
+| All text | DM Sans (via Google Fonts) | — | — |
+| Headings | DM Sans | 300 (light) | 22px |
+| Body paragraphs | DM Sans | 300 (light) | 15px |
+| Info labels | DM Sans | 500 (medium) | 11px, uppercase |
+| Info values | DM Sans | 500 (medium) | 15px |
+| Buttons | DM Sans | 500 (medium) | 14px |
+| Muted text | DM Sans | 300 (light) | 13px |
+| Footer | DM Sans | — | 12px |
 
 **Font loading:** Loaded via `@import url()` from Google Fonts with weights 300 and 500. Email clients that don't support web fonts fall back to: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif.
 

@@ -198,7 +198,7 @@ export default function SessionDetail() {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-xl font-semibold">
-                {format(parseLocalDate(session.session_date), 'EEEE, d MMMM yyyy')}
+                {format(parseLocalDate(session.session_date), 'd.M.yyyy')}
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 {session.start_time.slice(0, 5)} · {experience.duration_minutes} min

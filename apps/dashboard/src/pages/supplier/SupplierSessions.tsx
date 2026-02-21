@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAllSessions } from '@/hooks/useAllSessions';
 import { useCalendarRequests } from '@/hooks/useCalendarRequests';
+import { useCalendarRentals } from '@/hooks/useCalendarRentals';
 import { SessionsCalendar } from '@/components/sessions/SessionsCalendar';
 import { SessionsListView } from '@/components/sessions/SessionsListView';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -44,6 +45,7 @@ export default function SupplierSessions() {
     experienceId: null 
   });
   const { requestsByDate, refetch: refetchRequests } = useCalendarRequests(currentMonth);
+  const { rentals } = useCalendarRentals(currentMonth);
 
   const handleCreateSession = async (data: SessionData | RecurringData) => {
     const experienceId = data.experienceId;
@@ -172,6 +174,7 @@ export default function SupplierSessions() {
             sessions={sessions}
             sessionsByDate={formattedSessionsByDate}
             requestsByDate={requestsByDate}
+            rentals={rentals}
             experience={null}
             experiences={allExperiences
               .filter(e => e.pricing_type !== 'per_day')

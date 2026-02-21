@@ -3,17 +3,21 @@ import { format, startOfWeek, endOfWeek, eachDayOfInterval, isToday as checkIsTo
 import { cn } from '@/lib/utils';
 import type { SessionWithExperience } from '@/hooks/useAllSessions';
 import type { CalendarRequest } from '@/hooks/useCalendarRequests';
+import type { CalendarRental } from '@/hooks/useCalendarRentals';
 import { useDragSession } from '@/hooks/useDragSession';
 import { TimeSlotSession } from './TimeSlotSession';
+import { RentalWeekBars } from './RentalWeekBars';
 import {
   START_HOUR, HOURS, HOUR_HEIGHT, MINUTE_HEIGHT,
   TIME_LABELS, yToTime,
+  splitRentalIntoSegment, packSegmentsIntoRows,
 } from './calendar-utils';
 
 interface WeekTimeViewProps {
   currentDate: Date;
   sessionsByDate: Record<string, SessionWithExperience[]>;
   requestsByDate?: Record<string, CalendarRequest[]>;
+  rentals?: CalendarRental[];
   experiences: Array<{ id: string; title: string; duration_minutes: number; max_participants?: number; price_cents?: number }>;
   onTimeSlotClick: (date: Date, time: string, position?: { x: number; y: number }) => void;
   onSessionClick?: (sessionId: string, position?: { x: number; y: number }) => void;
@@ -26,6 +30,7 @@ export function WeekTimeView({
   currentDate,
   sessionsByDate,
   requestsByDate = {},
+  rentals = [],
   experiences,
   onTimeSlotClick,
   onSessionClick,
@@ -60,10 +65,7 @@ export function WeekTimeView({
   // Scroll to current time or 9am on mount
   useEffect(() => {
     if (scrollRef.current) {
-      const scrollTo = showCurrentTime
-        ? Math.max(0, currentTimeTop - 120)
-        : (9 - START_HOUR) * HOUR_HEIGHT; // Default to 9am
-      scrollRef.current.scrollTop = scrollTo;
+      scrollRef.current.scrollTop = 0;
     }
   }, []);
 
@@ -126,12 +128,11 @@ export function WeekTimeView({
         }
       });
 
-      // Calculate positions for each group (side-by-side)
       groups.forEach((group) => {
-        const width = (100 - 2) / group.length; // Small margin
+        const width = 100 / group.length;
         group.forEach((session, index) => {
-          session.left = 1 + (width * index);
-          session.width = width - 0.5;
+          session.left = width * index;
+          session.width = width;
         });
       });
 
@@ -140,6 +141,15 @@ export function WeekTimeView({
 
     return grouped;
   }, [weekDays, sessionsByDate, experienceMap]);
+
+  // Compute packed bar segments for the all-day section
+  const weekBarSegments = useMemo(() => {
+    if (rentals.length === 0) return [];
+    const segments = rentals
+      .map(r => splitRentalIntoSegment(r, weekDays))
+      .filter((s): s is Exclude<typeof s, null> => s !== null);
+    return packSegmentsIntoRows(segments);
+  }, [rentals, weekDays]);
 
   // Click time slot — snap to nearest 15min using Y position
   const handleTimeSlotClick = (e: React.MouseEvent, day: Date) => {
@@ -153,57 +163,75 @@ export function WeekTimeView({
 
   return (
     <div className="rounded-lg overflow-hidden bg-background">
-      {/* Fixed header with day names */}
-      <div className="flex bg-background sticky top-0 z-10">
-        {/* Empty corner for time column */}
-        <div className="w-16 flex-shrink-0" />
-
-        {/* Day headers */}
-        {weekDays.map((day) => {
-          const dateKey = format(day, 'yyyy-MM-dd');
-          const isToday = checkIsToday(day);
-          const dayRequests = requestsByDate[dateKey] || [];
-
-          return (
-            <div
-              key={dateKey}
-              className="flex-1 py-2 text-center"
-            >
-              <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-normal">
-                {format(day, 'EEE')}
-              </div>
-              <div className={cn(
-                'mt-1 tabular-nums',
-                isToday
-                  ? 'w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-medium'
-                  : 'text-lg font-normal text-foreground/80'
-              )}>
-                {format(day, 'd')}
-              </div>
-              {dayRequests.length > 0 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const rect = (e.target as HTMLElement).getBoundingClientRect();
-                    onRequestBadgeClick?.(dateKey, { x: rect.left, y: rect.bottom + 4 });
-                  }}
-                  className="mt-1 inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-normal bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/40"
-                >
-                  {dayRequests.length} {dayRequests.length === 1 ? 'request' : 'requests'}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Scrollable time grid */}
+      {/* Single scroll container — header is sticky inside it so vertical lines align */}
       <div
         ref={scrollRef}
         className="overflow-y-auto overflow-x-hidden"
         style={{ maxHeight: 'calc(100vh - 200px)', minHeight: '500px' }}
       >
+        {/* Sticky header: day names + all-day bars */}
+        <div className="bg-background sticky top-0 z-10">
+          {/* Day headers */}
+          <div className="flex border-b border-border">
+            <div className="w-16 flex-shrink-0" />
+            {weekDays.map((day, dayIndex) => {
+              const dateKey = format(day, 'yyyy-MM-dd');
+              const isToday = checkIsToday(day);
+              const dayRequests = requestsByDate[dateKey] || [];
+
+              return (
+                <div
+                  key={dateKey}
+                  className="flex-1 py-2 text-center"
+                  style={{
+                    borderRight: dayIndex < 6 ? '1px solid rgba(0, 0, 0, 0.06)' : 'none',
+                  }}
+                >
+                  <div className="text-[11px] text-muted-foreground/60 uppercase tracking-wider font-normal">
+                    {format(day, 'EEE')}
+                  </div>
+                  <div className={cn(
+                    'mt-1 tabular-nums',
+                    isToday
+                      ? 'w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto text-sm font-medium'
+                      : 'text-lg font-normal text-foreground/80'
+                  )}>
+                    {format(day, 'd')}
+                  </div>
+                  {dayRequests.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = (e.target as HTMLElement).getBoundingClientRect();
+                        onRequestBadgeClick?.(dateKey, { x: rect.left, y: rect.bottom + 4 });
+                      }}
+                      className="mt-1 inline-flex items-center px-2 py-0.5 rounded-sm text-[11px] font-normal bg-warning/10 text-warning hover:bg-warning/20 transition-colors dark:bg-warning/15 dark:text-warning dark:hover:bg-warning/25"
+                    >
+                      {dayRequests.length} {dayRequests.length === 1 ? 'request' : 'requests'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* All-day rental bars */}
+          {weekBarSegments.length > 0 && (
+            <div className="flex border-b border-border">
+              <div className="w-16 flex-shrink-0 flex items-start pt-2">
+                <span className="text-[10px] text-muted-foreground/40 px-2 leading-none">
+                  all-day
+                </span>
+              </div>
+              <div className="flex-1 py-1.5">
+                <RentalWeekBars segments={weekBarSegments} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Time grid */}
         <div className="flex relative">
           {/* Time labels column */}
           <div className="w-16 flex-shrink-0">
