@@ -6,7 +6,7 @@ import { embedLimiter, getClientIp } from '@/lib/rate-limit'
  * Public API endpoint for the Shadow DOM embed widget.
  * Returns hotel theme config + experience card data as JSON.
  * 
- * GET /api/embed/{hotelSlug}?max=3
+ * GET /api/embed/{hotelSlug}[?max=N]
  */
 export async function GET(
   request: NextRequest,
@@ -26,7 +26,7 @@ export async function GET(
 
   const { hotelSlug } = await params
   const { searchParams } = new URL(request.url)
-  const maxExperiences = parseInt(searchParams.get('max') || '6', 10)
+  const queryMax = searchParams.get('max')
 
   const supabase = createAdminClient()
 
@@ -46,6 +46,7 @@ export async function GET(
   }
 
   const hotel = hotelData as any
+  const maxExperiences = queryMax ? parseInt(queryMax, 10) : (hotel.widget_max_experiences || 3)
 
   // Fetch distributions for this hotel config with experiences
   // Scope by hotel_config_id for multi-property support

@@ -3,7 +3,7 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Copy, Code, Link as LinkIcon } from 'lucide-react';
+import { Check, Copy, Code, Link as LinkIcon, Globe } from 'lucide-react';
 
 const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
 
@@ -94,10 +94,21 @@ export default function EmbedSetup({ embedded = false }: EmbedSetupProps) {
   const baseUrl = WIDGET_BASE_URL;
 
   const embedCode = `<!-- Traverum Experiences Widget -->
-<traverum-widget hotel="${hotelSlug}" max="3"></traverum-widget>
+<traverum-widget hotel="${hotelSlug}"></traverum-widget>
 <script src="${baseUrl}/embed.js" async></script>`;
 
   const fullPageUrl = `${baseUrl}/${hotelSlug}`;
+  const iframeEmbedUrl = `${baseUrl}/embed/${hotelSlug}`;
+
+  const resizeScript = `<script>
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'traverum-resize') {
+    document.querySelectorAll('iframe[src*="book.traverum.com"]').forEach(function(f) {
+      f.style.height = e.data.height + 'px';
+    });
+  }
+});
+</script>`;
 
   return (
     <div className={embedded ? '' : 'container max-w-6xl mx-auto px-4 py-6'}>
@@ -121,6 +132,25 @@ export default function EmbedSetup({ embedded = false }: EmbedSetupProps) {
               <h2 className="text-sm font-medium text-foreground">Direct Link</h2>
             </div>
             <CopyBlock code={fullPageUrl} label="URL" />
+          </CardContent>
+        </Card>
+
+        <Card className="border border-border">
+          <CardContent className="pt-4 space-y-4">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-medium text-foreground">Wix & Page Builders</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              For platforms that use iframes (Wix, etc.). Paste the URL below into Wix's Custom HTML component using "Website address" mode.
+            </p>
+            <CopyBlock code={iframeEmbedUrl} label="Embed URL" />
+            <div className="border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground mb-3">
+                To enable auto-height, add this script via Wix Settings &rarr; Custom Code &rarr; Head:
+              </p>
+              <CopyBlock code={resizeScript} label="Auto-height script (paste in site head)" />
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -100,7 +100,7 @@ export type Database = {
           hotel_id: string
           id: string
           is_active: boolean | null
-          sort_order: number
+          sort_order: number | null
         }
         Insert: {
           commission_hotel?: number
@@ -112,7 +112,7 @@ export type Database = {
           hotel_id: string
           id?: string
           is_active?: boolean | null
-          sort_order?: number
+          sort_order?: number | null
         }
         Update: {
           commission_hotel?: number
@@ -124,7 +124,7 @@ export type Database = {
           hotel_id?: string
           id?: string
           is_active?: boolean | null
-          sort_order?: number
+          sort_order?: number | null
         }
         Relationships: [
           {
@@ -362,6 +362,7 @@ export type Database = {
           display_name: string
           font_size_base: string | null
           font_weight: string | null
+          heading_color: string | null
           heading_font_family: string | null
           heading_font_weight: string | null
           id: string
@@ -374,9 +375,11 @@ export type Database = {
           text_color: string | null
           title_font_size: string | null
           updated_at: string | null
+          website_url: string | null
           widget_cta_margin: string | null
           widget_grid_gap: string | null
           widget_grid_min_width: string | null
+          widget_max_experiences: number
           widget_section_padding: string | null
           widget_subtitle: string | null
           widget_text_align: string | null
@@ -394,6 +397,7 @@ export type Database = {
           display_name: string
           font_size_base?: string | null
           font_weight?: string | null
+          heading_color?: string | null
           heading_font_family?: string | null
           heading_font_weight?: string | null
           id?: string
@@ -406,9 +410,11 @@ export type Database = {
           text_color?: string | null
           title_font_size?: string | null
           updated_at?: string | null
+          website_url?: string | null
           widget_cta_margin?: string | null
           widget_grid_gap?: string | null
           widget_grid_min_width?: string | null
+          widget_max_experiences?: number
           widget_section_padding?: string | null
           widget_subtitle?: string | null
           widget_text_align?: string | null
@@ -426,6 +432,7 @@ export type Database = {
           display_name?: string
           font_size_base?: string | null
           font_weight?: string | null
+          heading_color?: string | null
           heading_font_family?: string | null
           heading_font_weight?: string | null
           id?: string
@@ -438,9 +445,11 @@ export type Database = {
           text_color?: string | null
           title_font_size?: string | null
           updated_at?: string | null
+          website_url?: string | null
           widget_cta_margin?: string | null
           widget_grid_gap?: string | null
           widget_grid_min_width?: string | null
+          widget_max_experiences?: number
           widget_section_padding?: string | null
           widget_subtitle?: string | null
           widget_text_align?: string | null
@@ -1870,3 +1879,20 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+
+// Convenience types
+export type Booking = Database['public']['Tables']['bookings']['Row']
+export type Distribution = Database['public']['Tables']['distributions']['Row']
+export type ExperienceSession = Database['public']['Tables']['experience_sessions']['Row']
+export type Experience = Database['public']['Tables']['experiences']['Row']
+export type HotelConfig = Database['public']['Tables']['hotel_configs']['Row']
+export type Media = Database['public']['Tables']['media']['Row']
+export type Partner = Database['public']['Tables']['partners']['Row']
+export type Reservation = Database['public']['Tables']['reservations']['Row']
+export type User = Database['public']['Tables']['users']['Row']
+
+// Status enums
+export type ReservationStatus = 'pending' | 'approved' | 'declined' | 'expired'
+export type BookingStatus = 'confirmed' | 'completed' | 'cancelled'
+export type SessionStatus = 'available' | 'booked' | 'cancelled'

@@ -2,12 +2,12 @@
  * Traverum Widget — Shadow DOM Embed
  * 
  * Usage:
- *   <traverum-widget hotel="hotel-slug" max="3"></traverum-widget>
+ *   <traverum-widget hotel="hotel-slug"></traverum-widget>
  *   <script src="https://book.traverum.com/embed.js" async></script>
  *
  * Attributes:
  *   hotel            (required)  Hotel slug
- *   max              (optional)  Max experiences to show  (default 6)
+ *   max              (optional)  Override max experiences (server default used if omitted)
  *   button-label     (optional)  CTA label                (default "See all experiences")
  *   hide-title       (optional)  Hide title/subtitle      (default false)
  *
@@ -115,16 +115,18 @@
         return;
       }
 
-      var max = parseInt(this.getAttribute('max') || '6', 10);
+      var maxAttr = this.getAttribute('max');
       var hideTitle = this.hasAttribute('hide-title');
       var buttonLabel = this.getAttribute('button-label') || 'See all experiences';
 
       // Show skeleton immediately
-      this._shadow.innerHTML = this._baseStyles() + skeletonHTML(Math.min(max, 3));
+      this._shadow.innerHTML = this._baseStyles() + skeletonHTML(3);
 
       // Fetch data (add timestamp to bust cache during development)
-      var cacheBuster = window.location.hostname === 'localhost' ? '&_t=' + Date.now() : '';
-      var apiUrl = WIDGET_URL + '/api/embed/' + encodeURIComponent(hotel) + '?max=' + max + cacheBuster;
+      var params = [];
+      if (maxAttr) params.push('max=' + maxAttr);
+      if (window.location.hostname === 'localhost') params.push('_t=' + Date.now());
+      var apiUrl = WIDGET_URL + '/api/embed/' + encodeURIComponent(hotel) + (params.length ? '?' + params.join('&') : '');
       var self = this;
 
       fetch(apiUrl)
@@ -293,6 +295,11 @@
         '  width: 100%;\n' +
         '  height: 100%;\n' +
         '  object-fit: cover;\n' +
+        '  opacity: 0;\n' +
+        '  transition: opacity 0.3s ease;\n' +
+        '}\n' +
+        '.trv-img[data-loaded] {\n' +
+        '  opacity: 1;\n' +
         '}\n' +
         '.trv-img-overlay {\n' +
         '  position: absolute;\n' +
@@ -417,7 +424,9 @@
       }
 
       if (experiences.length === 0) {
-        html += '<div class="trv-empty">No experiences available yet.</div>';
+        this._shadow.innerHTML = '';
+        this.style.display = 'none';
+        return;
       } else {
         // Cards grid
         html += '<div class="trv-grid">';
@@ -431,7 +440,7 @@
           // Image
           html += '<div class="trv-img-wrap">';
           if (exp.coverImage) {
-            html += '<img class="trv-img" src="' + this._esc(exp.coverImage) + '" alt="' + this._esc(exp.title) + '" loading="lazy">';
+            html += '<img class="trv-img" src="' + this._esc(exp.coverImage) + '" alt="' + this._esc(exp.title) + '" onload="this.dataset.loaded=1" onerror="if(this.dataset.retry<2){this.dataset.retry++;var s=this.src;this.src=\'\';this.src=s}else{this.dataset.loaded=1}" data-retry="0">';
           }
           html += '<div class="trv-img-overlay"></div>';
           html += '<h3 class="trv-card-title">' + this._esc(exp.title) + '</h3>';
@@ -539,12 +548,12 @@
         var hotel = container.getAttribute('data-traverum-hotel') || container.getAttribute('data-hotel');
         if (!hotel) return;
         
-        var max = container.getAttribute('data-max') || container.getAttribute('data-max-experiences') || '3';
+        var max = container.getAttribute('data-max') || container.getAttribute('data-max-experiences');
         
         // Create widget element
         var widget = document.createElement('traverum-widget');
         widget.setAttribute('hotel', hotel);
-        widget.setAttribute('max', max);
+        if (max) widget.setAttribute('max', max);
         
         // Replace container with widget
         if (container.parentNode) {
@@ -562,7 +571,8 @@
             if (container.tagName.toLowerCase() !== 'traverum-widget' && !container.hasAttribute('data-traverum-initialized')) {
               var widget = document.createElement('traverum-widget');
               widget.setAttribute('hotel', scriptHotel);
-              widget.setAttribute('max', scriptEl.getAttribute('data-max-experiences') || '3');
+              var scriptMax = scriptEl.getAttribute('data-max-experiences');
+              if (scriptMax) widget.setAttribute('max', scriptMax);
               container.setAttribute('data-traverum-initialized', 'true');
               container.appendChild(widget);
             }

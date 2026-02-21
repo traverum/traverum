@@ -18,7 +18,7 @@ export default async function EmbedPage() {
   const hotelSlug = hotelConfig.slug
 
   const embedCode = `<!-- Traverum Experiences Widget -->
-<traverum-widget hotel="${hotelSlug}" max="3"></traverum-widget>
+<traverum-widget hotel="${hotelSlug}"></traverum-widget>
 <script src="${baseUrl}/embed.js" async></script>`
 
   const fullPageUrl = `${baseUrl}/${hotelSlug}`
@@ -88,7 +88,7 @@ export default async function EmbedPage() {
           </summary>
           <div className="mt-3 pl-4 space-y-3 border-l-2 border-border">
             <p className="text-xs text-muted-foreground">
-              Change <code className="bg-muted px-1 py-0.5 rounded-sm font-mono">max=&quot;3&quot;</code> to show more experiences. Add <code className="bg-muted px-1 py-0.5 rounded-sm font-mono">hide-title</code> or <code className="bg-muted px-1 py-0.5 rounded-sm font-mono">button-label=&quot;View all&quot;</code>.
+              Add <code className="bg-muted px-1 py-0.5 rounded-sm font-mono">max=&quot;6&quot;</code> to override the max experiences count. Add <code className="bg-muted px-1 py-0.5 rounded-sm font-mono">hide-title</code> or <code className="bg-muted px-1 py-0.5 rounded-sm font-mono">button-label=&quot;View all&quot;</code>.
             </p>
           </div>
         </details>

@@ -100,7 +100,7 @@ export type Database = {
           hotel_id: string
           id: string
           is_active: boolean | null
-          sort_order: number
+          sort_order: number | null
         }
         Insert: {
           commission_hotel?: number
@@ -112,7 +112,7 @@ export type Database = {
           hotel_id: string
           id?: string
           is_active?: boolean | null
-          sort_order?: number
+          sort_order?: number | null
         }
         Update: {
           commission_hotel?: number
@@ -124,7 +124,7 @@ export type Database = {
           hotel_id?: string
           id?: string
           is_active?: boolean | null
-          sort_order?: number
+          sort_order?: number | null
         }
         Relationships: [
           {
@@ -379,6 +379,7 @@ export type Database = {
           widget_cta_margin: string | null
           widget_grid_gap: string | null
           widget_grid_min_width: string | null
+          widget_max_experiences: number
           widget_section_padding: string | null
           widget_subtitle: string | null
           widget_text_align: string | null
@@ -413,6 +414,7 @@ export type Database = {
           widget_cta_margin?: string | null
           widget_grid_gap?: string | null
           widget_grid_min_width?: string | null
+          widget_max_experiences?: number
           widget_section_padding?: string | null
           widget_subtitle?: string | null
           widget_text_align?: string | null
@@ -447,6 +449,7 @@ export type Database = {
           widget_cta_margin?: string | null
           widget_grid_gap?: string | null
           widget_grid_min_width?: string | null
+          widget_max_experiences?: number
           widget_section_padding?: string | null
           widget_subtitle?: string | null
           widget_text_align?: string | null

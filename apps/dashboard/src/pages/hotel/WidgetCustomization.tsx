@@ -86,10 +86,11 @@ const PADDING_PRESETS = [
 ];
 
 const GRID_WIDTH_PRESETS = [
-  { value: '240px', label: 'Narrow — more columns' },
-  { value: '280px', label: 'Default' },
-  { value: '320px', label: 'Wide — fewer columns' },
-  { value: '360px', label: 'Extra wide' },
+  { value: '240px', label: 'Compact' },
+  { value: '280px', label: 'Standard' },
+  { value: '320px', label: 'Wide' },
+  { value: '360px', label: 'Large' },
+  { value: '420px', label: 'Showcase' },
 ];
 
 const TITLE_SIZE_PRESETS = [
@@ -99,6 +100,16 @@ const TITLE_SIZE_PRESETS = [
   { value: '48px', label: 'Large' },
   { value: '56px', label: 'Extra Large' },
   { value: '64px', label: 'Hero' },
+];
+
+const MAX_EXPERIENCES_OPTIONS = [
+  { value: 1, label: '1' },
+  { value: 2, label: '2' },
+  { value: 3, label: '3' },
+  { value: 4, label: '4' },
+  { value: 6, label: '6' },
+  { value: 9, label: '9' },
+  { value: 12, label: '12' },
 ];
 
 interface ThemeState {
@@ -121,6 +132,7 @@ interface ThemeState {
   widget_grid_gap: string;
   widget_cta_margin: string;
   widget_grid_min_width: string;
+  widget_max_experiences: number;
 }
 
 const DEFAULT_THEME: ThemeState = {
@@ -143,6 +155,7 @@ const DEFAULT_THEME: ThemeState = {
   widget_grid_gap: '20px',
   widget_cta_margin: '28px',
   widget_grid_min_width: '280px',
+  widget_max_experiences: 3,
 };
 
 // ── Inline color picker ──
@@ -156,21 +169,21 @@ function ColorPicker({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="relative shrink-0">
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1 h-4">
+        <Label className="text-[11px] text-muted-foreground leading-none">{label}</Label>
+      </div>
+      <div className="flex items-center gap-1.5">
         <input
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-7 h-7 rounded-sm border border-border cursor-pointer p-0.5 bg-transparent"
+          className="w-7 h-7 rounded-sm border border-border cursor-pointer p-0.5 bg-transparent shrink-0"
         />
-      </div>
-      <div className="flex-1 min-w-0">
-        <Label className="text-[11px] text-muted-foreground block mb-0.5">{label}</Label>
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-7 font-mono text-xs"
+          className="h-7 font-mono text-xs flex-1 min-w-0"
           placeholder="#000000"
         />
       </div>
@@ -225,17 +238,22 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ── Help tooltip ──
-function Help({ tip }: { tip: string }) {
+// ── Field label (consistent height whether or not a help icon is present) ──
+function FieldLabel({ children, tip }: { children: React.ReactNode; tip?: string }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help shrink-0" />
-      </TooltipTrigger>
-      <TooltipContent>
-        <p className="text-xs max-w-[200px]">{tip}</p>
-      </TooltipContent>
-    </Tooltip>
+    <div className="flex items-center gap-1 h-4">
+      <Label className="text-[11px] text-muted-foreground leading-none">{children}</Label>
+      {tip && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <HelpCircle className="h-3 w-3 text-muted-foreground/50 cursor-help shrink-0" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p className="text-xs max-w-[200px]">{tip}</p>
+          </TooltipContent>
+        </Tooltip>
+      )}
+    </div>
   );
 }
 
@@ -465,6 +483,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
           widget_grid_gap: d.widget_grid_gap || DEFAULT_THEME.widget_grid_gap,
           widget_cta_margin: d.widget_cta_margin || DEFAULT_THEME.widget_cta_margin,
           widget_grid_min_width: d.widget_grid_min_width || DEFAULT_THEME.widget_grid_min_width,
+          widget_max_experiences: d.widget_max_experiences ?? DEFAULT_THEME.widget_max_experiences,
         });
 
         // Auto-expand advanced if hotel has non-default advanced settings
@@ -515,6 +534,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
             widget_grid_gap: newTheme.widget_grid_gap,
             widget_cta_margin: newTheme.widget_cta_margin,
             widget_grid_min_width: newTheme.widget_grid_min_width,
+            widget_max_experiences: newTheme.widget_max_experiences,
             updated_at: new Date().toISOString(),
           })
           .eq('id', hotelConfigId);
@@ -657,8 +677,8 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
 
               {/* Fonts — heading with weight, body */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Heading font</Label>
+                <div className="space-y-1.5">
+                  <FieldLabel>Heading font</FieldLabel>
                   <div className="flex gap-1.5">
                     <Select
                       value={theme.heading_font_family}
@@ -693,8 +713,8 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Body font</Label>
+                <div className="space-y-1.5">
+                  <FieldLabel>Body font</FieldLabel>
                   <Select
                     value={theme.body_font_family}
                     onValueChange={(v) => updateField('body_font_family', v)}
@@ -714,8 +734,8 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
               </div>
 
               {/* Card corners — visual inline selector */}
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">Card corners</Label>
+              <div className="space-y-1.5">
+                <FieldLabel>Card corners</FieldLabel>
                 <div className="flex gap-1.5">
                   {RADIUS_OPTIONS.map((r) => {
                     const isActive = theme.card_radius === r.value;
@@ -763,47 +783,62 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
               </div>
 
               {theme.widget_title_enabled && (
-                <div className="space-y-2.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Title</Label>
-                      <Input
-                        value={theme.widget_title}
-                        onChange={(e) => updateField('widget_title', e.target.value)}
-                        className="h-7"
-                        placeholder="Local Experiences"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Label className="text-[11px] text-muted-foreground">Subtitle</Label>
-                        <Help tip="Use {{hotel_name}} to insert your hotel name automatically" />
-                      </div>
-                      <Input
-                        value={theme.widget_subtitle}
-                        onChange={(e) => updateField('widget_subtitle', e.target.value)}
-                        className="h-7"
-                        placeholder="Curated by {{hotel_name}}"
-                      />
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <FieldLabel>Title</FieldLabel>
+                    <Input
+                      value={theme.widget_title}
+                      onChange={(e) => updateField('widget_title', e.target.value)}
+                      className="h-7"
+                      placeholder="Local Experiences"
+                    />
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Alignment</Label>
-                      <AlignmentToggle
-                        value={theme.widget_text_align}
-                        onChange={(v) => updateField('widget_text_align', v)}
-                      />
-                    </div>
+                  <div className="space-y-1.5">
+                    <FieldLabel tip="Use {{hotel_name}} to insert your hotel name automatically">Subtitle</FieldLabel>
+                    <Input
+                      value={theme.widget_subtitle}
+                      onChange={(e) => updateField('widget_subtitle', e.target.value)}
+                      className="h-7"
+                      placeholder="Curated by {{hotel_name}}"
+                    />
                   </div>
                 </div>
               )}
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {theme.widget_title_enabled && (
+                  <div className="space-y-1.5">
+                    <FieldLabel>Alignment</FieldLabel>
+                    <AlignmentToggle
+                      value={theme.widget_text_align}
+                      onChange={(v) => updateField('widget_text_align', v)}
+                    />
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <FieldLabel tip="Maximum number of experience cards shown in the widget">Max experiences</FieldLabel>
+                  <Select
+                    value={String(theme.widget_max_experiences)}
+                    onValueChange={(v) => updateField('widget_max_experiences', parseInt(v, 10))}
+                  >
+                    <SelectTrigger className="h-7 w-[80px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MAX_EXPERIENCES_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={String(o.value)}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </section>
 
             <div className="border-t border-border" />
 
-            {/* ── FINE-TUNE (collapsible) ── */}
+            {/* ── DIMENSIONS (collapsible) ── */}
             <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
               <CollapsibleTrigger asChild>
                 <button
@@ -812,10 +847,10 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
                 >
                   <SlidersHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
                   <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                    Fine-tune
+                    Dimensions
                   </span>
                   <span className="text-[10px] text-muted-foreground/60">
-                    Spacing, sizes &amp; layout
+                    Sizing &amp; spacing
                   </span>
                   <ChevronDown
                     className={`w-3.5 h-3.5 text-muted-foreground/50 ml-auto transition-transform ${
@@ -826,150 +861,151 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
               </CollapsibleTrigger>
 
               <CollapsibleContent>
-                <div className="pt-3 space-y-3">
-                  {/* Row 1: Title size + Base font size */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Label className="text-[11px] text-muted-foreground">Title size</Label>
-                        <Help tip="Font size of the widget heading" />
+                <div className="pt-3 space-y-4">
+                  {/* ── Sizing ── */}
+                  <div className="space-y-2.5">
+                    <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+                      Sizing
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      <div className="space-y-1.5">
+                        <FieldLabel tip="Min width per card — smaller means more columns">Card size</FieldLabel>
+                        <Select
+                          value={theme.widget_grid_min_width}
+                          onValueChange={(v) => updateField('widget_grid_min_width', v)}
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {GRID_WIDTH_PRESETS.map((g) => (
+                              <SelectItem key={g.value} value={g.value}>
+                                {g.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Select
-                        value={theme.title_font_size}
-                        onValueChange={(v) => updateField('title_font_size', v)}
-                      >
-                        <SelectTrigger className="h-7">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {TITLE_SIZE_PRESETS.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Label className="text-[11px] text-muted-foreground">Base font</Label>
-                        <Help tip="Base size in px — all other text scales from this" />
+                      <div className="space-y-1.5">
+                        <FieldLabel tip="Font size of the widget heading">Title size</FieldLabel>
+                        <Select
+                          value={theme.title_font_size}
+                          onValueChange={(v) => updateField('title_font_size', v)}
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TITLE_SIZE_PRESETS.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Input
-                          type="number"
-                          min="12"
-                          max="24"
-                          value={theme.font_size_base}
-                          onChange={(e) => updateField('font_size_base', e.target.value)}
-                          className="h-7 flex-1"
-                        />
-                        <span className="text-[11px] text-muted-foreground">px</span>
-                      </div>
-                    </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Label className="text-[11px] text-muted-foreground">Card width</Label>
-                        <Help tip="Min width per card — narrower means more columns" />
+                      <div className="space-y-1.5">
+                        <FieldLabel tip="Base size in px — all other text scales from this">Base font</FieldLabel>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="number"
+                            min="12"
+                            max="24"
+                            value={theme.font_size_base}
+                            onChange={(e) => updateField('font_size_base', e.target.value)}
+                            className="h-7 flex-1"
+                          />
+                          <span className="text-[11px] text-muted-foreground">px</span>
+                        </div>
                       </div>
-                      <Select
-                        value={theme.widget_grid_min_width}
-                        onValueChange={(v) => updateField('widget_grid_min_width', v)}
-                      >
-                        <SelectTrigger className="h-7">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {GRID_WIDTH_PRESETS.map((g) => (
-                            <SelectItem key={g.value} value={g.value}>
-                              {g.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
 
-                  {/* Row 2: Spacing controls */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Label className="text-[11px] text-muted-foreground">Section padding</Label>
+                  <div className="border-t border-border/50" />
+
+                  {/* ── Spacing ── */}
+                  <div className="space-y-2.5">
+                    <p className="text-[10px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+                      Spacing
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="space-y-1.5">
+                        <FieldLabel>Section padding</FieldLabel>
+                        <Select
+                          value={theme.widget_section_padding}
+                          onValueChange={(v) => updateField('widget_section_padding', v)}
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PADDING_PRESETS.map((p) => (
+                              <SelectItem key={p.value} value={p.value}>
+                                {p.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                      <Select
-                        value={theme.widget_section_padding}
-                        onValueChange={(v) => updateField('widget_section_padding', v)}
-                      >
-                        <SelectTrigger className="h-7">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PADDING_PRESETS.map((p) => (
-                            <SelectItem key={p.value} value={p.value}>
-                              {p.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Title spacing</Label>
-                      <Select
-                        value={theme.widget_title_margin}
-                        onValueChange={(v) => updateField('widget_title_margin', v)}
-                      >
-                        <SelectTrigger className="h-7">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SPACING_PRESETS.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div className="space-y-1.5">
+                        <FieldLabel>Card gap</FieldLabel>
+                        <Select
+                          value={theme.widget_grid_gap}
+                          onValueChange={(v) => updateField('widget_grid_gap', v)}
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SPACING_PRESETS.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Card gap</Label>
-                      <Select
-                        value={theme.widget_grid_gap}
-                        onValueChange={(v) => updateField('widget_grid_gap', v)}
-                      >
-                        <SelectTrigger className="h-7">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SPACING_PRESETS.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                      <div className="space-y-1.5">
+                        <FieldLabel>Title spacing</FieldLabel>
+                        <Select
+                          value={theme.widget_title_margin}
+                          onValueChange={(v) => updateField('widget_title_margin', v)}
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SPACING_PRESETS.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    <div className="space-y-1">
-                      <Label className="text-[11px] text-muted-foreground">Button spacing</Label>
-                      <Select
-                        value={theme.widget_cta_margin}
-                        onValueChange={(v) => updateField('widget_cta_margin', v)}
-                      >
-                        <SelectTrigger className="h-7">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SPACING_PRESETS.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="space-y-1.5">
+                        <FieldLabel>Button spacing</FieldLabel>
+                        <Select
+                          value={theme.widget_cta_margin}
+                          onValueChange={(v) => updateField('widget_cta_margin', v)}
+                        >
+                          <SelectTrigger className="h-7">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SPACING_PRESETS.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 </div>
