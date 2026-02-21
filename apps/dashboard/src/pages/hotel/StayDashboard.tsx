@@ -35,7 +35,14 @@ import WidgetCustomization from './WidgetCustomization';
 import EmbedSetup from './EmbedSetup';
 
 
+// Wrapper that forces full remount when switching between properties.
+// Ensures all useState, useRef hooks reset cleanly — no stale data, no race conditions.
 export default function StayDashboard() {
+  const { id } = useParams<{ id: string }>();
+  return <StayDashboardInner key={id} />;
+}
+
+function StayDashboardInner() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -48,16 +55,20 @@ export default function StayDashboard() {
     isLoading: configLoading,
   } = useActiveHotelConfig();
 
+  // Find the current hotel config (may already be cached from the stays list)
+  const hotelConfig = hotelConfigs.find((hc) => hc.id === id) || null;
+
+  // Seed form state from cache so the first render already shows correct data
   const [activeTab, setActiveTab] = useState('details');
-  const [displayName, setDisplayName] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [isActive, setIsActive] = useState(true);
+  const [displayName, setDisplayName] = useState(() => hotelConfig?.display_name || '');
+  const [websiteUrl, setWebsiteUrl] = useState(() => (hotelConfig as any)?.website_url || '');
+  const [isActive, setIsActive] = useState(() => hotelConfig?.is_active ?? true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeletePropertyConfirm, setShowDeletePropertyConfirm] = useState(false);
   const [deletePropertyConfirmText, setDeletePropertyConfirmText] = useState('');
-  const hasInitialized = useRef(false);
+  const hasInitialized = useRef(!!hotelConfig);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const displayNameRef = useRef(displayName);
   const websiteUrlRef = useRef(websiteUrl);
@@ -72,10 +83,7 @@ export default function StayDashboard() {
     }
   }, [id, activeHotelConfigId, setActiveHotelConfigId]);
 
-  // Find the current hotel config
-  const hotelConfig = hotelConfigs.find((hc) => hc.id === id) || null;
-
-  // Load data when config becomes available
+  // Load data when config becomes available (handles case where data wasn't cached on mount)
   useEffect(() => {
     if (hotelConfig && !hasInitialized.current) {
       setDisplayName(hotelConfig.display_name || '');
@@ -84,12 +92,6 @@ export default function StayDashboard() {
       hasInitialized.current = true;
     }
   }, [hotelConfig]);
-
-  // Reset initialization when ID changes; clear any pending save
-  useEffect(() => {
-    hasInitialized.current = false;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-  }, [id]);
 
   // Clear pending save on unmount
   useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); }, []);
