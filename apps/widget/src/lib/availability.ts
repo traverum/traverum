@@ -8,8 +8,24 @@ export interface AvailabilityRule {
   weekdays: number[] // 0=Sunday, 1=Monday, ..., 6=Saturday
   start_time: string // HH:MM format
   end_time: string // HH:MM format
-  valid_from: string | null // YYYY-MM-DD or null for year-round
-  valid_until: string | null // YYYY-MM-DD or null for year-round
+  valid_from: string | null // MM-DD format (recurring yearly) or null for year-round
+  valid_until: string | null // MM-DD format (recurring yearly) or null for year-round
+}
+
+/**
+ * Check if a MM-DD string falls within a recurring season.
+ * Handles wrap-around seasons (e.g. 11-01 to 03-31 = winter season).
+ */
+function isInSeason(mmdd: string, from: string | null, until: string | null): boolean {
+  if (!from && !until) return true
+  if (from && !until) return mmdd >= from
+  if (!from && until) return mmdd <= until
+
+  if (from! <= until!) {
+    return mmdd >= from! && mmdd <= until!
+  }
+  // Wrap-around (e.g. Nov–Mar)
+  return mmdd >= from! || mmdd <= until!
 }
 
 /**
@@ -19,17 +35,14 @@ export function isDateAvailable(
   date: Date,
   rules: AvailabilityRule[]
 ): boolean {
-  // No rules = always available (backwards compatible)
   if (rules.length === 0) return true
 
   const dayOfWeek = date.getDay()
-  const dateStr = formatDateForComparison(date)
+  const mmdd = formatMonthDay(date)
 
   return rules.some((rule) => {
     if (!rule.weekdays.includes(dayOfWeek)) return false
-    if (rule.valid_from && dateStr < rule.valid_from) return false
-    if (rule.valid_until && dateStr > rule.valid_until) return false
-    return true
+    return isInSeason(mmdd, rule.valid_from, rule.valid_until)
   })
 }
 
@@ -43,13 +56,11 @@ export function getOperatingHours(
   if (rules.length === 0) return null
 
   const dayOfWeek = date.getDay()
-  const dateStr = formatDateForComparison(date)
+  const mmdd = formatMonthDay(date)
 
   const matchingRule = rules.find((rule) => {
     if (!rule.weekdays.includes(dayOfWeek)) return false
-    if (rule.valid_from && dateStr < rule.valid_from) return false
-    if (rule.valid_until && dateStr > rule.valid_until) return false
-    return true
+    return isInSeason(mmdd, rule.valid_from, rule.valid_until)
   })
 
   if (!matchingRule) return null
@@ -116,11 +127,10 @@ export const DEFAULT_TIME_GROUPS = {
   evening: ['18:00', '19:00', '20:00', '21:00'],
 }
 
-function formatDateForComparison(date: Date): string {
-  const y = date.getFullYear()
+function formatMonthDay(date: Date): string {
   const m = (date.getMonth() + 1).toString().padStart(2, '0')
   const d = date.getDate().toString().padStart(2, '0')
-  return `${y}-${m}-${d}`
+  return `${m}-${d}`
 }
 
 // Cancellation policy (matches dashboard/availability.ts)

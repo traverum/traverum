@@ -248,7 +248,7 @@ export function ImageUploader({
           onClick={() => fileInputRef.current?.click()}
         >
           <p className="text-sm text-muted-foreground mb-1">No images yet</p>
-          <p className="text-xs text-muted-foreground">Click to upload JPG, PNG, or WebP (images will be automatically optimized)</p>
+          <p className="text-xs text-muted-foreground">Click to upload JPG, PNG, or WebP</p>
         </div>
       ) : (
         <DndContext

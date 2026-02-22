@@ -8,8 +8,34 @@ export interface AvailabilityRule {
   weekdays: number[]; // 0=Sunday, 1=Monday, ..., 6=Saturday
   start_time: string; // HH:MM format
   end_time: string; // HH:MM format
-  valid_from: string | null; // YYYY-MM-DD or null for year-round
-  valid_until: string | null; // YYYY-MM-DD or null for year-round
+  valid_from: string | null; // MM-DD format (recurring yearly) or null for year-round
+  valid_until: string | null; // MM-DD format (recurring yearly) or null for year-round
+}
+
+export const MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' },
+] as const;
+
+export function getDaysForMonth(month: string): string[] {
+  const m = parseInt(month);
+  let maxDay = 31;
+  if (m === 2) maxDay = 29;
+  else if ([4, 6, 9, 11].includes(m)) maxDay = 30;
+  if (!m) maxDay = 31;
+  return Array.from({ length: maxDay }, (_, i) =>
+    (i + 1).toString().padStart(2, '0')
+  );
 }
 
 export const WEEKDAYS = [
@@ -27,27 +53,36 @@ export const DEFAULT_START_TIME = '08:00';
 export const DEFAULT_END_TIME = '20:00';
 
 /**
+ * Check if a MM-DD string falls within a recurring season.
+ * Handles wrap-around seasons (e.g. 11-01 to 03-31 = winter season).
+ */
+function isInSeason(mmdd: string, from: string | null, until: string | null): boolean {
+  if (!from && !until) return true;
+  if (from && !until) return mmdd >= from;
+  if (!from && until) return mmdd <= until;
+
+  if (from! <= until!) {
+    return mmdd >= from! && mmdd <= until!;
+  }
+  // Wrap-around (e.g. Nov–Mar)
+  return mmdd >= from! || mmdd <= until!;
+}
+
+/**
  * Check if a specific date is available based on availability rules
  */
 export function isDateAvailable(
   date: Date,
   rules: AvailabilityRule[]
 ): boolean {
-  // No rules = always available (backwards compatible)
   if (rules.length === 0) return true;
 
   const dayOfWeek = date.getDay();
-  const dateStr = formatDateForComparison(date);
+  const mmdd = formatMonthDay(date);
 
   return rules.some((rule) => {
-    // Check weekday
     if (!rule.weekdays.includes(dayOfWeek)) return false;
-
-    // Check season (valid_from/valid_until)
-    if (rule.valid_from && dateStr < rule.valid_from) return false;
-    if (rule.valid_until && dateStr > rule.valid_until) return false;
-
-    return true;
+    return isInSeason(mmdd, rule.valid_from, rule.valid_until);
   });
 }
 
@@ -59,24 +94,15 @@ export function isDateTimeAvailable(
   time: string, // HH:MM format
   rules: AvailabilityRule[]
 ): boolean {
-  // No rules = always available
   if (rules.length === 0) return true;
 
   const dayOfWeek = date.getDay();
-  const dateStr = formatDateForComparison(date);
+  const mmdd = formatMonthDay(date);
 
   return rules.some((rule) => {
-    // Check weekday
     if (!rule.weekdays.includes(dayOfWeek)) return false;
-
-    // Check time window
     if (time < rule.start_time || time > rule.end_time) return false;
-
-    // Check season
-    if (rule.valid_from && dateStr < rule.valid_from) return false;
-    if (rule.valid_until && dateStr > rule.valid_until) return false;
-
-    return true;
+    return isInSeason(mmdd, rule.valid_from, rule.valid_until);
   });
 }
 
@@ -91,22 +117,25 @@ export function getUnavailableReason(
   if (isDateAvailable(date, rules)) return null;
 
   const dayOfWeek = date.getDay();
-  const dateStr = formatDateForComparison(date);
+  const mmdd = formatMonthDay(date);
   const dayName = WEEKDAYS.find((d) => d.value === dayOfWeek)?.fullLabel || '';
 
-  // Check if it's a weekday issue
   const hasWeekdayRule = rules.some((rule) => rule.weekdays.includes(dayOfWeek));
   if (!hasWeekdayRule) {
     return `Not available on ${dayName}s`;
   }
 
-  // Check if it's a season issue
   for (const rule of rules) {
-    if (rule.valid_from && dateStr < rule.valid_from) {
-      return `Season starts ${formatDisplayDate(rule.valid_from)}`;
-    }
-    if (rule.valid_until && dateStr > rule.valid_until) {
-      return `Season ended ${formatDisplayDate(rule.valid_until)}`;
+    if (!isInSeason(mmdd, rule.valid_from, rule.valid_until)) {
+      if (rule.valid_from && rule.valid_until) {
+        return `Only available ${formatSeasonDisplay(rule.valid_from)} – ${formatSeasonDisplay(rule.valid_until)}`;
+      }
+      if (rule.valid_from) {
+        return `Season starts ${formatSeasonDisplay(rule.valid_from)}`;
+      }
+      if (rule.valid_until) {
+        return `Season ends ${formatSeasonDisplay(rule.valid_until)}`;
+      }
     }
   }
 
@@ -134,13 +163,11 @@ export function getOperatingHours(
   if (rules.length === 0) return null;
 
   const dayOfWeek = date.getDay();
-  const dateStr = formatDateForComparison(date);
+  const mmdd = formatMonthDay(date);
 
   const matchingRule = rules.find((rule) => {
     if (!rule.weekdays.includes(dayOfWeek)) return false;
-    if (rule.valid_from && dateStr < rule.valid_from) return false;
-    if (rule.valid_until && dateStr > rule.valid_until) return false;
-    return true;
+    return isInSeason(mmdd, rule.valid_from, rule.valid_until);
   });
 
   if (!matchingRule) return null;
@@ -151,14 +178,15 @@ export function getOperatingHours(
   };
 }
 
-// Helper functions
-function formatDateForComparison(date: Date): string {
-  return format(date, 'yyyy-MM-dd');
+function formatMonthDay(date: Date): string {
+  return format(date, 'MM-dd');
 }
 
-function formatDisplayDate(dateStr: string): string {
-  const [year, month, day] = dateStr.split('-');
-  return `${day}/${month}/${year}`;
+/** Format MM-DD as "1 April" for display */
+function formatSeasonDisplay(mmdd: string): string {
+  const [m, d] = mmdd.split('-');
+  const monthName = MONTHS.find((month) => month.value === m)?.label || m;
+  return `${parseInt(d)} ${monthName}`;
 }
 
 // Cancellation policy types and helpers
