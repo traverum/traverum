@@ -6,6 +6,7 @@ import { usePendingRequests } from '@/hooks/usePendingRequests';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, parseISO, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
 import { ChevronRight, Compass, CreditCard } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +15,36 @@ import { cn } from '@/lib/utils';
 import { getTodayLocal, isSessionUpcoming, parseLocalDate } from '@/lib/date-utils';
 import { useUpcomingRentals } from '@/hooks/useUpcomingRentals';
 import { toast } from 'sonner';
+
+const EU_COUNTRIES = [
+  { code: 'AT', name: 'Austria' },
+  { code: 'BE', name: 'Belgium' },
+  { code: 'BG', name: 'Bulgaria' },
+  { code: 'HR', name: 'Croatia' },
+  { code: 'CY', name: 'Cyprus' },
+  { code: 'CZ', name: 'Czech Republic' },
+  { code: 'DK', name: 'Denmark' },
+  { code: 'EE', name: 'Estonia' },
+  { code: 'FI', name: 'Finland' },
+  { code: 'FR', name: 'France' },
+  { code: 'DE', name: 'Germany' },
+  { code: 'GR', name: 'Greece' },
+  { code: 'HU', name: 'Hungary' },
+  { code: 'IE', name: 'Ireland' },
+  { code: 'IT', name: 'Italy' },
+  { code: 'LV', name: 'Latvia' },
+  { code: 'LT', name: 'Lithuania' },
+  { code: 'LU', name: 'Luxembourg' },
+  { code: 'MT', name: 'Malta' },
+  { code: 'NL', name: 'Netherlands' },
+  { code: 'PL', name: 'Poland' },
+  { code: 'PT', name: 'Portugal' },
+  { code: 'RO', name: 'Romania' },
+  { code: 'SK', name: 'Slovakia' },
+  { code: 'SI', name: 'Slovenia' },
+  { code: 'ES', name: 'Spain' },
+  { code: 'SE', name: 'Sweden' },
+] as const;
 
 export default function SupplierDashboard() {
   const navigate = useNavigate();
@@ -26,8 +57,15 @@ export default function SupplierDashboard() {
   const { requests: pendingRequests, isLoading: requestsLoading } = usePendingRequests();
   const { rentals: upcomingRentals, isLoading: rentalsLoading } = useUpcomingRentals();
   const [stripeLoading, setStripeLoading] = useState(false);
+  const [showCountryStep, setShowCountryStep] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState('');
 
   const handleConnectStripe = async () => {
+    if (!selectedCountry) {
+      setShowCountryStep(true);
+      return;
+    }
+
     setStripeLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -40,8 +78,14 @@ export default function SupplierDashboard() {
         toast.error('No organization selected');
         return;
       }
+
+      await supabase
+        .from('partners')
+        .update({ country: selectedCountry })
+        .eq('id', activePartnerId);
+
       const response = await supabase.functions.invoke('create-connect-account', {
-        body: { origin: window.location.origin, partner_id: activePartnerId },
+        body: { origin: window.location.origin, partner_id: activePartnerId, country: selectedCountry },
       });
       if (response.error) {
         throw new Error(response.error.message || 'Failed to create Stripe account');
@@ -163,21 +207,56 @@ export default function SupplierDashboard() {
         {/* Stripe onboarding */}
         {!hasStripe && (
           <Card className="border border-border">
-            <CardContent className="p-4 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <CreditCard className="h-4 w-4 text-primary flex-shrink-0" />
-                <p className="text-sm text-foreground">
-                  Set up payments — Stripe handles everything securely
-                </p>
-              </div>
-              <Button
-                size="sm"
-                onClick={handleConnectStripe}
-                disabled={stripeLoading}
-                className="h-7 flex-shrink-0"
-              >
-                {stripeLoading ? 'Connecting...' : 'Connect Stripe'}
-              </Button>
+            <CardContent className="p-4">
+              {!showCountryStep ? (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="h-4 w-4 text-primary flex-shrink-0" />
+                    <p className="text-sm text-foreground">
+                      Set up payments — Stripe handles everything securely
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleConnectStripe}
+                    disabled={stripeLoading}
+                    className="h-7 flex-shrink-0"
+                  >
+                    Connect Stripe
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="h-4 w-4 text-primary flex-shrink-0" />
+                    <p className="text-sm font-medium text-foreground">
+                      Where is your business registered?
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EU_COUNTRIES.map((c) => (
+                          <SelectItem key={c.code} value={c.code}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      size="sm"
+                      onClick={handleConnectStripe}
+                      disabled={stripeLoading || !selectedCountry}
+                      className="h-7 flex-shrink-0"
+                    >
+                      {stripeLoading ? 'Connecting...' : 'Continue'}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}

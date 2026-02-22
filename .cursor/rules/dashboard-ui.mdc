@@ -2,9 +2,27 @@
 description: Dashboard UI patterns — Notion-style warm minimalism with shadcn/ui
 globs: "apps/dashboard/**/*.tsx, apps/dashboard/**/*.ts"
 alwaysApply: false
+reviewed: 22-02-2026
 ---
 
 # Dashboard UI Rules
+
+## UX mindset — think before building
+
+Before writing any dashboard UI, ask yourself:
+
+1. **What does this person need to DO right now?** Show only that. A supplier opening the calendar needs to see today's sessions and create new ones — not a tutorial about how calendars work.
+2. **What can be removed?** If removing an element doesn't make the page harder to use, remove it. Fewer elements = less confusion.
+3. **Would a supplier understand this in 2 seconds?** If they need to read a subtitle to understand a section, the section title or content is unclear — fix that instead of adding explanatory text.
+4. **Layout hierarcy** Think what the user must see first, second, third... and what they do not have to see at all.
+
+## Layout consistency
+
+- **Forms:** Label above input. Full-width inputs by default. Side-by-side only when fields are related and short (e.g., start time + end time).
+- **Action buttons:** Right-aligned. Primary action on the right, secondary on the left.
+- **Page structure:** `container max-w-6xl mx-auto px-4 py-6`. Consistent on every page.
+- **Cards:** All cards on a page use the same padding, same border style, same radius.
+- **Consistent patterns across pages:** If booking management uses a card with "title + meta row + actions", every similar card elsewhere uses the same layout.
 
 ## Core principles
 
@@ -14,12 +32,13 @@ alwaysApply: false
 
 ## Anti-patterns — never do these
 
-- Shadows for card distinction (use `border border-border` instead)
+- Shadows for card distinction (use `border border-border`)
 - Different background colors to separate areas (unified surface)
 - Equal button padding (use 1.5:1 horizontal:vertical ratio)
-- Always-visible helper text (use hover tooltips)
+- Always-visible helper text (use hover tooltips or placeholder text)
 - Text labels where a visual indicator suffices
 - Slow transitions on buttons/hovers (use `transition-ui` for 20ms feedback)
+- Adding "are you sure?" confirmations for non-destructive actions
 
 ## Quick reference
 
@@ -27,7 +46,7 @@ alwaysApply: false
 - **Border radius:** `rounded-sm` buttons → `rounded` cards → `rounded-md` floating → `rounded-lg` modals → `rounded-full` pills.
 - **Status colors:** Use semantic tokens (`bg-success/10 text-success`, `bg-warning/10 text-warning`, etc.), not raw hex values.
 
-## Design docs — read these for specifics
+## Design docs — read these for component specs and brand details
 
-- `docs/design/dashboard-design-principles.md` — full component spec (sizes, padding, colors, all Tailwind classes)
-- `docs/design/brand-essence.md` — color palette, typography weights, brand identity
+- `docs/design/dashboard-design-principles.md` — full component spec (sizes, padding, colors, all Tailwind classes, form layout, text rules)
+- `docs/design/brand-essence.md` — color palette, typography weights, brand identity, tone of voice

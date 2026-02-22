@@ -42,9 +42,9 @@ serve(async (req) => {
       throw new Error('Invalid user token');
     }
 
-    // Parse request body to get partner_id
+    // Parse request body to get partner_id and country
     const body = await req.json().catch(() => ({}));
-    const { partner_id: requestedPartnerId, origin } = body;
+    const { partner_id: requestedPartnerId, origin, country } = body;
 
     if (!requestedPartnerId) {
       throw new Error('partner_id is required in request body');
@@ -77,7 +77,7 @@ serve(async (req) => {
     // Get partner details
     const { data: partner, error: partnerError } = await supabase
       .from('partners')
-      .select('id, email, name, stripe_account_id')
+      .select('id, email, name, stripe_account_id, country')
       .eq('id', partnerId)
       .single();
 
@@ -89,11 +89,16 @@ serve(async (req) => {
     let stripeAccountId = partner.stripe_account_id;
 
     if (!stripeAccountId) {
-      // Create a new Stripe Connect Express account
-      console.log('Creating new Stripe Connect account for partner:', partnerId);
+      const accountCountry = country || partner.country;
+      if (!accountCountry) {
+        throw new Error('Country is required to create a Stripe account');
+      }
+
+      console.log('Creating new Stripe Connect account for partner:', partnerId, 'country:', accountCountry);
       
       const account = await stripe.accounts.create({
         type: 'express',
+        country: accountCountry,
         email: partner.email,
         metadata: {
           partner_id: partnerId,

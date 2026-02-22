@@ -4,7 +4,7 @@
 
 The embed system is how Traverum becomes invisible. Hotels paste a snippet on their website and a beautiful, branded experience section appears — looking like it belongs to the hotel, not a third party.
 
-**For the hotel:** Copy-paste setup. No code knowledge. Works in WordPress, Squarespace, Wix, any CMS. The widget matches their brand automatically.
+**For the hotel:** Copy-paste setup. No code knowledge. Works in WordPress, Squarespace, Wix, any CMS. The widget matches their brand.
 
 **For the guest:** Seamless. Browsing experiences on the hotel website feels native. Clicking a card opens the full booking flow in a new tab — still branded to the hotel.
 
