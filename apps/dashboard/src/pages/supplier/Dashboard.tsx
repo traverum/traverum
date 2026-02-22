@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useSupplierData } from '@/hooks/useSupplierData';
@@ -5,14 +6,14 @@ import { usePendingRequests } from '@/hooks/usePendingRequests';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, parseISO, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
-import { ChevronRight, Compass, AlertCircle } from 'lucide-react';
+import { ChevronRight, Compass, CreditCard } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { getTodayLocal, isSessionUpcoming, parseLocalDate } from '@/lib/date-utils';
 import { useUpcomingRentals } from '@/hooks/useUpcomingRentals';
+import { toast } from 'sonner';
 
 export default function SupplierDashboard() {
   const navigate = useNavigate();
@@ -24,9 +25,39 @@ export default function SupplierDashboard() {
   } = useSupplierData();
   const { requests: pendingRequests, isLoading: requestsLoading } = usePendingRequests();
   const { rentals: upcomingRentals, isLoading: rentalsLoading } = useUpcomingRentals();
+  const [stripeLoading, setStripeLoading] = useState(false);
 
-  // Check if Stripe onboarding is needed
-  const needsStripeOnboarding = !hasStripe;
+  const handleConnectStripe = async () => {
+    setStripeLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please log in to connect Stripe');
+        navigate('/auth?mode=login');
+        return;
+      }
+      if (!activePartnerId) {
+        toast.error('No organization selected');
+        return;
+      }
+      const response = await supabase.functions.invoke('create-connect-account', {
+        body: { origin: window.location.origin, partner_id: activePartnerId },
+      });
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to create Stripe account');
+      }
+      const { url } = response.data;
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error('No onboarding URL returned');
+      }
+    } catch (error: any) {
+      console.error('Stripe Connect error:', error);
+      toast.error(error.message || 'Failed to connect Stripe');
+      setStripeLoading(false);
+    }
+  };
 
   // Get all upcoming sessions (exclude sessions whose start time has already passed)
   const todayLocal = getTodayLocal();
@@ -129,24 +160,26 @@ export default function SupplierDashboard() {
           </p>
         </div>
 
-        {/* Stripe Onboarding Alert */}
-        {needsStripeOnboarding && (
-          <Alert className="border-border bg-card">
-            <AlertCircle className="h-4 w-4 text-primary" />
-            <AlertTitle className="text-sm font-medium">Complete Payment Setup</AlertTitle>
-            <AlertDescription className="text-sm text-muted-foreground mt-1">
-              Connect your Stripe account to receive payments from bookings.
-            </AlertDescription>
-            <div className="mt-3">
+        {/* Stripe onboarding */}
+        {!hasStripe && (
+          <Card className="border border-border">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <CreditCard className="h-4 w-4 text-primary flex-shrink-0" />
+                <p className="text-sm text-foreground">
+                  Set up payments — Stripe handles everything securely
+                </p>
+              </div>
               <Button
                 size="sm"
-                onClick={() => navigate('/supplier/stripe-connect')}
-                className="h-7 px-3 text-sm"
+                onClick={handleConnectStripe}
+                disabled={stripeLoading}
+                className="h-7 flex-shrink-0"
               >
-                Set Up Payments
+                {stripeLoading ? 'Connecting...' : 'Connect Stripe'}
               </Button>
-            </div>
-          </Alert>
+            </CardContent>
+          </Card>
         )}
 
         {/* Pending Requests Section - Always visible */}

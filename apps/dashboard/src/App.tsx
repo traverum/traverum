@@ -23,7 +23,6 @@ function SessionDetailRedirect() {
   const { sessionId } = useParams();
   return <Navigate to={`/supplier/bookings?tab=upcoming`} replace />;
 }
-import StripeConnect from "./pages/supplier/StripeConnect";
 import ExperienceSelection from "./pages/hotel/ExperienceSelection";
 import HotelDashboard from "./pages/hotel/Dashboard";
 import LocationSettings from "./pages/hotel/LocationSettings";
@@ -138,14 +137,6 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <SessionDetailRedirect />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/supplier/stripe-connect"
-                element={
-                  <ProtectedRoute>
-                    <StripeConnect />
                   </ProtectedRoute>
                 } 
               />

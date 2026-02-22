@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,21 +12,12 @@ import {
 import { useCreateOrganization } from '@/hooks/useCreateOrganization';
 import { useToast } from '@/hooks/use-toast';
 
-type BusinessType = 'supplier' | 'hotel';
-
 interface BusinessDetailsProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  businessType: BusinessType;
-  onBack: () => void;
 }
 
-export function BusinessDetails({
-  open,
-  onOpenChange,
-  businessType,
-  onBack,
-}: BusinessDetailsProps) {
+export function BusinessDetails({ open, onOpenChange }: BusinessDetailsProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { createOrganization, isLoading } = useCreateOrganization();
@@ -38,42 +29,37 @@ export function BusinessDetails({
     e.preventDefault();
     setNameError('');
 
-    // Validate name
     if (!name || name.trim().length < 2) {
       setNameError('Name must be at least 2 characters');
       return;
     }
 
     const result = await createOrganization({
-      businessType,
       name: name.trim(),
       email: user?.email || '',
     });
 
     if (result.error) {
       toast({
-        title: 'Could not create business',
+        title: 'Could not create organization',
         description: result.error.message,
         variant: 'destructive',
       });
     }
-    // Success redirect is handled by useCreateOrganization
   };
-
-  const isHotel = businessType === 'hotel';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md border border-border rounded-lg">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            {isHotel ? 'Name your hotel' : 'Name your business'}
+            Name your organization
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">
-              {isHotel ? 'Hotel Name' : 'Business Name'} <span className="text-destructive">*</span>
+              Organization Name <span className="text-destructive">*</span>
             </Label>
             <Input
               id="name"
@@ -88,16 +74,15 @@ export function BusinessDetails({
             )}
           </div>
 
-
           <div className="flex justify-end gap-3 pt-2">
             <Button
               type="button"
               variant="outline"
-              onClick={onBack}
+              onClick={() => onOpenChange(false)}
               disabled={isLoading}
               className="h-7 px-3"
             >
-              Back
+              Cancel
             </Button>
             <Button
               type="submit"
