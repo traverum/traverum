@@ -82,12 +82,14 @@ export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo
                 <Image
                   src={logoUrl}
                   alt={hotelName}
-                  width={32}
-                  height={32}
-                  className="rounded-lg object-contain"
+                  width={140}
+                  height={40}
+                  className="h-8 w-auto object-contain"
+                  unoptimized={logoUrl.endsWith('.svg') || logoUrl.includes('.svg?')}
                 />
-              ) : null}
-              <h1 className="text-lg font-heading text-heading-foreground truncate">{hotelName}</h1>
+              ) : (
+                <h1 className="text-lg font-heading text-heading-foreground truncate">{hotelName}</h1>
+              )}
             </button>
           )}
         </div>

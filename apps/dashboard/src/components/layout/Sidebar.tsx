@@ -351,7 +351,7 @@ export function Sidebar({ children }: SidebarProps) {
           {/* Analytics - Bottom */}
           <div className="pt-2 border-t border-border mt-auto">
             <NavLink
-              to="/analytics"
+              to={isHotelContext ? '/hotel/analytics' : '/supplier/analytics'}
               className={({ isActive }) =>
                 cn(
                   'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',

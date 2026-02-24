@@ -29,7 +29,10 @@ import {
   ChevronDown,
   SlidersHorizontal,
   ExternalLink,
+  Upload,
+  X,
 } from 'lucide-react';
+import { optimizeImage } from '@/lib/image-optimization';
 
 // ── Constants ──
 const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
@@ -433,11 +436,14 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
   const [hotelConfigId, setHotelConfigId] = useState<string | null>(null);
   const [hotelName, setHotelName] = useState('Hotel');
   const [hotelSlug, setHotelSlug] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
   const initialLoadRef = useRef(true);
 
   // Load hotel config
@@ -463,6 +469,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
         setHotelConfigId(d.id);
         setHotelName(d.display_name || 'Hotel');
         setHotelSlug(d.slug || '');
+        setLogoUrl(d.logo_url || null);
         setTheme({
           accent_color: d.accent_color || DEFAULT_THEME.accent_color,
           heading_color: d.heading_color || d.text_color || DEFAULT_THEME.heading_color,
@@ -576,6 +583,98 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
     [saveConfig]
   );
 
+  const handleLogoUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file || !hotelConfigId || !activePartnerId) return;
+
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
+      if (!validTypes.includes(file.type)) {
+        toast({ title: 'Invalid file type', description: 'Please upload a JPG, PNG, WebP, or SVG image.', variant: 'destructive' });
+        return;
+      }
+
+      setLogoUploading(true);
+      try {
+        let uploadFile: File;
+        let contentType: string;
+        let ext: string;
+
+        if (file.type === 'image/svg+xml') {
+          uploadFile = file;
+          contentType = 'image/svg+xml';
+          ext = 'svg';
+        } else {
+          uploadFile = await optimizeImage(file, { maxWidth: 400, maxHeight: 200, maxSizeMB: 0.15 });
+          contentType = 'image/webp';
+          ext = 'webp';
+        }
+
+        const storagePath = `partners/${activePartnerId}/hotels/${hotelConfigId}/logo.${ext}`;
+
+        // Remove old logo if exists and is a different file type
+        if (logoUrl) {
+          const oldPath = logoUrl.split('/traverum-assets/')[1];
+          if (oldPath && oldPath !== storagePath) {
+            await supabase.storage.from('traverum-assets').remove([oldPath]);
+          }
+        }
+
+        const { error: uploadError } = await supabase.storage
+          .from('traverum-assets')
+          .upload(storagePath, uploadFile, { cacheControl: '3600', upsert: true, contentType });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from('traverum-assets').getPublicUrl(storagePath);
+        const newLogoUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+
+        const { error: updateError } = await supabase
+          .from('hotel_configs')
+          .update({ logo_url: newLogoUrl, updated_at: new Date().toISOString() })
+          .eq('id', hotelConfigId);
+
+        if (updateError) throw updateError;
+
+        setLogoUrl(newLogoUrl);
+        toast({ title: 'Logo updated' });
+      } catch (error: any) {
+        console.error('Logo upload error:', error);
+        toast({ title: 'Upload failed', description: error.message || 'Failed to upload logo.', variant: 'destructive' });
+      } finally {
+        setLogoUploading(false);
+        if (logoInputRef.current) logoInputRef.current.value = '';
+      }
+    },
+    [hotelConfigId, activePartnerId, logoUrl, toast]
+  );
+
+  const handleLogoRemove = useCallback(async () => {
+    if (!hotelConfigId) return;
+
+    try {
+      if (logoUrl) {
+        const oldPath = logoUrl.split('/traverum-assets/')[1]?.split('?')[0];
+        if (oldPath) {
+          await supabase.storage.from('traverum-assets').remove([oldPath]);
+        }
+      }
+
+      const { error } = await supabase
+        .from('hotel_configs')
+        .update({ logo_url: null, updated_at: new Date().toISOString() })
+        .eq('id', hotelConfigId);
+
+      if (error) throw error;
+
+      setLogoUrl(null);
+      toast({ title: 'Logo removed' });
+    } catch (error: any) {
+      console.error('Logo remove error:', error);
+      toast({ title: 'Remove failed', description: error.message || 'Failed to remove logo.', variant: 'destructive' });
+    }
+  }, [hotelConfigId, logoUrl, toast]);
+
   // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
@@ -650,6 +749,52 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
             {/* ── BRAND ── */}
             <section className="space-y-3">
               <SectionLabel>Brand</SectionLabel>
+
+              {/* Logo */}
+              <div className="space-y-1.5">
+                <FieldLabel tip="Displayed in the full-page widget header instead of the hotel name">Logo</FieldLabel>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,.svg"
+                  className="hidden"
+                  onChange={handleLogoUpload}
+                />
+                <div className="flex items-center gap-3">
+                  {logoUrl ? (
+                    <div className="relative group">
+                      <div className="h-10 px-2 flex items-center bg-muted/40 border border-border rounded-sm">
+                        <img
+                          src={logoUrl}
+                          alt="Hotel logo"
+                          className="h-7 max-w-[160px] object-contain"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleLogoRemove}
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Remove logo"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={logoUploading}
+                    className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs text-muted-foreground bg-[rgba(242,241,238,0.6)] hover:text-foreground border border-transparent hover:border-border rounded-sm transition-ui disabled:opacity-50"
+                  >
+                    {logoUploading ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Upload className="w-3 h-3" />
+                    )}
+                    {logoUrl ? 'Replace' : 'Upload'}
+                  </button>
+                </div>
+              </div>
 
               {/* Colors */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

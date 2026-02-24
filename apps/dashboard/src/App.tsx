@@ -33,6 +33,7 @@ import StaysList from "./pages/hotel/StaysList";
 import AddBusinessFlow from "./pages/onboarding/AddBusinessFlow";
 import EmailVerification from "./pages/EmailVerification";
 import Analytics from "./pages/Analytics";
+import HotelAnalytics from "./pages/hotel/Analytics";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -223,6 +224,22 @@ const App = () => (
               {/* Analytics */}
               <Route 
                 path="/analytics" 
+                element={
+                  <ProtectedRoute>
+                    <Analytics />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/hotel/analytics" 
+                element={
+                  <ProtectedRoute>
+                    <HotelAnalytics />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/supplier/analytics" 
                 element={
                   <ProtectedRoute>
                     <Analytics />

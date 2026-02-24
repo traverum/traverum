@@ -222,6 +222,7 @@ export async function POST(request: NextRequest) {
         .insert({
           experience_id: experienceId,
           hotel_id: hotel.partner_id,
+          hotel_config_id: hotel.id,
           session_id: sessionId,
           guest_name: cleanName,
           guest_email: cleanEmail,
@@ -231,7 +232,7 @@ export async function POST(request: NextRequest) {
           is_request: false,
           reservation_status: 'approved',
           payment_deadline: paymentDeadline.toISOString(),
-          response_deadline: paymentDeadline.toISOString(), // Required field
+          response_deadline: paymentDeadline.toISOString(),
           preferred_language: preferredLanguage || sessionData?.session_language || null,
         })
         .select()
@@ -292,6 +293,7 @@ export async function POST(request: NextRequest) {
       .insert({
         experience_id: experienceId,
         hotel_id: hotel.partner_id,
+        hotel_config_id: hotel.id,
         session_id: sessionId || null,
         guest_name: cleanName,
         guest_email: cleanEmail,

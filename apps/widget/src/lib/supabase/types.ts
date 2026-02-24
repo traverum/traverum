@@ -22,11 +22,12 @@ export type Database = {
           completed_at: string | null
           created_at: string | null
           hotel_amount_cents: number
+          hotel_payout_id: string | null
           id: string
           paid_at: string
           platform_amount_cents: number
           reservation_id: string
-          session_id: string
+          session_id: string | null
           stripe_charge_id: string | null
           stripe_payment_intent_id: string | null
           stripe_refund_id: string | null
@@ -41,11 +42,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           hotel_amount_cents: number
+          hotel_payout_id?: string | null
           id?: string
           paid_at?: string
           platform_amount_cents: number
           reservation_id: string
-          session_id: string
+          session_id?: string | null
           stripe_charge_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_refund_id?: string | null
@@ -60,11 +62,12 @@ export type Database = {
           completed_at?: string | null
           created_at?: string | null
           hotel_amount_cents?: number
+          hotel_payout_id?: string | null
           id?: string
           paid_at?: string
           platform_amount_cents?: number
           reservation_id?: string
-          session_id?: string
+          session_id?: string | null
           stripe_charge_id?: string | null
           stripe_payment_intent_id?: string | null
           stripe_refund_id?: string | null
@@ -73,6 +76,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_hotel_payout_id_fkey"
+            columns: ["hotel_payout_id"]
+            isOneToOne: false
+            referencedRelation: "hotel_payouts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_reservation_fk"
             columns: ["reservation_id"]
@@ -460,6 +470,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "hotel_configs_partner_fk"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hotel_payouts: {
+        Row: {
+          amount_cents: number
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          id: string
+          notes: string | null
+          paid_at: string | null
+          partner_id: string
+          payment_method: string | null
+          payment_ref: string | null
+          period_end: string
+          period_start: string
+          status: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          partner_id: string
+          payment_method?: string | null
+          payment_ref?: string | null
+          period_end: string
+          period_start: string
+          status?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          partner_id?: string
+          payment_method?: string | null
+          payment_ref?: string | null
+          period_end?: string
+          period_start?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hotel_payouts_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
