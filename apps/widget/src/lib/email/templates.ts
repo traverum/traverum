@@ -258,6 +258,7 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
   meetingPoint?: string | null
   cancelUrl: string
   supplierName: string
+  supplierEmail: string
   /** Cancellation policy text from experience (e.g. "Free cancellation up to 7 days before."). If allowCancel is false, use policy text like "This booking is non-refundable." */
   cancellationPolicyText: string
   /** Whether guest can cancel for refund (flexible/moderate = true; strict/non_refundable = false) */
@@ -292,6 +293,10 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
         <div class="info-row">
           <span class="info-label">Provider</span>
           <span class="info-value">${data.supplierName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Provider Email</span>
+          <span class="info-value"><a href="mailto:${data.supplierEmail}" style="color: #5A6B4E; text-decoration: none;">${data.supplierEmail}</a></span>
         </div>
         <div class="info-row">
           <span class="info-label">Date</span>
@@ -529,6 +534,7 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
   guestEmail: string
   guestPhone?: string | null
   bookingId: string
+  meetingPoint?: string | null
 }) {
   const content = `
     <div class="card">
@@ -572,12 +578,87 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
           <span class="info-label">Participants</span>
           <span class="info-value">${data.participants}</span>
         </div>
+        ${data.meetingPoint ? `
+        <div class="info-row">
+          <span class="info-label">Meeting Point</span>
+          <span class="info-value">${data.meetingPoint}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Amount Paid</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
       </div>
       
       <p class="text-muted">After the experience, you'll receive an email to confirm completion and receive your payment.</p>
     </div>
   `
   return baseTemplate(content, 'Payment Received')
+}
+
+// Hotel: Booking notification (guest booked via their channel)
+export function hotelBookingNotification(data: {
+  experienceTitle: string
+  supplierName: string
+  guestName: string
+  date: string
+  time: string | null | undefined
+  participants: number
+  totalCents: number
+  hotelCommissionCents: number
+  currency?: string
+  bookingId: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>New Booking via Your Channel</h1>
+      </div>
+      <p>A guest just booked an experience through your hotel. Here are the details:</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Provider</span>
+          <span class="info-value">${data.supplierName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Guest</span>
+          <span class="info-value">${escapeHtml(data.guestName)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Booking Total</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Your Commission</span>
+          <span class="info-value">${formatEmailPrice(data.hotelCommissionCents, data.currency)}</span>
+        </div>
+      </div>
+      
+      <p class="text-muted text-center">Commission is paid out after the experience is completed.</p>
+    </div>
+  `
+  return baseTemplate(content, 'New Booking via Your Channel')
 }
 
 // Supplier: Completion check

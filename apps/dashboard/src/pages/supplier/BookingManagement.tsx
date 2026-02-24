@@ -305,14 +305,24 @@ function BookingCard({
   isPast,
   onCancel,
   isCancelling,
+  onComplete,
+  isCompleting,
+  onNoExperience,
+  isReportingNoExperience,
 }: {
   booking: BookingItem;
   isPast: boolean;
   onCancel?: () => void;
   isCancelling?: boolean;
+  onComplete?: () => void;
+  isCompleting?: boolean;
+  onNoExperience?: () => void;
+  isReportingNoExperience?: boolean;
 }) {
   const [copiedEmail, setCopiedEmail] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [showNoExperienceConfirm, setShowNoExperienceConfirm] = useState(false);
   const isRental = booking.isRental;
   const isRefunded = booking.bookingStatus === 'cancelled' && !!booking.stripeRefundId;
   const isCancelled = booking.bookingStatus === 'cancelled' && !booking.stripeRefundId;
@@ -403,7 +413,7 @@ function BookingCard({
             </div>
           </div>
 
-          {/* Right side: amount + status + cancel */}
+          {/* Right side: amount + status + actions */}
           <div className="text-right flex-shrink-0 space-y-1.5">
             <p className="text-sm font-semibold">{formatPrice(booking.amountCents)}</p>
             {isPast && isRefunded && (
@@ -411,6 +421,9 @@ function BookingCard({
             )}
             {isPast && isCancelled && (
               <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Cancelled</Badge>
+            )}
+            {isPast && booking.bookingStatus === 'completed' && (
+              <Badge variant="default" className="text-[10px] h-4 px-1.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Completed</Badge>
             )}
             {onCancel && !isPast && booking.bookingStatus === 'confirmed' && (
               <Button
@@ -422,6 +435,28 @@ function BookingCard({
               >
                 Cancel & Refund
               </Button>
+            )}
+            {isPast && booking.bookingStatus === 'confirmed' && onComplete && (
+              <div className="flex flex-col gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[10px] px-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                  onClick={() => setShowCompleteConfirm(true)}
+                  disabled={isCompleting || isReportingNoExperience}
+                >
+                  {isCompleting ? 'Confirming...' : 'Mark Completed'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[10px] px-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={() => setShowNoExperienceConfirm(true)}
+                  disabled={isCompleting || isReportingNoExperience}
+                >
+                  {isReportingNoExperience ? 'Processing...' : "Didn't Happen"}
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -447,6 +482,47 @@ function BookingCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={showCompleteConfirm} onOpenChange={setShowCompleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm experience completed?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will trigger a payout of your share to your Stripe account. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not Yet</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { onComplete?.(); setShowCompleteConfirm(false); }}
+              disabled={isCompleting}
+            >
+              {isCompleting ? 'Confirming...' : 'Yes, It Happened'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showNoExperienceConfirm} onOpenChange={setShowNoExperienceConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Experience didn't happen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A full refund of {formatPrice(booking.amountCents)} will be issued to {booking.guestName}. You will not receive a payout for this booking. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { onNoExperience?.(); setShowNoExperienceConfirm(false); }}
+              disabled={isReportingNoExperience}
+            >
+              {isReportingNoExperience ? 'Processing...' : 'Refund Guest'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -458,11 +534,19 @@ function BookingList({
   isPast,
   onCancel,
   isCancelling,
+  onComplete,
+  isCompleting,
+  onNoExperience,
+  isReportingNoExperience,
 }: {
   bookings: BookingItem[];
   isPast: boolean;
   onCancel?: (bookingId: string) => void;
   isCancelling?: boolean;
+  onComplete?: (bookingId: string) => void;
+  isCompleting?: boolean;
+  onNoExperience?: (bookingId: string) => void;
+  isReportingNoExperience?: boolean;
 }) {
   const grouped = useMemo(() => {
     const groups: Array<{ date: string; bookings: BookingItem[] }> = [];
@@ -513,6 +597,10 @@ function BookingList({
                 isPast={isPast}
                 onCancel={onCancel ? () => onCancel(booking.id) : undefined}
                 isCancelling={isCancelling}
+                onComplete={onComplete ? () => onComplete(booking.id) : undefined}
+                isCompleting={isCompleting}
+                onNoExperience={onNoExperience ? () => onNoExperience(booking.id) : undefined}
+                isReportingNoExperience={isReportingNoExperience}
               />
             ))}
           </div>
@@ -537,6 +625,8 @@ export default function BookingManagement() {
     acceptRequest,
     declineRequest,
     cancelBooking,
+    completeBooking,
+    reportNoExperience,
     pendingCount,
     awaitingPaymentCount,
   } = useBookingManagement();
@@ -578,6 +668,24 @@ export default function BookingManagement() {
       toast({ title: 'Booking cancelled', description: 'A full refund has been issued and the guest notified.' });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to cancel booking.', variant: 'destructive' });
+    }
+  };
+
+  const handleCompleteBooking = async (bookingId: string) => {
+    try {
+      await completeBooking.mutateAsync(bookingId);
+      toast({ title: 'Experience confirmed', description: 'Your payout has been initiated.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to complete booking.', variant: 'destructive' });
+    }
+  };
+
+  const handleNoExperience = async (bookingId: string) => {
+    try {
+      await reportNoExperience.mutateAsync(bookingId);
+      toast({ title: 'Refund processed', description: 'The guest has been refunded.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Failed to process.', variant: 'destructive' });
     }
   };
 
@@ -682,7 +790,14 @@ export default function BookingManagement() {
 
           {/* Past Bookings Tab */}
           <TabsContent value="past" className="mt-0">
-            <BookingList bookings={pastBookings} isPast={true} />
+            <BookingList
+              bookings={pastBookings}
+              isPast={true}
+              onComplete={handleCompleteBooking}
+              isCompleting={completeBooking.isPending}
+              onNoExperience={handleNoExperience}
+              isReportingNoExperience={reportNoExperience.isPending}
+            />
           </TabsContent>
         </Tabs>
       </main>

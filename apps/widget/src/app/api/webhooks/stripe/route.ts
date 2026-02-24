@@ -6,6 +6,7 @@ import { sendEmail, getAppUrl } from '@/lib/email/index'
 import { 
   guestPaymentConfirmed, 
   supplierBookingConfirmed,
+  hotelBookingNotification,
   guestPaymentFailed,
   guestRefundProcessed,
   supplierPayoutSent,
@@ -619,6 +620,7 @@ async function createBookingFromPayment(
     meetingPoint: experience.meeting_point,
     cancelUrl,
     supplierName: supplier.name,
+    supplierEmail: supplier.email,
     cancellationPolicyText,
     allowCancel,
   })
@@ -641,6 +643,7 @@ async function createBookingFromPayment(
     totalCents: reservation.total_cents,
     currency: experience.currency,
     bookingId: booking.id,
+    meetingPoint: experience.meeting_point,
   })
   
   await sendEmail({
@@ -649,6 +652,29 @@ async function createBookingFromPayment(
     html: supplierEmailHtml,
     replyTo: reservation.guest_email,
   })
+  
+  // Send notification email to hotel
+  const hotel = reservation.hotel
+  if (hotel?.email) {
+    const hotelEmailHtml = hotelBookingNotification({
+      experienceTitle: experience.title,
+      supplierName: supplier.name,
+      guestName: reservation.guest_name,
+      date,
+      time,
+      participants: reservation.participants,
+      totalCents: reservation.total_cents,
+      hotelCommissionCents: split.hotelAmount,
+      currency: experience.currency,
+      bookingId: booking.id,
+    })
+
+    await sendEmail({
+      to: hotel.email,
+      subject: `New booking - ${experience.title}`,
+      html: hotelEmailHtml,
+    })
+  }
   
   console.log(`Booking ${booking.id} created for reservation ${reservationId}`)
 }

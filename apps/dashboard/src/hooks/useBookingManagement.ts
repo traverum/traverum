@@ -422,6 +422,52 @@ export function useBookingManagement() {
     },
   });
 
+  const completeBooking = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error('Not authenticated');
+
+      const response = await fetch(`${WIDGET_BASE_URL}/api/dashboard/bookings/${bookingId}/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`,
+        },
+      });
+
+      let result: any;
+      try { result = await response.json(); } catch { result = {}; }
+      if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-reservations'] });
+    },
+  });
+
+  const reportNoExperience = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error('Not authenticated');
+
+      const response = await fetch(`${WIDGET_BASE_URL}/api/dashboard/bookings/${bookingId}/no-experience`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`,
+        },
+      });
+
+      let result: any;
+      try { result = await response.json(); } catch { result = {}; }
+      if (!response.ok) throw new Error(result.error || `Request failed (${response.status})`);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['booking-mgmt-reservations'] });
+    },
+  });
+
   const refetchAll = async () => {
     await Promise.all([refetchPending(), refetchReservations()]);
   };
@@ -439,6 +485,8 @@ export function useBookingManagement() {
     declineRequest,
     cancelSession,
     cancelBooking,
+    completeBooking,
+    reportNoExperience,
     refetchAll,
     pendingCount: pendingRequests.length,
     awaitingPaymentCount: awaitingPayment.length,

@@ -6,6 +6,7 @@ import { sendEmail, getAppUrl } from '@/lib/email/index'
 import { 
   guestPaymentConfirmed, 
   supplierBookingConfirmed,
+  hotelBookingNotification,
 } from '@/lib/email/templates'
 import { generateCancelToken } from '@/lib/tokens'
 import { getCancellationPolicyText, CANCELLATION_POLICIES } from '@/lib/availability'
@@ -262,6 +263,7 @@ export async function POST(request: NextRequest) {
       meetingPoint: experience.meeting_point,
       cancelUrl,
       supplierName: supplier.name,
+      supplierEmail: supplier.email,
       cancellationPolicyText,
       allowCancel,
     })
@@ -284,6 +286,7 @@ export async function POST(request: NextRequest) {
       totalCents: reservation.total_cents,
       currency: experience.currency,
       bookingId: booking.id,
+      meetingPoint: experience.meeting_point,
     })
 
     await sendEmail({
@@ -292,6 +295,29 @@ export async function POST(request: NextRequest) {
       html: supplierEmailHtml,
       replyTo: reservation.guest_email,
     })
+
+    // Send notification email to hotel
+    const hotel = reservation.hotel
+    if (hotel?.email) {
+      const hotelEmailHtml = hotelBookingNotification({
+        experienceTitle: experience.title,
+        supplierName: supplier.name,
+        guestName: reservation.guest_name,
+        date,
+        time,
+        participants: reservation.participants,
+        totalCents: reservation.total_cents,
+        hotelCommissionCents: split.hotelAmount,
+        currency: experience.currency,
+        bookingId: booking.id,
+      })
+
+      await sendEmail({
+        to: hotel.email,
+        subject: `New booking - ${experience.title}`,
+        html: hotelEmailHtml,
+      })
+    }
 
     return NextResponse.json({
       success: true,
