@@ -57,8 +57,8 @@ export async function PATCH(
   if (paymentMethod) updateFields.payment_method = paymentMethod
   if (notes) updateFields.notes = notes
 
-  const { data: updated, error: updateErr } = await supabase
-    .from('hotel_payouts')
+  const { data: updated, error: updateErr } = await (supabase
+    .from('hotel_payouts') as any)
     .update(updateFields)
     .eq('id', id)
     .select()

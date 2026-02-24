@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
     0
   )
 
-  const { data: payout, error: insertErr } = await supabase
-    .from('hotel_payouts')
+  const { data: payout, error: insertErr } = await (supabase
+    .from('hotel_payouts') as any)
     .insert({
       partner_id: partnerId,
       period_start: periodStart,
