@@ -16,7 +16,7 @@ const fraunces = Fraunces({
 })
 
 export const metadata: Metadata = {
-  title: 'Traverum - Book Local Experiences',
+  title: 'Veyond',
   description: 'Discover and book amazing local experiences through your hotel',
 }
 
