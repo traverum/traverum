@@ -79,7 +79,7 @@ function ExperienceDashboardInner() {
   const { id: experienceId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { partner, experiences, refetchExperiences } = useSupplierData();
+  const { partner, experiences, refetchExperiences, hasStripe } = useSupplierData();
   const { availability, isLoading: availabilityLoading, saveAvailability } = useExperienceAvailability(experienceId || null);
 
   // Resolve experience early so we can seed initial state from React Query cache.
@@ -635,6 +635,15 @@ function ExperienceDashboardInner() {
   const handleStatusChange = async (newStatus: string) => {
     if (!experienceId) return;
     
+    if (newStatus === 'active' && !hasStripe) {
+      toast({
+        title: 'Stripe account required',
+        description: 'Please connect your Stripe account before publishing experiences. Go to your dashboard to set it up.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Validate before allowing 'active' status
     if (newStatus === 'active') {
       const validation = validateExperienceForActivation({
@@ -876,10 +885,10 @@ function ExperienceDashboardInner() {
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">
+                  <SelectItem value="active" disabled={!hasStripe}>
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-success" />
-                      <span>Active</span>
+                      <span>{hasStripe ? 'Active' : 'Active (connect Stripe first)'}</span>
                     </span>
                   </SelectItem>
                   <SelectItem value="draft">

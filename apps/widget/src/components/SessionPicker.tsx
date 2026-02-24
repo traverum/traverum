@@ -104,19 +104,18 @@ export function SessionPicker({
   }, [selectedCalendarDate, sessionsByDate])
 
   // Check if a date should be disabled (past or not available per rules)
+  // Dates with supplier-created sessions are always enabled, even outside availability
   const isDateDisabled = useMemo(() => {
     return (date: Date): boolean => {
       const dateOnly = new Date(date)
       dateOnly.setHours(0, 0, 0, 0)
-      // Disable past dates
       if (dateOnly < today) return true
-      // Disable dates not matching availability rules
-      if (availabilityRules.length > 0 && !isDateAvailable(dateOnly, availabilityRules)) {
+      if (availabilityRules.length > 0 && !isDateAvailable(dateOnly, availabilityRules) && !dateHasSessions(dateOnly)) {
         return true
       }
       return false
     }
-  }, [availabilityRules, today])
+  }, [availabilityRules, today, sessionsByDate])
 
   // Handle calendar date selection
   const handleCalendarDateSelect = (date: Date | undefined) => {
@@ -160,6 +159,8 @@ export function SessionPicker({
   // Generate available time slots for a request date (always, even when sessions exist)
   const requestTimeSlots = useMemo(() => {
     if (!selectedCalendarDate) return []
+    // No request bookings on off-season dates (only supplier-created sessions)
+    if (availabilityRules.length > 0 && !isDateAvailable(selectedCalendarDate, availabilityRules)) return []
     
     const hours = getOperatingHours(selectedCalendarDate, availabilityRules)
     let slots: string[]

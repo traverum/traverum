@@ -105,15 +105,27 @@ export async function createTransfer(
 }
 
 /**
- * Verify a Stripe webhook signature
+ * Verify a Stripe webhook signature.
+ * Tries the platform account secret first, then the Connect webhook secret as fallback.
  */
 export function verifyWebhookSignature(
   payload: string | Buffer,
   signature: string
 ): Stripe.Event {
-  return stripe.webhooks.constructEvent(
-    payload,
-    signature,
-    process.env.STRIPE_WEBHOOK_SECRET!
-  )
+  try {
+    return stripe.webhooks.constructEvent(
+      payload,
+      signature,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    )
+  } catch (primaryError) {
+    if (process.env.STRIPE_CONNECT_WEBHOOK_SECRET) {
+      return stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        process.env.STRIPE_CONNECT_WEBHOOK_SECRET
+      )
+    }
+    throw primaryError
+  }
 }
