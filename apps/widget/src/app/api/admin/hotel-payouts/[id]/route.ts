@@ -36,7 +36,7 @@ export async function PATCH(
 
   const { data: existing, error: fetchErr } = await supabase
     .from('hotel_payouts')
-    .select('id, status')
+    .select('*')
     .eq('id', id)
     .single()
 
@@ -44,7 +44,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Payout not found' }, { status: 404 })
   }
 
-  if (existing.status === 'paid') {
+  if ((existing as any).status === 'paid') {
     return NextResponse.json({ error: 'Payout already marked as paid' }, { status: 409 })
   }
 
