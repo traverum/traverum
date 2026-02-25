@@ -666,57 +666,17 @@ export function hotelBookingNotification(data: {
   hotelCommissionCents: number
   currency?: string
   bookingId: string
-  /** If set, treat as rental: show start/end dates, duration, quantity; no time row */
   rentalEndDate?: string
   rentalDays?: number
 }) {
-  const isRental = !!data.rentalEndDate
-  const dateTimeRows = isRental
-    ? `
-        <div class="info-row">
-          <span class="info-label">Start Date</span>
-          <span class="info-value">${formatEmailDate(data.date)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">End Date</span>
-          <span class="info-value">${formatEmailDate(data.rentalEndDate!)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Duration</span>
-          <span class="info-value">${data.rentalDays ?? 1} ${(data.rentalDays ?? 1) === 1 ? 'day' : 'days'}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Quantity</span>
-          <span class="info-value">${data.participants}</span>
-        </div>
-    `
-    : `
-        <div class="info-row">
-          <span class="info-label">Date</span>
-          <span class="info-value">${formatEmailDate(data.date)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Time</span>
-          <span class="info-value">${formatEmailTime(data.time)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Participants</span>
-          <span class="info-value">${data.participants}</span>
-        </div>
-    `
-
   const content = `
     <div class="card">
       <div class="header">
         <h1>New Booking via Your Channel</h1>
       </div>
-      <p>A guest just booked an experience through your hotel. Here are the details:</p>
+      <p>A guest just booked an experience through your hotel.</p>
       
       <div class="info-box">
-        <div class="info-row">
-          <span class="info-label">Booking Reference</span>
-          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
-        </div>
         <div class="info-row">
           <span class="info-label">Experience</span>
           <span class="info-value">${data.experienceTitle}</span>
@@ -724,15 +684,6 @@ export function hotelBookingNotification(data: {
         <div class="info-row">
           <span class="info-label">Provider</span>
           <span class="info-value">${data.supplierName}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Guest</span>
-          <span class="info-value">${escapeHtml(data.guestName)}</span>
-        </div>
-        ${dateTimeRows}
-        <div class="info-row">
-          <span class="info-label">Booking Total</span>
-          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Your Commission</span>
