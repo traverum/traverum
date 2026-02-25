@@ -691,7 +691,7 @@ export function hotelBookingNotification(data: {
         </div>
       </div>
       
-      <p class="text-muted text-center">Commission is paid out after the experience is completed.</p>
+      <p class="text-muted text-center">Commission is included in your monthly payout.</p>
     </div>
   `
   return baseTemplate(content, 'New Booking via Your Channel')
