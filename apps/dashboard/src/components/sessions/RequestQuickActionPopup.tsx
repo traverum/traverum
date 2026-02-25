@@ -224,7 +224,7 @@ function RequestCard({
               onClick={() => setShowDeclineConfirm(true)}
               disabled={isDeclining}
             >
-              Decline or propose times
+              Decline and propose new times
             </Button>
           </div>
         </div>
@@ -234,11 +234,11 @@ function RequestCard({
       <AlertDialog open={showDeclineConfirm} onOpenChange={(open) => { setShowDeclineConfirm(open); if (!open) setDeclineSuggestion(''); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{request.isRental ? 'Decline this rental request?' : 'Decline or propose other times?'}</AlertDialogTitle>
+            <AlertDialogTitle>{request.isRental ? 'Decline this rental request?' : 'Decline and propose new times?'}</AlertDialogTitle>
             <AlertDialogDescription>
               {request.isRental
-                ? `${request.guest_name} will be notified that their rental request was declined. You can include a message below.`
-                : `${request.guest_name} will be notified. You can propose times that work for you — the guest will see your message and can request again or pick an existing session.`
+                ? `${request.guest_name} will be notified that their rental request was declined. You can include a message below (optional).`
+                : `${request.guest_name} will be notified. You can add a message and propose times that work for you — the guest will see it and can request again or pick an existing session. Proposing is optional.`
               }
             </AlertDialogDescription>
           </AlertDialogHeader>

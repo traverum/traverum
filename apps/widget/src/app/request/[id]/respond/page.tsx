@@ -32,15 +32,15 @@ export default async function RespondPage({ params, searchParams }: RespondPageP
 
   if (!isValid) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-sm w-full text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-50 flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="rounded-md p-8 max-w-sm w-full text-center border border-[rgba(55,53,47,0.09)]" style={{ backgroundColor: '#FEFCF9' }}>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(184, 134, 107, 0.12)' }}>
+            <svg className="w-8 h-8" style={{ color: '#B8866B' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Link Expired</h1>
-          <p className="text-gray-500 text-sm">This link has expired or is invalid. Please check your email for a fresh link.</p>
+          <h1 className="text-xl font-medium mb-2" style={{ color: '#5D4631' }}>Link Expired</h1>
+          <p className="text-sm font-light" style={{ color: 'rgba(55, 53, 47, 0.65)' }}>This link has expired or is invalid. Please check your email for a fresh link.</p>
         </div>
       </div>
     )
@@ -61,10 +61,10 @@ export default async function RespondPage({ params, searchParams }: RespondPageP
 
   if (!reservationData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-sm w-full text-center">
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Not Found</h1>
-          <p className="text-gray-500 text-sm">This booking request could not be found.</p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="rounded-md p-8 max-w-sm w-full text-center border border-[rgba(55,53,47,0.09)]" style={{ backgroundColor: '#FEFCF9' }}>
+          <h1 className="text-xl font-medium mb-2" style={{ color: '#5D4631' }}>Not Found</h1>
+          <p className="text-sm font-light" style={{ color: 'rgba(55, 53, 47, 0.65)' }}>This booking request could not be found.</p>
         </div>
       </div>
     )
@@ -77,31 +77,28 @@ export default async function RespondPage({ params, searchParams }: RespondPageP
 
   // Already processed
   if (reservation.reservation_status !== 'pending') {
-    const statusMessages: Record<string, { title: string; message: string; color: string }> = {
-      approved: { title: 'Already Accepted', message: 'This request has been accepted. The guest has been sent a payment link.', color: 'green' },
-      declined: { title: 'Already Declined', message: 'This request has been declined. The guest has been notified.', color: 'gray' },
-      expired: { title: 'Request Expired', message: 'This request has expired because no response was given within 48 hours.', color: 'amber' },
+    const statusMessages: Record<string, { title: string; message: string; iconBg: string; iconColor: string }> = {
+      approved: { title: 'Already Accepted', message: 'This request has been accepted. The guest has been sent a payment link.', iconBg: 'rgba(107, 142, 107, 0.12)', iconColor: '#6B8E6B' },
+      declined: { title: 'Already Declined', message: 'This request has been declined. The guest has been notified.', iconBg: 'rgba(55, 53, 47, 0.08)', iconColor: '#6B7280' },
+      expired: { title: 'Request Expired', message: 'This request has expired because no response was given within 48 hours.', iconBg: 'rgba(201, 169, 97, 0.12)', iconColor: '#C9A961' },
     }
     const status = statusMessages[reservation.reservation_status] || {
       title: 'Processed',
       message: 'This request has already been processed.',
-      color: 'gray',
+      iconBg: 'rgba(55, 53, 47, 0.08)',
+      iconColor: '#6B7280',
     }
 
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-sm p-8 max-w-sm w-full text-center">
-          <div className={`w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center ${
-            status.color === 'green' ? 'bg-green-50' : status.color === 'amber' ? 'bg-amber-50' : 'bg-gray-100'
-          }`}>
-            <svg className={`w-8 h-8 ${
-              status.color === 'green' ? 'text-green-500' : status.color === 'amber' ? 'text-amber-500' : 'text-gray-400'
-            }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="rounded-md p-8 max-w-sm w-full text-center border border-[rgba(55,53,47,0.09)]" style={{ backgroundColor: '#FEFCF9' }}>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: status.iconBg }}>
+            <svg className="w-8 h-8" style={{ color: status.iconColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">{status.title}</h1>
-          <p className="text-gray-500 text-sm">{status.message}</p>
+          <h1 className="text-xl font-medium mb-2" style={{ color: '#5D4631' }}>{status.title}</h1>
+          <p className="text-sm font-light" style={{ color: 'rgba(55, 53, 47, 0.65)' }}>{status.message}</p>
         </div>
       </div>
     )

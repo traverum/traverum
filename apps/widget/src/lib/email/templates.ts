@@ -541,9 +541,7 @@ export function supplierNewRequest(data: BaseEmailData & {
       
       <div class="text-center mt-4">
         <a href="${data.acceptUrl}" class="btn btn-success" style="color: white;">Accept</a>
-      </div>
-      <div class="text-center mt-4">
-        <a href="${data.manageUrl}" style="color: rgba(55, 53, 47, 0.6); font-size: 14px; text-decoration: underline;">Can't do this time? Respond to request</a>
+        <a href="${data.manageUrl}" class="btn btn-danger" style="color: white;">Decline and propose new times</a>
       </div>
       
       <p class="text-muted text-center mt-4">Please respond within 48 hours. If you don't respond, the request will expire automatically.</p>

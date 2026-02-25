@@ -163,7 +163,7 @@ function PendingRequestCard({
                 onClick={() => setShowDeclineConfirm(true)}
                 disabled={isDeclining}
               >
-                Decline or propose times
+                Decline and propose new times
               </Button>
             </div>
           </div>
@@ -174,12 +174,12 @@ function PendingRequestCard({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {isRental ? 'Decline rental request?' : 'Decline or propose other times?'}
+              {isRental ? 'Decline rental request?' : 'Decline and propose new times?'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {isRental
-                ? 'The guest will be notified that this rental is not available. You can suggest alternative dates or quantities.'
-                : 'The guest will be notified. You can propose times that work for you — they\'ll see your message and can request again or pick an existing session.'
+                ? 'The guest will be notified that this rental is not available. You can suggest alternative dates or quantities (optional).'
+                : 'The guest will be notified. You can add a message and propose times that work for you — they\'ll see it and can request again or pick an existing session. Proposing is optional.'
               }
             </AlertDialogDescription>
           </AlertDialogHeader>
