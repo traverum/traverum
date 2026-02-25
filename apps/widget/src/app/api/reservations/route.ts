@@ -193,11 +193,12 @@ export async function POST(request: NextRequest) {
     
     const appUrl = getAppUrl()
     
-    // Compute rental end date from start + days for storage
+    // Compute rental end date: last calendar day of the rental (inclusive).
+    // See docs/technical/rental-date-convention.md
     let rentalEndDate: string | null = null
     if (isRental && requestDate && rentalDays > 0) {
       const startDate = new Date(requestDate + 'T12:00:00')
-      startDate.setDate(startDate.getDate() + rentalDays)
+      startDate.setDate(startDate.getDate() + rentalDays - 1)
       rentalEndDate = startDate.toISOString().slice(0, 10)
     }
 

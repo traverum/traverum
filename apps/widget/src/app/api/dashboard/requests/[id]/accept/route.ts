@@ -197,13 +197,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       : (reservation.requested_date || '')
     const emailTime = isRental ? '' : (formattedTime || '')
 
+    // rental_end_date is inclusive (last day). Duration = diff + 1.
     let emailRentalDays: number | undefined
     let emailRentalEndDate: string | undefined
     if (isRental && reservation.rental_start_date && reservation.rental_end_date) {
       emailRentalEndDate = reservation.rental_end_date
       emailRentalDays = Math.max(1, Math.round(
         (new Date(reservation.rental_end_date + 'T12:00:00').getTime() - new Date(reservation.rental_start_date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)
-      ))
+      ) + 1)
     }
 
     // Send email to guest with payment link

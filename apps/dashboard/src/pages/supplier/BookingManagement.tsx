@@ -67,12 +67,13 @@ function PendingRequestCard({
   const deadline = parseISO(request.response_deadline);
   const isUrgent = deadline.getTime() - Date.now() < 12 * 60 * 60 * 1000;
 
+  // rental_end_date is inclusive (last day). Duration = diff + 1.
   const rentalDays = isRental && request.rental_start_date && request.rental_end_date
     ? Math.round(
         (new Date(request.rental_end_date + 'T12:00:00').getTime() -
           new Date(request.rental_start_date + 'T12:00:00').getTime()) /
           (1000 * 60 * 60 * 24)
-      )
+      ) + 1
     : null;
 
   const whenText = (() => {
@@ -217,12 +218,13 @@ function PendingRequestCard({
 function AwaitingPaymentCard({ item }: { item: AwaitingPaymentItem }) {
   const isRental = item.isRental;
 
+  // rental_end_date is inclusive (last day). Duration = diff + 1.
   const rentalDays = isRental && item.rental_start_date && item.rental_end_date
     ? Math.round(
         (new Date(item.rental_end_date + 'T12:00:00').getTime() -
           new Date(item.rental_start_date + 'T12:00:00').getTime()) /
           (1000 * 60 * 60 * 24)
-      )
+      ) + 1
     : null;
 
   const whenText = (() => {
@@ -327,12 +329,13 @@ function BookingCard({
   const isRefunded = booking.bookingStatus === 'cancelled' && !!booking.stripeRefundId;
   const isCancelled = booking.bookingStatus === 'cancelled' && !booking.stripeRefundId;
 
+  // rental_end_date is inclusive (last day). Duration = diff + 1.
   const rentalDays = isRental && booking.rentalStartDate && booking.rentalEndDate
     ? Math.round(
         (new Date(booking.rentalEndDate + 'T12:00:00').getTime() -
           new Date(booking.rentalStartDate + 'T12:00:00').getTime()) /
           (1000 * 60 * 60 * 24)
-      )
+      ) + 1
     : null;
 
   const whenText = (() => {

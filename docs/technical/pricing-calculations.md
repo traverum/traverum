@@ -220,7 +220,7 @@ Where:
 **Reservations table:**
 - `requested_date` — rental start date (same field used by session requests)
 - `rental_start_date` — rental start date (duplicated for clarity in queries)
-- `rental_end_date` — computed server-side as `requested_date + days`
+- `rental_end_date` — last calendar day of the rental (inclusive); computed as `requested_date + (days - 1)`. See `docs/technical/rental-date-convention.md`.
 - `participants` — repurposed as quantity (number of units)
 - `is_request = true` — always true for rentals
 - `requested_time = null` — no time component for rentals

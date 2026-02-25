@@ -123,11 +123,11 @@ function RequestCard({
     );
   }
 
-  // Compute rental days
+  // rental_end_date is inclusive (last day). Duration = diff + 1.
   const rentalDays = (request.rental_start_date && request.rental_end_date)
     ? Math.max(1, Math.round(
         (new Date(request.rental_end_date + 'T12:00:00').getTime() - new Date(request.rental_start_date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)
-      ))
+      ) + 1)
     : 0;
 
   const deadlineShort = request.response_deadline

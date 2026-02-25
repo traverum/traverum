@@ -173,7 +173,7 @@ export interface BarSegment {
 /**
  * Convert one rental into a bar segment for a given week.
  * Returns null if the rental doesn't overlap this week.
- * rentalEndDate is treated as exclusive (day after last active day).
+ * rentalEndDate is inclusive (last active day of the rental).
  */
 export function splitRentalIntoSegment(
   rental: CalendarRental,
@@ -182,27 +182,22 @@ export function splitRentalIntoSegment(
   const weekStartStr = format(weekDays[0], 'yyyy-MM-dd');
   const weekEndStr = format(weekDays[6], 'yyyy-MM-dd');
 
-  if (rental.rentalStartDate > weekEndStr || rental.rentalEndDate <= weekStartStr) {
+  if (rental.rentalStartDate > weekEndStr || rental.rentalEndDate < weekStartStr) {
     return null;
   }
 
   const rentalStart = parseISO(rental.rentalStartDate);
   const rentalEnd = parseISO(rental.rentalEndDate);
 
-  // Last active day (endDate is exclusive)
-  const lastActiveDate = new Date(rentalEnd);
-  lastActiveDate.setDate(lastActiveDate.getDate() - 1);
-
   const isStart = !isBefore(rentalStart, weekDays[0]);
-  const isEnd = !isAfter(lastActiveDate, weekDays[6]);
+  const isEnd = !isAfter(rentalEnd, weekDays[6]);
 
   const startCol = isStart
     ? weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === rental.rentalStartDate) + 1
     : 1;
 
-  const lastActiveDateStr = format(lastActiveDate, 'yyyy-MM-dd');
   const endColExclusive = isEnd
-    ? weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === lastActiveDateStr) + 2
+    ? weekDays.findIndex(d => format(d, 'yyyy-MM-dd') === rental.rentalEndDate) + 2
     : 8;
 
   const span = endColExclusive - startCol;
@@ -259,14 +254,14 @@ export function getPackedRowCount(segments: BarSegment[]): number {
   return Math.max(...segments.map(s => s.row)) + 1;
 }
 
-/** Compute day-of-rental info: "Day X of Y" */
+/** Compute day-of-rental info: "Day X of Y". End date is inclusive. */
 export function getRentalDayContext(
   rental: CalendarRental,
   date: Date,
 ): { dayNumber: number; totalDays: number } {
   const start = parseISO(rental.rentalStartDate);
   const end = parseISO(rental.rentalEndDate);
-  const totalDays = differenceInCalendarDays(end, start);
+  const totalDays = differenceInCalendarDays(end, start) + 1;
   const dayNumber = differenceInCalendarDays(date, start) + 1;
   return { dayNumber, totalDays };
 }

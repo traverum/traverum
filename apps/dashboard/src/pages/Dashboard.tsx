@@ -7,30 +7,45 @@ const VIEW_STORAGE_KEY = 'traverum_active_view';
 
 /**
  * Smart dashboard redirect.
- * Redirects based on saved view preference (Experiences or Stays).
+ * Routes based on partner capabilities: hotel-only partners go to hotel dashboard,
+ * supplier-only partners go to supplier dashboard. Partners with both use saved preference.
  * Shows onboarding dialog if user has no organizations.
  */
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { isLoading, activePartner, userPartners, activePartnerId } = useActivePartner();
+  const { isLoading, activePartner, userPartners, activePartnerId, capabilities } = useActivePartner();
 
   useEffect(() => {
     if (isLoading) return;
     if (userPartners.length === 0) return;
     if (!activePartner || !activePartnerId) return;
 
-    let savedView = 'experiences';
-    try {
-      const stored = localStorage.getItem(VIEW_STORAGE_KEY);
-      if (stored === 'experiences' || stored === 'stays') savedView = stored;
-    } catch {}
+    const { hasHotelConfig, experienceCount } = capabilities;
+    const hotelOnly = hasHotelConfig && experienceCount === 0;
+    const supplierOnly = experienceCount > 0 && !hasHotelConfig;
 
-    if (savedView === 'stays') {
+    let targetView: 'stays' | 'experiences';
+
+    if (hotelOnly) {
+      targetView = 'stays';
+    } else if (supplierOnly) {
+      targetView = 'experiences';
+    } else {
+      targetView = 'experiences';
+      try {
+        const stored = localStorage.getItem(VIEW_STORAGE_KEY);
+        if (stored === 'experiences' || stored === 'stays') targetView = stored;
+      } catch {}
+    }
+
+    try { localStorage.setItem(VIEW_STORAGE_KEY, targetView); } catch {}
+
+    if (targetView === 'stays') {
       navigate('/hotel/dashboard', { replace: true });
     } else {
       navigate('/supplier/dashboard', { replace: true });
     }
-  }, [isLoading, activePartner, activePartnerId, userPartners.length, navigate]);
+  }, [isLoading, activePartner, activePartnerId, userPartners.length, capabilities, navigate]);
 
   if (isLoading) {
     return (

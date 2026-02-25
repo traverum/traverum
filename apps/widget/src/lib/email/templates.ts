@@ -263,6 +263,9 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
   cancellationPolicyText: string
   /** Whether guest can cancel for refund (flexible/moderate = true; strict/non_refundable = false) */
   allowCancel: boolean
+  /** If set, treat as rental: show start/end dates, duration, quantity; no time row */
+  rentalEndDate?: string
+  rentalDays?: number
 }) {
   const cancelSection = data.allowCancel
     ? `
@@ -272,6 +275,41 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
       </div>
     `
     : `<p class="text-muted">${data.cancellationPolicyText}</p>`
+
+  const isRental = !!data.rentalEndDate
+  const dateTimeRows = isRental
+    ? `
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate!)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays ?? 1} ${(data.rentalDays ?? 1) === 1 ? 'day' : 'days'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Quantity</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+    : `
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
 
   const content = `
     <div class="card">
@@ -298,18 +336,7 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
           <span class="info-label">Provider Email</span>
           <span class="info-value"><a href="mailto:${data.supplierEmail}" style="color: #5A6B4E; text-decoration: none;">${data.supplierEmail}</a></span>
         </div>
-        <div class="info-row">
-          <span class="info-label">Date</span>
-          <span class="info-value">${formatEmailDate(data.date)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Time</span>
-          <span class="info-value">${formatEmailTime(data.time)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Participants</span>
-          <span class="info-value">${data.participants}</span>
-        </div>
+        ${dateTimeRows}
         ${data.meetingPoint ? `
         <div class="info-row">
           <span class="info-label">Meeting Point</span>
@@ -535,7 +562,49 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
   guestPhone?: string | null
   bookingId: string
   meetingPoint?: string | null
+  /** If set, treat as rental: show start/end dates, duration, quantity; no time row */
+  rentalEndDate?: string
+  rentalDays?: number
 }) {
+  const isRental = !!data.rentalEndDate
+  const dateTimeRows = isRental
+    ? `
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate!)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays ?? 1} ${(data.rentalDays ?? 1) === 1 ? 'day' : 'days'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Quantity</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+    : `
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+
+  const completionNote = isRental
+    ? "After the rental period, you'll receive an email to confirm completion and receive your payment."
+    : "After the experience, you'll receive an email to confirm completion and receive your payment."
+
   const content = `
     <div class="card">
       <div class="header">
@@ -566,18 +635,7 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
           <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
         </div>
         ` : ''}
-        <div class="info-row">
-          <span class="info-label">Date</span>
-          <span class="info-value">${formatEmailDate(data.date)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Time</span>
-          <span class="info-value">${formatEmailTime(data.time)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Participants</span>
-          <span class="info-value">${data.participants}</span>
-        </div>
+        ${dateTimeRows}
         ${data.meetingPoint ? `
         <div class="info-row">
           <span class="info-label">Meeting Point</span>
@@ -590,7 +648,7 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
         </div>
       </div>
       
-      <p class="text-muted">After the experience, you'll receive an email to confirm completion and receive your payment.</p>
+      <p class="text-muted">${completionNote}</p>
     </div>
   `
   return baseTemplate(content, 'Payment Received')
@@ -608,7 +666,45 @@ export function hotelBookingNotification(data: {
   hotelCommissionCents: number
   currency?: string
   bookingId: string
+  /** If set, treat as rental: show start/end dates, duration, quantity; no time row */
+  rentalEndDate?: string
+  rentalDays?: number
 }) {
+  const isRental = !!data.rentalEndDate
+  const dateTimeRows = isRental
+    ? `
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate!)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays ?? 1} ${(data.rentalDays ?? 1) === 1 ? 'day' : 'days'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Quantity</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+    : `
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+
   const content = `
     <div class="card">
       <div class="header">
@@ -633,18 +729,7 @@ export function hotelBookingNotification(data: {
           <span class="info-label">Guest</span>
           <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
-        <div class="info-row">
-          <span class="info-label">Date</span>
-          <span class="info-value">${formatEmailDate(data.date)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Time</span>
-          <span class="info-value">${formatEmailTime(data.time)}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Participants</span>
-          <span class="info-value">${data.participants}</span>
-        </div>
+        ${dateTimeRows}
         <div class="info-row">
           <span class="info-label">Booking Total</span>
           <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>

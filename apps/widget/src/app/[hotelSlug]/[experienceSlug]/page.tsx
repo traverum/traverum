@@ -95,7 +95,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                 className="text-muted-foreground mt-1"
                 style={{ fontSize: 'var(--font-size-sm)' }}
               >
-                {formatDuration(experience.duration_minutes)} · Up to {experience.max_participants} people
+                {formatDuration(experience.duration_minutes)} · Up to {experience.max_participants} {experience.pricing_type === 'per_day' ? (experience.max_participants === 1 ? 'unit' : 'units') : 'people'}
                 {experience.available_languages && experience.available_languages.length > 0 && (
                   <> · {experience.available_languages.map(code => getLanguageName(code)).join(', ')}</>
                 )}

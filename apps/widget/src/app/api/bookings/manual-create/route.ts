@@ -237,8 +237,16 @@ export async function POST(request: NextRequest) {
       .single()
 
     const hotelSlug = (hotelConfig as any)?.slug || 'default'
-    const date = session?.session_date || reservation.requested_date || ''
+    const isRental = experience.pricing_type === 'per_day'
+    const date = isRental && reservation.rental_start_date
+      ? reservation.rental_start_date
+      : (session?.session_date || reservation.requested_date || '')
     const time = session?.start_time || reservation.requested_time || ''
+    const rentalEndDate = isRental ? (reservation.rental_end_date || '') : undefined
+    // rental_end_date is inclusive (last day). Duration = diff + 1.
+    const rentalDays = rentalEndDate && date
+      ? Math.max(1, Math.round((new Date(rentalEndDate + 'T12:00:00').getTime() - new Date(date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)) + 1)
+      : undefined
 
     // Generate cancel token
     const cancelToken = generateCancelToken(booking.id, new Date(date))
@@ -249,6 +257,8 @@ export async function POST(request: NextRequest) {
     const minDays = CANCELLATION_POLICIES.find((p) => p.value === cancellationPolicy)?.minDaysBeforeCancel ?? 0
     const cancellationPolicyText = getCancellationPolicyText(cancellationPolicy, experience.force_majeure_refund)
     const allowCancel = minDays > 0
+
+    const rentalEmailExtras = isRental && rentalEndDate ? { rentalEndDate, rentalDays } : {}
 
     // Send confirmation email to guest
     const guestEmailHtml = guestPaymentConfirmed({
@@ -266,6 +276,7 @@ export async function POST(request: NextRequest) {
       supplierEmail: supplier.email,
       cancellationPolicyText,
       allowCancel,
+      ...rentalEmailExtras,
     })
 
     await sendEmail({
@@ -287,6 +298,7 @@ export async function POST(request: NextRequest) {
       currency: experience.currency,
       bookingId: booking.id,
       meetingPoint: experience.meeting_point,
+      ...rentalEmailExtras,
     })
 
     await sendEmail({
@@ -296,9 +308,17 @@ export async function POST(request: NextRequest) {
       replyTo: reservation.guest_email,
     })
 
-    // Send notification email to hotel
-    const hotel = reservation.hotel
-    if (hotel?.email) {
+    // Send notification email to hotel (resolve email from nested relation or fetch by hotel_id)
+    let hotelEmail: string | null = reservation.hotel?.email ?? null
+    if (!hotelEmail && reservation.hotel_id) {
+      const { data: hotelPartner } = await supabase
+        .from('partners')
+        .select('email')
+        .eq('id', reservation.hotel_id)
+        .single()
+      hotelEmail = (hotelPartner as { email?: string } | null)?.email ?? null
+    }
+    if (hotelEmail) {
       const hotelEmailHtml = hotelBookingNotification({
         experienceTitle: experience.title,
         supplierName: supplier.name,
@@ -310,13 +330,19 @@ export async function POST(request: NextRequest) {
         hotelCommissionCents: split.hotelAmount,
         currency: experience.currency,
         bookingId: booking.id,
+        ...rentalEmailExtras,
       })
 
-      await sendEmail({
-        to: hotel.email,
+      const sendResult = await sendEmail({
+        to: hotelEmail,
         subject: `New booking - ${experience.title}`,
         html: hotelEmailHtml,
       })
+      if (!sendResult.success) {
+        console.error('Failed to send hotel booking notification:', sendResult.error)
+      }
+    } else {
+      console.warn(`Booking ${booking.id}: no hotel email (hotel_id=${reservation.hotel_id}) — hotel notification skipped`)
     }
 
     return NextResponse.json({

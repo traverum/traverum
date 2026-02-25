@@ -182,7 +182,7 @@ export function DayTimeView({
       {rentals.length > 0 && (() => {
         const isDark = typeof window !== 'undefined' && document.documentElement.classList.contains('dark');
         const dateKey = format(date, 'yyyy-MM-dd');
-        const dayRentals = rentals.filter(r => r.rentalStartDate <= dateKey && r.rentalEndDate > dateKey);
+        const dayRentals = rentals.filter(r => r.rentalStartDate <= dateKey && r.rentalEndDate >= dateKey);
         if (dayRentals.length === 0) return null;
         return (
           <div className="flex border-b border-border">
