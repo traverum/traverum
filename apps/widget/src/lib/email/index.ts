@@ -34,6 +34,31 @@ export async function sendEmail(options: EmailOptions) {
   }
 }
 
+/**
+ * Send multiple emails in a single API call to avoid rate limits.
+ * Resend batch API supports up to 100 emails per request.
+ */
+export async function sendBatchEmails(emails: EmailOptions[]): Promise<{ success: boolean; error?: unknown }> {
+  if (emails.length === 0) return { success: true }
+  if (emails.length === 1) return sendEmail(emails[0])
+
+  try {
+    await resend.batch.send(
+      emails.map(e => ({
+        from: FROM_EMAIL,
+        to: e.to,
+        subject: e.subject,
+        html: e.html,
+        reply_to: e.replyTo,
+      }))
+    )
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to send batch emails:', error)
+    return { success: false, error }
+  }
+}
+
 // Email template utilities
 export function getAppUrl() {
   return APP_URL

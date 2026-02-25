@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { verifyWebhookSignature, stripe } from '@/lib/stripe'
 import { calculateCommissionSplit } from '@/lib/commission'
-import { sendEmail, getAppUrl } from '@/lib/email/index'
+import { sendEmail, sendBatchEmails, getAppUrl } from '@/lib/email/index'
 import { 
   guestPaymentConfirmed, 
   supplierBookingConfirmed,
@@ -615,7 +615,7 @@ async function createBookingFromPayment(
   const cancellationPolicyText = getCancellationPolicyText(cancellationPolicy, experience.force_majeure_refund)
   const allowCancel = minDays > 0
   
-  // Send confirmation email to guest
+  // Build all confirmation emails and send as a single batch to avoid rate limits
   const guestEmailHtml = guestPaymentConfirmed({
     experienceTitle: experience.title,
     guestName: reservation.guest_name,
@@ -633,14 +633,7 @@ async function createBookingFromPayment(
     allowCancel,
     ...(isRental && rentalEndDate ? { rentalEndDate, rentalDays } : {}),
   })
-  
-  await sendEmail({
-    to: reservation.guest_email,
-    subject: `Booking confirmed! - ${experience.title}`,
-    html: guestEmailHtml,
-  })
-  
-  // Send confirmation email to supplier
+
   const supplierEmailHtml = supplierBookingConfirmed({
     experienceTitle: experience.title,
     guestName: reservation.guest_name,
@@ -655,15 +648,8 @@ async function createBookingFromPayment(
     meetingPoint: experience.meeting_point,
     ...(isRental && rentalEndDate ? { rentalEndDate, rentalDays } : {}),
   })
-  
-  await sendEmail({
-    to: supplier.email,
-    subject: `Payment received - ${experience.title}`,
-    html: supplierEmailHtml,
-    replyTo: reservation.guest_email,
-  })
-  
-  // Send notification email to hotel (resolve email from nested relation or fetch by hotel_id)
+
+  // Resolve hotel email from nested relation or fetch by hotel_id
   let hotelEmail: string | null = reservation.hotel?.email ?? null
   if (!hotelEmail && reservation.hotel_id) {
     const { data: hotelPartner } = await supabase
@@ -673,6 +659,12 @@ async function createBookingFromPayment(
       .single()
     hotelEmail = (hotelPartner as { email?: string } | null)?.email ?? null
   }
+
+  const emailBatch = [
+    { to: reservation.guest_email, subject: `Booking confirmed! - ${experience.title}`, html: guestEmailHtml },
+    { to: supplier.email, subject: `Payment received - ${experience.title}`, html: supplierEmailHtml, replyTo: reservation.guest_email },
+  ]
+
   if (hotelEmail) {
     const hotelEmailHtml = hotelBookingNotification({
       experienceTitle: experience.title,
@@ -687,17 +679,14 @@ async function createBookingFromPayment(
       bookingId: booking.id,
       ...(isRental && rentalEndDate ? { rentalEndDate, rentalDays } : {}),
     })
-
-    const sendResult = await sendEmail({
-      to: hotelEmail,
-      subject: `New booking - ${experience.title}`,
-      html: hotelEmailHtml,
-    })
-    if (!sendResult.success) {
-      console.error('Failed to send hotel booking notification:', sendResult.error)
-    }
+    emailBatch.push({ to: hotelEmail, subject: `New booking - ${experience.title}`, html: hotelEmailHtml })
   } else {
     console.warn(`Booking ${booking.id}: no hotel email (hotel_id=${reservation.hotel_id}) — hotel notification skipped`)
+  }
+
+  const batchResult = await sendBatchEmails(emailBatch)
+  if (!batchResult.success) {
+    console.error('Failed to send booking confirmation emails:', batchResult.error)
   }
   
   console.log(`Booking ${booking.id} created for reservation ${reservationId}`)
