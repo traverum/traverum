@@ -224,7 +224,7 @@ function RequestCard({
               onClick={() => setShowDeclineConfirm(true)}
               disabled={isDeclining}
             >
-              Decline
+              Decline or propose times
             </Button>
           </div>
         </div>

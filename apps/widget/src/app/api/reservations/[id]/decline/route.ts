@@ -95,40 +95,15 @@ async function processDecline(
   return { success: true }
 }
 
-// GET: One-click decline from email (returns HTML)
+// GET: No one-click decline — redirect to respond page so supplier can optionally add a message/propose times
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params
   const { searchParams } = new URL(request.url)
   const token = searchParams.get('token')
-  
-  if (!token) {
-    return new NextResponse(generateErrorHtml('Error', 'Missing token'), {
-      status: 400,
-      headers: { 'Content-Type': 'text/html' },
-    })
-  }
-  
-  try {
-    const result = await processDecline(id, token)
-    
-    if (result.success) {
-      return new NextResponse(
-        generateSuccessHtml('Booking Declined', 'The guest has been notified that this time is not available.'),
-        { status: 200, headers: { 'Content-Type': 'text/html' } }
-      )
-    } else {
-      return new NextResponse(
-        generateErrorHtml('Error', result.error || 'Failed to process.'),
-        { status: 400, headers: { 'Content-Type': 'text/html' } }
-      )
-    }
-  } catch (error) {
-    console.error('Decline reservation error:', error)
-    return new NextResponse(
-      generateErrorHtml('Error', 'Failed to process. Please try again.'),
-      { status: 500, headers: { 'Content-Type': 'text/html' } }
-    )
-  }
+
+  const appUrl = getAppUrl()
+  const respondUrl = `${appUrl}/request/${id}/respond${token ? `?dt=${encodeURIComponent(token)}` : ''}`
+  return NextResponse.redirect(respondUrl, 302)
 }
 
 // POST: Decline from manage page with optional message (returns JSON)

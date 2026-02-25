@@ -27,7 +27,8 @@ type Status = 'idle' | 'accepting' | 'declining' | 'accepted' | 'declined' | 'er
 export function RespondClient({ data, reservationId, acceptToken, declineToken }: RespondClientProps) {
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState('')
-  const [showDeclineForm, setShowDeclineForm] = useState(false)
+  // Default to showing decline/propose form so supplier always sees option to add message (proposing optional)
+  const [showDeclineForm, setShowDeclineForm] = useState(true)
   const [suggestion, setSuggestion] = useState('')
 
   const deadlineDate = new Date(data.responseDeadline)
@@ -177,18 +178,18 @@ export function RespondClient({ data, reservationId, acceptToken, declineToken }
             {status === 'accepting' ? 'Accepting...' : 'Accept Request'}
           </button>
 
-          {/* Decline section */}
+          {/* Decline and optionally propose: form shown by default so supplier always has chance to add message */}
           {!showDeclineForm ? (
             <button
               onClick={() => setShowDeclineForm(true)}
               disabled={status === 'accepting' || status === 'declining'}
               className="w-full py-3 text-gray-500 hover:text-gray-700 font-medium text-sm transition-colors disabled:opacity-50"
             >
-              Decline or suggest other times
+              Decline or propose other times
             </button>
           ) : (
             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-              <p className="text-sm font-medium text-gray-700">Suggest alternative times (optional)</p>
+              <p className="text-sm font-medium text-gray-700">Decline this time — add a message or suggest alternatives (optional)</p>
               <textarea
                 value={suggestion}
                 onChange={(e) => setSuggestion(e.target.value)}
@@ -200,7 +201,7 @@ export function RespondClient({ data, reservationId, acceptToken, declineToken }
               <p className="text-xs text-gray-400">
                 {suggestion.trim()
                   ? 'Your message will be sent to the guest.'
-                  : 'If empty, the guest will just be encouraged to browse available sessions.'}
+                  : 'If you leave this empty, the guest will be encouraged to browse available sessions.'}
               </p>
               <div className="flex gap-2">
                 <button
@@ -208,14 +209,14 @@ export function RespondClient({ data, reservationId, acceptToken, declineToken }
                   disabled={status === 'accepting' || status === 'declining'}
                   className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {status === 'declining' ? 'Declining...' : 'Decline Request'}
+                  {status === 'declining' ? 'Declining...' : 'Decline & send'}
                 </button>
                 <button
                   onClick={() => setShowDeclineForm(false)}
                   disabled={status === 'accepting' || status === 'declining'}
                   className="py-2.5 px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-lg text-sm transition-colors disabled:opacity-50"
                 >
-                  Cancel
+                  Collapse
                 </button>
               </div>
             </div>

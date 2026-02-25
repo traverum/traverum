@@ -329,11 +329,10 @@ export async function POST(request: NextRequest) {
     const declineToken = generateDeclineToken(reservation.id)
     
     const acceptUrl = `${appUrl}/api/reservations/${reservation.id}/accept?token=${acceptToken}`
-    const declineUrl = `${appUrl}/api/reservations/${reservation.id}/decline?token=${declineToken}`
-    
-    // Send email to supplier (with accept/decline buttons)
-    const dashboardUrl = 'https://dashboard.traverum.com/supplier/sessions'
     const manageUrl = `${appUrl}/request/${reservation.id}/respond?at=${acceptToken}&dt=${declineToken}`
+
+    // Send email to supplier: Accept + "Respond to request" only (no one-click decline)
+    const dashboardUrl = 'https://dashboard.traverum.com/supplier/sessions'
 
     const supplierEmailHtml = supplierNewRequest({
       experienceTitle: experience.title,
@@ -344,7 +343,6 @@ export async function POST(request: NextRequest) {
       totalCents: expectedTotal,
       currency: experience.currency,
       acceptUrl,
-      declineUrl,
       manageUrl,
       hotelName: hotel.display_name,
       dashboardUrl,

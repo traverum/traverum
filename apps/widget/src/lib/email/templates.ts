@@ -466,11 +466,11 @@ export function supplierNewBooking(data: BaseEmailData & {
 }
 
 // Supplier: New request (request-based, needs accept/decline)
+// No one-click decline in email — supplier must use Respond to request (manageUrl) so they can optionally propose times.
 // Guest email/phone omitted so provider cannot bypass the platform.
 export function supplierNewRequest(data: BaseEmailData & {
   acceptUrl: string
-  declineUrl: string
-  manageUrl?: string
+  manageUrl: string
   hotelName: string
   dashboardUrl?: string
   rentalEndDate?: string
@@ -541,14 +541,10 @@ export function supplierNewRequest(data: BaseEmailData & {
       
       <div class="text-center mt-4">
         <a href="${data.acceptUrl}" class="btn btn-success" style="color: white;">Accept</a>
-        <a href="${data.declineUrl}" class="btn btn-danger" style="color: white;">Decline</a>
       </div>
-      
-      ${data.manageUrl ? `
       <div class="text-center mt-4">
-        <a href="${data.manageUrl}" style="color: rgba(55, 53, 47, 0.5); font-size: 14px; text-decoration: underline;">Decline &amp; suggest other times</a>
+        <a href="${data.manageUrl}" style="color: rgba(55, 53, 47, 0.6); font-size: 14px; text-decoration: underline;">Can't do this time? Respond to request</a>
       </div>
-      ` : ''}
       
       <p class="text-muted text-center mt-4">Please respond within 48 hours. If you don't respond, the request will expire automatically.</p>
     </div>

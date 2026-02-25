@@ -41,7 +41,7 @@ Guest requests custom date/time. Supplier must respond.
 2. Guest enters name, email, phone
 3. System creates reservation with status `pending`
 4. System sets `response_deadline` = now + 48h
-5. Email to supplier: "New booking request" with **Accept** and **Decline** buttons (links to respond page or direct API)
+5. Email to supplier: "New booking request" with **Accept** and **Can't do this time? Respond to request** (link to respond page only — no one-click decline to avoid mistaken declinations)
 6. Email to guest: "Request received, awaiting confirmation"
 
 ### Phase 2: Supplier Responds
@@ -65,10 +65,10 @@ Guest requests custom date/time. Supplier must respond.
 
 ### Supplier Response Channels
 
-Suppliers can accept/decline via three entry points:
-1. **Email one-click links:** `GET /api/reservations/:id/accept?token=xxx` or `/decline?token=xxx`
-2. **Respond page:** `/request/:id/respond?at=acceptToken&dt=declineToken` — a dedicated page with Accept/Decline buttons
-3. **Dashboard:** `POST /api/dashboard/requests/:id/accept` or `/decline` — authenticated via Supabase JWT, no token needed
+Suppliers can respond via:
+1. **Email:** **Accept** (one-click) and **Can't do this time? Respond to request** (link to respond page). There is no one-click decline in email — declining always goes through the respond page so the supplier can optionally add a message or propose alternative times.
+2. **Respond page:** `/request/:id/respond?at=acceptToken&dt=declineToken` — Accept button + "Decline and optionally propose times" form (message optional). GET `/api/reservations/:id/decline?token=xxx` redirects here so old links do not one-click decline.
+3. **Dashboard:** Accept and "Decline or propose times" (opens dialog with optional message). `POST /api/dashboard/requests/:id/accept` or `/decline` — authenticated via Supabase JWT.
 
 ---
 
