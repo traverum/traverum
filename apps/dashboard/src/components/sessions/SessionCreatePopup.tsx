@@ -139,7 +139,8 @@ export function SessionCreatePopup({
   // Reset on open
   useEffect(() => {
     if (isOpen) {
-      if (initialDate) setDate(format(initialDate, 'yyyy-MM-dd'));
+      const nextDate = initialDate ? format(initialDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+      if (initialDate) setDate(nextDate);
       if (initialTime) {
         setStartTime(initialTime);
         const defaultDuration = experiences.length > 0 
@@ -167,6 +168,8 @@ export function SessionCreatePopup({
       setCustomPrice(initialPriceOverride || '');
       setSessionLanguage(initialLanguage || '');
       setValidationError(null);
+      // Repeat end date must be >= start date; reset to 1 month from start so it's always valid
+      setRepeatEndDate(format(addMonths(initialDate || new Date(), 1), 'yyyy-MM-dd'));
     }
   }, [isOpen, initialDate, initialTime, initialExperienceId, initialSpots, initialPriceOverride, initialLanguage, experiences]);
 
@@ -313,7 +316,13 @@ export function SessionCreatePopup({
           <Input
             type="date"
             value={date}
-            onChange={(e) => { setDate(e.target.value); setValidationError(null); }}
+            onChange={(e) => {
+              const nextDate = e.target.value;
+              setDate(nextDate);
+              setValidationError(null);
+              // Keep repeat end date >= start date
+              if (repeatEndDate < nextDate) setRepeatEndDate(nextDate);
+            }}
             min={format(new Date(), 'yyyy-MM-dd')}
             className={cn(inputClass, "h-9")}
             required

@@ -248,10 +248,10 @@ export async function POST(request: NextRequest) {
       ? Math.max(1, Math.round((new Date(rentalEndDate + 'T12:00:00').getTime() - new Date(date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)) + 1)
       : undefined
 
-    // Generate cancel token
+    // Generate cancel token; link goes to confirmation page first ("are you sure?")
     const cancelToken = generateCancelToken(booking.id, new Date(date))
     const appUrl = getAppUrl()
-    const cancelUrl = `${appUrl}/api/bookings/${booking.id}/cancel?token=${cancelToken}`
+    const cancelUrl = `${appUrl}/booking/cancel?id=${booking.id}&token=${encodeURIComponent(cancelToken)}`
 
     const cancellationPolicy = experience.cancellation_policy || 'moderate'
     const minDays = CANCELLATION_POLICIES.find((p) => p.value === cancellationPolicy)?.minDaysBeforeCancel ?? 0
