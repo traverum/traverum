@@ -65,22 +65,36 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const reservation = booking.reservation
   const session = reservation.session
   const experience = reservation.experience
-  const experienceDate = session?.session_date || reservation.requested_date
+  // Rentals use rental_start_date; session-based use session_date or requested_date
+  const experienceDate =
+    session?.session_date ||
+    reservation.requested_date ||
+    reservation.rental_start_date ||
+    ''
 
   // Compare calendar dates consistently so "days until" is stable across day boundaries
   const todayServer = format(new Date(), 'yyyy-MM-dd')
-  const daysUntil = experienceDate ? differenceInDays(parseISO(experienceDate), parseISO(todayServer)) : 0
+  const daysUntil =
+    experienceDate && experienceDate.length >= 10
+      ? differenceInDays(parseISO(experienceDate), parseISO(todayServer))
+      : 999
   const { canCancel, message } = canGuestCancel(experience?.cancellation_policy ?? 'moderate', daysUntil)
   if (!canCancel) {
     return createResponse('error', message)
   }
   
   try {
-    // Process refund
+    // Process refund (skip if already refunded, e.g. duplicate cancel or retry)
     if (booking.stripe_charge_id) {
-      await createRefund(booking.stripe_charge_id)
+      try {
+        await createRefund(booking.stripe_charge_id)
+      } catch (refundErr: unknown) {
+        const code = (refundErr as { code?: string })?.code
+        if (code !== 'charge_already_refunded') throw refundErr
+        // Already refunded: continue to update booking and send emails
+      }
     }
-    
+
     // Update booking status
     const updateClient = createAdminClient()
     await (updateClient
