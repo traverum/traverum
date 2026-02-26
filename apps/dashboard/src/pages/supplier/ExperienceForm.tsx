@@ -94,7 +94,6 @@ export default function ExperienceForm() {
 
   // Policy state
   const [cancellationPolicy, setCancellationPolicy] = useState<CancellationPolicy>('moderate');
-  const [forceMajeureRefund, setForceMajeureRefund] = useState(true);
   const [allowsRequests, setAllowsRequests] = useState(true);
 
   // Load existing experience data when editing
@@ -154,7 +153,6 @@ export default function ExperienceForm() {
         
         // Policies
         setCancellationPolicy((experience as any).cancellation_policy || 'moderate');
-        setForceMajeureRefund((experience as any).force_majeure_refund ?? true);
         setAllowsRequests(experience.allows_requests ?? true);
         
         // Load images
@@ -381,7 +379,7 @@ export default function ExperienceForm() {
         extra_person_cents: pricingType === 'per_person' || pricingType === 'base_plus_extra' ? extraP : 0,
         min_participants: pricingType === 'flat_rate' ? 1 : minP,
         cancellation_policy: cancellationPolicy,
-        force_majeure_refund: forceMajeureRefund,
+        force_majeure_refund: true,
         available_languages: availableLanguages,
         ...locationData,
       };
@@ -812,9 +810,7 @@ export default function ExperienceForm() {
           >
               <CancellationPolicySelector
                 policy={cancellationPolicy}
-                forceMajeureRefund={forceMajeureRefund}
                 onPolicyChange={setCancellationPolicy}
-                onForceMajeureChange={setForceMajeureRefund}
                 disabled={loading}
               />
           </FormSection>

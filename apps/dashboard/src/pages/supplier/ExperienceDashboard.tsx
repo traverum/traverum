@@ -140,7 +140,6 @@ function ExperienceDashboardInner() {
   const [validUntil, setValidUntil] = useState<string | null>(null);
   
   const [cancellationPolicy, setCancellationPolicy] = useState<CancellationPolicy>(() => exp?.cancellation_policy || 'moderate');
-  const [forceMajeureRefund, setForceMajeureRefund] = useState(() => exp?.force_majeure_refund ?? true);
   const [allowsRequests, setAllowsRequests] = useState(() => experience?.allows_requests ?? true);
 
   // Ref to track latest form values for flush-on-unmount (avoids stale closures)
@@ -162,7 +161,7 @@ function ExperienceDashboardInner() {
       title, category, description, durationMinutes, locationAddress, locationLat, locationLng,
       meetingPoint, minParticipants, maxParticipants, pricingType, basePriceCents,
       includedParticipants, extraPersonCents, pricePerDayCents, minDays, maxDays,
-      cancellationPolicy, forceMajeureRefund, allowsRequests, availableLanguages,
+      cancellationPolicy, allowsRequests, availableLanguages,
       weekdays, startTime, endTime, validFrom, validUntil,
     };
   });
@@ -217,7 +216,7 @@ function ExperienceDashboardInner() {
         extra_person_cents: vals.pricingType === 'per_person' || vals.pricingType === 'base_plus_extra' ? extraP : 0,
         price_per_day_cents: vals.pricingType === 'per_day' ? perDayP : 0,
         cancellation_policy: vals.cancellationPolicy,
-        force_majeure_refund: vals.forceMajeureRefund,
+        force_majeure_refund: true,
         allows_requests: vals.allowsRequests,
         available_languages: vals.availableLanguages,
       };
@@ -312,7 +311,6 @@ function ExperienceDashboardInner() {
       setMaxDays(((experience as any).max_days || '').toString());
       
       setCancellationPolicy((experience as any).cancellation_policy || 'moderate');
-      setForceMajeureRefund((experience as any).force_majeure_refund ?? true);
       setAllowsRequests(experience.allows_requests ?? true);
       
       loadExistingImages(experience.id);
@@ -384,7 +382,6 @@ function ExperienceDashboardInner() {
   const debouncedMinDays = useDebounce(minDays, 2000);
   const debouncedMaxDays = useDebounce(maxDays, 2000);
   const debouncedCancellationPolicy = useDebounce(cancellationPolicy, 2000);
-  const debouncedForceMajeure = useDebounce(forceMajeureRefund, 2000);
   const debouncedAllowsRequests = useDebounce(allowsRequests, 2000);
   const debouncedAvailableLanguages = useDebounce(availableLanguages, 2000);
 
@@ -447,7 +444,7 @@ function ExperienceDashboardInner() {
           extra_person_cents: debouncedPricingType === 'per_person' || debouncedPricingType === 'base_plus_extra' ? extraP : 0,
           price_per_day_cents: debouncedPricingType === 'per_day' ? perDayP : 0,
           cancellation_policy: debouncedCancellationPolicy,
-          force_majeure_refund: debouncedForceMajeure,
+          force_majeure_refund: true,
           allows_requests: debouncedAllowsRequests,
           available_languages: debouncedAvailableLanguages,
         };
@@ -502,7 +499,7 @@ function ExperienceDashboardInner() {
     debouncedMinParticipants, debouncedMaxParticipants, debouncedPricingType,
     debouncedBasePrice, debouncedIncludedParticipants, debouncedExtraPersonPrice, debouncedPricePerDay,
     debouncedMinDays, debouncedMaxDays,
-    debouncedCancellationPolicy, debouncedForceMajeure, debouncedAllowsRequests, debouncedAvailableLanguages,
+    debouncedCancellationPolicy, debouncedAllowsRequests, debouncedAvailableLanguages,
     // refetchExperiences intentionally omitted — uses refetchRef.current to avoid unstable reference triggering extra saves
   ]);
 
@@ -1248,9 +1245,7 @@ function ExperienceDashboardInner() {
               <CardContent className="pt-4 space-y-4">
                 <CancellationPolicySelector
                   policy={cancellationPolicy}
-                  forceMajeureRefund={forceMajeureRefund}
                   onPolicyChange={setCancellationPolicy}
-                  onForceMajeureChange={setForceMajeureRefund}
                 />
               </CardContent>
             </Card>

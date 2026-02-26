@@ -620,7 +620,7 @@ async function createBookingFromPayment(
 
   const cancellationPolicy = experience.cancellation_policy || 'moderate'
   const minDays = CANCELLATION_POLICIES.find((p) => p.value === cancellationPolicy)?.minDaysBeforeCancel ?? 0
-  const cancellationPolicyText = getCancellationPolicyText(cancellationPolicy, experience.force_majeure_refund)
+  const cancellationPolicyText = getCancellationPolicyText(cancellationPolicy)
   const allowCancel = minDays > 0
   
   // Build all confirmation emails and send as a single batch to avoid rate limits

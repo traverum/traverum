@@ -44,3 +44,41 @@ export function isSessionUpcoming(
   if (h === nowHour && m > nowMinute) return true;
   return false;
 }
+
+/**
+ * Whether a confirmed booking's "end moment" has passed (so it should show as past).
+ * - Session-based: end = session_date + start_time + duration_minutes (local time).
+ * - Rental: end = end of rental_end_date (past when today > rental_end_date).
+ */
+export function isBookingEnded(
+  booking: {
+    date: string;
+    time: string | null;
+    isRental: boolean;
+    rentalEndDate: string | null;
+    experience: { durationMinutes?: number | null };
+  },
+  now: Date = new Date()
+): boolean {
+  const todayLocal = getTodayLocal(now);
+
+  if (booking.isRental && booking.rentalEndDate) {
+    return booking.rentalEndDate < todayLocal;
+  }
+
+  // Session-based: end = date + start_time + duration
+  if (booking.date < todayLocal) return true;
+  if (booking.date > todayLocal) return false;
+
+  const startTime = booking.time || '00:00';
+  const [h, m] = startTime.split(':').map(Number);
+  const durationMinutes = booking.experience?.durationMinutes ?? 0;
+  const endMinutes = h * 60 + m + durationMinutes;
+  const endHour = Math.floor(endMinutes / 60) % 24;
+  const endMin = endMinutes % 60;
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const endMinutesOfDay = endHour * 60 + endMin;
+
+  return nowMinutes >= endMinutesOfDay;
+}

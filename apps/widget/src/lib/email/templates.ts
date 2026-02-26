@@ -261,7 +261,7 @@ export function guestPaymentConfirmed(data: BaseEmailData & {
   supplierEmail: string
   /** Cancellation policy text from experience (e.g. "Free cancellation up to 7 days before."). If allowCancel is false, use policy text like "This booking is non-refundable." */
   cancellationPolicyText: string
-  /** Whether guest can cancel for refund (flexible/moderate = true; strict/non_refundable = false) */
+  /** Whether guest can cancel for refund (flexible/moderate = true) */
   allowCancel: boolean
   /** If set, treat as rental: show start/end dates, duration, quantity; no time row */
   rentalEndDate?: string

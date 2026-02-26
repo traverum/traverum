@@ -24,7 +24,7 @@ The form uses collapsible sections, all collapsed by default:
 2. **Location:** Address autocomplete with coordinates (required)
 3. **Pricing:** Pricing type radio group (`per_person`, `flat_rate`, `base_plus_extra`), fields adapt by type, live price preview
 4. **Availability:** Weekday checkboxes, start/end time, optional valid from/until dates
-5. **Policies:** Cancellation policy selector (flexible/moderate/strict/non-refundable), force majeure refund toggle, "Accept booking requests" toggle
+5. **Policies:** Cancellation policy selector (flexible/moderate). Weather/emergency refund is always included (industry standard, not configurable). "Accept booking requests" toggle is in the Availability section.
 
 ### Pricing types in form
 

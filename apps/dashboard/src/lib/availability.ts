@@ -212,20 +212,14 @@ export const CANCELLATION_POLICIES: {
 ];
 
 /**
- * Generate the display text for a cancellation policy combination
+ * Generate the display text for a cancellation policy.
+ * Weather/emergency refund is always included (industry standard).
  */
 export function getCancellationPolicyText(
-  policy: CancellationPolicy,
-  forceMajeureRefund: boolean
+  policy: CancellationPolicy
 ): string {
   const policyInfo = CANCELLATION_POLICIES.find((p) => p.value === policy);
   if (!policyInfo) return '';
 
-  let text = policyInfo.description;
-
-  if (forceMajeureRefund) {
-    text += '. Full refund if cancelled by supplier due to weather or emergency.';
-  }
-
-  return text;
+  return `${policyInfo.description}. Full refund if cancelled by provider due to weather or emergency.`;
 }

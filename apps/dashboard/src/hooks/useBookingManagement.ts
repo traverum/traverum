@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
-import { getTodayLocal } from '@/lib/date-utils';
+import { getTodayLocal, isBookingEnded } from '@/lib/date-utils';
 
 const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
 
@@ -86,6 +86,7 @@ export interface BookingItem {
     id: string;
     title: string;
     priceCents: number;
+    durationMinutes?: number | null;
   };
 }
 
@@ -136,7 +137,7 @@ export function useBookingManagement() {
     queryFn: async () => {
       const { data } = await supabase
         .from('experiences')
-        .select('id, title, price_cents, currency, pricing_type')
+        .select('id, title, price_cents, currency, pricing_type, duration_minutes')
         .eq('partner_id', partnerId!);
       return data || [];
     },
@@ -296,7 +297,12 @@ export function useBookingManagement() {
             rentalStartDate: (r as any).rental_start_date || null,
             rentalEndDate: (r as any).rental_end_date || null,
             isRental,
-            experience: { id: exp.id, title: exp.title, priceCents: exp.price_cents },
+            experience: {
+              id: exp.id,
+              title: exp.title,
+              priceCents: exp.price_cents,
+              durationMinutes: (exp as { duration_minutes?: number }).duration_minutes ?? null,
+            },
           });
         }
       }
@@ -312,20 +318,26 @@ export function useBookingManagement() {
   const awaitingPayment = reservationsData?.awaitingPayment ?? [];
   const allBookingItems = reservationsData?.bookingItems ?? [];
 
-  // Split bookings into upcoming / past
-  const today = getTodayLocal();
-  const upcomingBookings = useMemo(() =>
-    allBookingItems
-      .filter(b => b.date >= today && b.bookingStatus === 'confirmed')
-      .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
-    [allBookingItems, today]
+  // Split bookings into upcoming / past (past = after session/rental end, not just after midnight)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+  const upcomingBookings = useMemo(
+    () =>
+      allBookingItems
+        .filter((b) => b.bookingStatus === 'confirmed' && !isBookingEnded(b, now))
+        .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
+    [allBookingItems, now]
   );
 
-  const pastBookings = useMemo(() =>
-    allBookingItems
-      .filter(b => b.date < today || b.bookingStatus !== 'confirmed')
-      .sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')),
-    [allBookingItems, today]
+  const pastBookings = useMemo(
+    () =>
+      allBookingItems
+        .filter((b) => b.bookingStatus !== 'confirmed' || isBookingEnded(b, now))
+        .sort((a, b) => b.date.localeCompare(a.date) || (b.time || '').localeCompare(a.time || '')),
+    [allBookingItems, now]
   );
 
   // --- Mutations ---

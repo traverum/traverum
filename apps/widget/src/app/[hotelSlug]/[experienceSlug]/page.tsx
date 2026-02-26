@@ -3,7 +3,7 @@ import { getHotelBySlug, getExperienceForHotel } from '@/lib/hotels'
 import { getAvailableSessions } from '@/lib/sessions'
 import { getExperienceAvailability } from '@/lib/availability.server'
 import { getEmbedMode, formatDuration, cn } from '@/lib/utils'
-import { getCancellationPolicyText } from '@/lib/availability'
+import { getCancellationPolicyExperienceIntro } from '@/lib/availability'
 import { getLanguageName } from '@/lib/languages'
 import { Header } from '@/components/Header'
 import { EmbedResizer } from '@/components/EmbedResizer'
@@ -120,7 +120,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                   className="text-muted-foreground mt-0.5"
                   style={{ fontSize: 'var(--font-size-sm)' }}
                 >
-                  Select a date and time. If a slot is available, pay now to confirm. Otherwise request a time; the provider responds within 48h and you pay after approval.
+                  Select your preferred date and time and send a request. The provider will respond within 48 hours, and you'll only pay once your request has been approved.
                 </p>
               </div>
               <div>
@@ -134,7 +134,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                   className="text-muted-foreground mt-0.5"
                   style={{ fontSize: 'var(--font-size-sm)' }}
                 >
-                  {getCancellationPolicyText(experience.cancellation_policy, experience.force_majeure_refund)}
+                  {getCancellationPolicyExperienceIntro(experience.cancellation_policy)} You will receive a full refund if the provider cancels due to weather or emergency.
                 </p>
               </div>
               {experience.meeting_point && (

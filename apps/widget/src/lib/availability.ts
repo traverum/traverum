@@ -149,19 +149,32 @@ export const CANCELLATION_POLICIES: {
 ]
 
 /**
- * Generate display text for cancellation policy (+ force majeure note if applicable)
+ * Generate display text for cancellation policy.
+ * Weather/emergency refund is always included (industry standard).
  */
 export function getCancellationPolicyText(
-  policy: CancellationPolicy | string | null | undefined,
-  forceMajeureRefund?: boolean | null
+  policy: CancellationPolicy | string | null | undefined
 ): string {
   const p = (policy || 'moderate') as CancellationPolicy
   const info = CANCELLATION_POLICIES.find((x) => x.value === p)
-  let text = info?.description ?? 'Free cancellation up to 7 days before.'
-  if (forceMajeureRefund) {
-    text += ' Full refund if cancelled by supplier due to weather or emergency.'
+  const base = info?.description ?? 'Free cancellation up to 7 days before.'
+  return `${base} Full refund if cancelled by provider due to weather or emergency.`
+}
+
+/**
+ * First sentence for experience page cancellation section: experience-specific policy
+ * with "before the activity" where applicable (flexible/moderate).
+ */
+export function getCancellationPolicyExperienceIntro(
+  policy: CancellationPolicy | string | null | undefined
+): string {
+  const p = (policy || 'moderate') as CancellationPolicy
+  const info = CANCELLATION_POLICIES.find((x) => x.value === p)
+  const description = info?.description ?? 'Free cancellation up to 7 days before'
+  if (p === 'flexible' || p === 'moderate') {
+    return `${description} the activity.`
   }
-  return text
+  return description.endsWith('.') ? description : `${description}.`
 }
 
 /**

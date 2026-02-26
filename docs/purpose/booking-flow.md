@@ -56,10 +56,8 @@ Each experience has a configurable cancellation policy:
 |--------|--------|-------------|
 | Flexible | 24 hours before | Free cancellation up to 1 day before |
 | Moderate (default) | 7 days before | Free cancellation up to 7 days before |
-| Strict | No refund | No refunds after booking is confirmed |
-| Non-refundable | No refund | No refunds for guest cancellations |
 
-Optionally, experiences can enable "force majeure refund" — full refund if supplier cancels due to weather or emergency.
+Provider-initiated cancellations (weather, illness, emergency) always result in a full guest refund. This is industry standard and not configurable per experience.
 
 ### One group per session
 

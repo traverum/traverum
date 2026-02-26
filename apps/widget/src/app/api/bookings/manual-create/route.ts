@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
 
     const cancellationPolicy = experience.cancellation_policy || 'moderate'
     const minDays = CANCELLATION_POLICIES.find((p) => p.value === cancellationPolicy)?.minDaysBeforeCancel ?? 0
-    const cancellationPolicyText = getCancellationPolicyText(cancellationPolicy, experience.force_majeure_refund)
+    const cancellationPolicyText = getCancellationPolicyText(cancellationPolicy)
     const allowCancel = minDays > 0
 
     const rentalEmailExtras = isRental && rentalEndDate ? { rentalEndDate, rentalDays } : {}

@@ -1,6 +1,5 @@
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import {
   CancellationPolicy,
@@ -9,17 +8,13 @@ import {
 
 interface CancellationPolicySelectorProps {
   policy: CancellationPolicy;
-  forceMajeureRefund: boolean;
   onPolicyChange: (policy: CancellationPolicy) => void;
-  onForceMajeureChange: (enabled: boolean) => void;
   disabled?: boolean;
 }
 
 export function CancellationPolicySelector({
   policy,
-  forceMajeureRefund,
   onPolicyChange,
-  onForceMajeureChange,
   disabled = false,
 }: CancellationPolicySelectorProps) {
   return (
@@ -73,19 +68,10 @@ export function CancellationPolicySelector({
         </RadioGroup>
       </div>
 
-      {/* Force Majeure / Weather */}
-      <div className="pt-4 border-t">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="forceMajeure" className="text-sm font-medium">
-            Refund for weather cancellations
-          </Label>
-          <Switch
-            id="forceMajeure"
-            checked={forceMajeureRefund}
-            onCheckedChange={onForceMajeureChange}
-            disabled={disabled}
-          />
-        </div>
+      <div className="pt-4 border-t border-border">
+        <p className="text-sm text-muted-foreground">
+          Full refund if you cancel due to weather or emergency.
+        </p>
       </div>
     </div>
   );
@@ -94,5 +80,4 @@ export function CancellationPolicySelector({
 // Default values export for form initialization
 export const defaultCancellationPolicy = {
   policy: 'moderate' as CancellationPolicy,
-  forceMajeureRefund: true,
 };
