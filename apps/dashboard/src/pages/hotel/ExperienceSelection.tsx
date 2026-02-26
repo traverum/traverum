@@ -431,6 +431,10 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
   const availableExperiences = allExperiences
     .filter(e => !e.isSelected)
     .sort((a, b) => {
+      const aOwn = a.supplier?.id === partnerId ? 0 : 1;
+      const bOwn = b.supplier?.id === partnerId ? 0 : 1;
+      if (aOwn !== bOwn) return aOwn - bOwn;
+
       if (a.distance_km !== null && b.distance_km !== null) return a.distance_km - b.distance_km;
       if (a.distance_km !== null) return -1;
       if (b.distance_km !== null) return 1;
