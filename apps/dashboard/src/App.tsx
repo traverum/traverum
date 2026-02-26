@@ -18,6 +18,7 @@ import ExperienceFormRedirect from "./pages/supplier/ExperienceFormRedirect";
 import ExperienceSessions from "./pages/supplier/ExperienceSessions";
 import SupplierSessions from "./pages/supplier/SupplierSessions";
 import BookingManagement from "./pages/supplier/BookingManagement";
+import StripeConnect from "./pages/supplier/StripeConnect";
 // SessionDetail redirect - old route now points to BookingManagement
 function SessionDetailRedirect() {
   const { sessionId } = useParams();
@@ -32,6 +33,7 @@ import StayDashboard from "./pages/hotel/StayDashboard";
 import StaysList from "./pages/hotel/StaysList";
 import AddBusinessFlow from "./pages/onboarding/AddBusinessFlow";
 import EmailVerification from "./pages/EmailVerification";
+import AuthCallback from "./pages/AuthCallback";
 import Analytics from "./pages/Analytics";
 import HotelAnalytics from "./pages/hotel/Analytics";
 import NotFound from "./pages/NotFound";
@@ -51,6 +53,7 @@ const App = () => (
               <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               
               {/* Smart redirect based on capabilities */}
               <Route 
@@ -124,6 +127,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <BookingManagement />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/supplier/stripe-connect" 
+                element={
+                  <ProtectedRoute>
+                    <StripeConnect />
                   </ProtectedRoute>
                 } 
               />

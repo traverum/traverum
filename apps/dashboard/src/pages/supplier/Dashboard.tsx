@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useSupplierData } from '@/hooks/useSupplierData';
 import { usePendingRequests } from '@/hooks/usePendingRequests';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format, parseISO, isToday, isTomorrow, formatDistanceToNow } from 'date-fns';
-import { ChevronRight, Compass, CreditCard } from 'lucide-react';
+import { AlertCircle, ChevronRight, Compass, CreditCard } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -48,17 +48,35 @@ const EU_COUNTRIES = [
 
 export default function SupplierDashboard() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { activePartner, isLoading: partnerLoading, activePartnerId } = useActivePartner();
   const {
     experiences,
     isLoading: supplierLoading,
     hasStripe,
+    stripeStatus,
   } = useSupplierData();
   const { requests: pendingRequests, isLoading: requestsLoading } = usePendingRequests();
   const { rentals: upcomingRentals, isLoading: rentalsLoading } = useUpcomingRentals();
   const [stripeLoading, setStripeLoading] = useState(false);
   const [showCountryStep, setShowCountryStep] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState('');
+  const stripeReturnHandled = useRef(false);
+
+  useEffect(() => {
+    if (stripeReturnHandled.current) return;
+    if (searchParams.get('stripe') !== 'success') return;
+    if (supplierLoading || partnerLoading) return;
+
+    stripeReturnHandled.current = true;
+    setSearchParams({}, { replace: true });
+
+    if (stripeStatus === 'complete') {
+      toast.success('Stripe is connected — you\'re ready to accept payments');
+    } else {
+      toast.info('Stripe is verifying your details. If anything is still needed, you\'ll see a prompt below.', { duration: 6000 });
+    }
+  }, [searchParams, setSearchParams, stripeStatus, supplierLoading, partnerLoading]);
 
   const handleConnectStripe = async () => {
     if (!selectedCountry) {
@@ -99,6 +117,39 @@ export default function SupplierDashboard() {
     } catch (error: any) {
       console.error('Stripe Connect error:', error);
       toast.error(error.message || 'Failed to connect Stripe');
+      setStripeLoading(false);
+    }
+  };
+
+  const handleCompleteStripeSetup = async () => {
+    setStripeLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Please log in to continue');
+        navigate('/auth?mode=login');
+        return;
+      }
+      if (!activePartnerId) {
+        toast.error('No organization selected');
+        return;
+      }
+
+      const response = await supabase.functions.invoke('create-connect-account', {
+        body: { origin: window.location.origin, partner_id: activePartnerId },
+      });
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to resume Stripe setup');
+      }
+      const { url } = response.data;
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error('No onboarding URL returned');
+      }
+    } catch (error: any) {
+      console.error('Stripe Connect error:', error);
+      toast.error(error.message || 'Failed to resume Stripe setup');
       setStripeLoading(false);
     }
   };
@@ -205,7 +256,30 @@ export default function SupplierDashboard() {
         </div>
 
         {/* Stripe onboarding */}
-        {!hasStripe && (
+        {stripeStatus === 'incomplete' && (
+          <Card className="border border-amber-200 bg-amber-50/50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                  <p className="text-sm text-foreground">
+                    Your Stripe setup needs attention — finish verifying your identity to accept payments
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCompleteStripeSetup}
+                  disabled={stripeLoading}
+                  className="h-7 flex-shrink-0 border-amber-300 hover:bg-amber-100"
+                >
+                  {stripeLoading ? 'Loading...' : 'Complete setup'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {stripeStatus === 'none' && (
           <Card className="border border-border">
             <CardContent className="p-4">
               {!showCountryStep ? (

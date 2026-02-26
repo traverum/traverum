@@ -73,6 +73,8 @@ export function useSupplierData() {
   const partnerId = activePartner?.partner_id || null;
 
   // Get partner details
+  // Poll every 5s while Stripe onboarding is incomplete so the banner
+  // disappears automatically once the webhook updates the flag.
   const { data: partner, isLoading: partnerLoading } = useQuery({
     queryKey: ['partner', partnerId],
     queryFn: async () => {
@@ -88,6 +90,11 @@ export function useSupplierData() {
       return data as Partner;
     },
     enabled: !!partnerId,
+    refetchInterval: (query) => {
+      const p = query.state.data as Partner | null | undefined;
+      if (p?.stripe_account_id && !p?.stripe_onboarding_complete) return 5000;
+      return false;
+    },
   });
 
   // Get experiences with cover images from media table
@@ -226,6 +233,11 @@ export function useSupplierData() {
   // Determine supplier state
   const hasExperiences = experiences.length > 0;
   const hasStripe = partner?.stripe_onboarding_complete === true;
+  const stripeStatus: 'none' | 'incomplete' | 'complete' = !partner?.stripe_account_id
+    ? 'none'
+    : partner?.stripe_onboarding_complete
+      ? 'complete'
+      : 'incomplete';
   const hasDistributions = distributions.length > 0;
   const isLive = hasExperiences && hasStripe && hasDistributions;
 
@@ -239,6 +251,7 @@ export function useSupplierData() {
     isLoading,
     hasExperiences,
     hasStripe,
+    stripeStatus,
     hasDistributions,
     isLive,
     refetchExperiences,
