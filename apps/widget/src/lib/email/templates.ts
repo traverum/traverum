@@ -866,6 +866,50 @@ export function supplierPayoutSent(data: {
   return baseTemplate(content, 'Payment Sent')
 }
 
+// Supplier: Guest cancelled their booking (slot released)
+export function supplierGuestCancelled(data: {
+  experienceTitle: string
+  bookingId: string
+  date: string
+  time?: string | null
+}) {
+  const timeRow = data.time
+    ? `
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+    `
+    : ''
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Booking Cancelled by Guest</h1>
+      </div>
+      <p>A guest has cancelled their booking. The time slot has been released and is available for new bookings.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        ${timeRow}
+      </div>
+      
+      <p class="text-muted">No action needed. You can see cancelled bookings in your dashboard if you need to reference them.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Booking Cancelled by Guest')
+}
+
 // Admin: Stripe account updated
 export function adminAccountStatusChanged(data: {
   partnerName: string
