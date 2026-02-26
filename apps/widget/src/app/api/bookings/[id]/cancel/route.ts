@@ -95,7 +95,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Update booking status
+    // Update booking status and clear session reference so we can delete the session
     const updateClient = createAdminClient()
     await (updateClient
       .from('bookings') as any)
@@ -103,17 +103,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         booking_status: 'cancelled',
         cancelled_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        session_id: null,
       })
       .eq('id', id)
-    
-    // Release session — set back to available
+
+    // Delete the session so the slot disappears from the calendar (no surprise rebookings)
     if (reservation.session_id) {
-      await (updateClient
-        .from('experience_sessions') as any)
-        .update({
-          session_status: 'available',
-          updated_at: new Date().toISOString(),
-        })
+      await (updateClient.from('experience_sessions') as any)
+        .delete()
         .eq('id', reservation.session_id)
     }
     
