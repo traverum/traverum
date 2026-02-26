@@ -26,10 +26,10 @@ const Index = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
       <div className="text-center max-w-2xl animate-fade-in">
         <h1 className="text-4xl sm:text-5xl font-semibold text-foreground mb-4">
-          Traverum
+          Veyond
         </h1>
         <p className="text-lg text-secondary mb-12">
-          Transform your hotel into a destination hub
+          Where hotels and local experiences connect
         </p>
         <div className="flex justify-center">
           <Button 

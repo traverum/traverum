@@ -7,7 +7,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { getRecaptchaToken } from '@/lib/recaptcha';
 import { z } from 'zod';
+
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 type AuthMode = 'login' | 'signup' | 'reset-password';
 
@@ -51,6 +55,8 @@ export default function Auth() {
     if (m === 'signup' || m === 'reset-password') return m;
     return 'login';
   }, [searchParams]);
+
+  const linkExpired = searchParams.get('error') === 'link_expired';
 
   const from = (location.state as { from?: Location })?.from?.pathname || '/dashboard';
 
@@ -136,6 +142,25 @@ export default function Auth() {
     setErrors({});
 
     try {
+      if (RECAPTCHA_SITE_KEY) {
+        const token = await getRecaptchaToken(RECAPTCHA_SITE_KEY, 'signup');
+        const verifyRes = await fetch(`${WIDGET_BASE_URL}/api/auth/verify-recaptcha`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        const verifyData = await verifyRes.json().catch(() => ({}));
+        if (!verifyRes.ok || !verifyData.success) {
+          toast({
+            title: 'Verification failed',
+            description: verifyData.error ?? 'Please try again or refresh the page.',
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
+        }
+      }
+
       const { error } = await signUp(email, password);
       if (error) {
         toast({
@@ -391,7 +416,48 @@ export default function Auth() {
             )}
 
             {/* ===== RESET PASSWORD MODE ===== */}
-            {mode === 'reset-password' && (
+            {mode === 'reset-password' && linkExpired && (
+              <div className="space-y-4">
+                <p className="text-sm text-secondary">
+                  This link was used or opened in a different browser, or it has expired. Request a new reset link below.
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    disabled={loading}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  disabled={loading}
+                  className="w-full h-7"
+                  onClick={() => {
+                    if (!email) {
+                      toast({ title: 'Enter your email', variant: 'destructive' });
+                      return;
+                    }
+                    handleForgotPassword();
+                  }}
+                >
+                  {loading ? 'Sending...' : 'Send new reset link'}
+                </Button>
+                <p className="text-center text-sm text-secondary">
+                  <button
+                    type="button"
+                    onClick={() => setMode('login')}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    Back to login
+                  </button>
+                </p>
+              </div>
+            )}
+            {mode === 'reset-password' && !linkExpired && (
               <form onSubmit={handleSetNewPassword} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="password">New Password</Label>

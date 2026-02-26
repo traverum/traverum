@@ -36,6 +36,12 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key-here
 ```bash
 # Google Maps API (for location autocomplete features)
 VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
+
+# reCAPTCHA v3 (for signup bot protection; get keys at https://www.google.com/recaptcha/admin)
+VITE_RECAPTCHA_SITE_KEY=your-recaptcha-v3-site-key
+
+# Widget API base URL (default: https://book.traverum.com; needed for reCAPTCHA verification and invite flows)
+VITE_WIDGET_URL=https://book.traverum.com
 ```
 
 ### Where to Get Supabase Values
@@ -107,6 +113,8 @@ VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 | `VITE_SUPABASE_URL` | ✅ Yes | Your Supabase project URL |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | ✅ Yes | Your Supabase anon/public key |
 | `VITE_GOOGLE_MAPS_API_KEY` | ⚠️ Optional | For location autocomplete features |
+| `VITE_RECAPTCHA_SITE_KEY` | ⚠️ Optional | reCAPTCHA v3 site key for signup; if unset, signup skips reCAPTCHA |
+| `VITE_WIDGET_URL` | ⚠️ Optional | Widget API base URL (default: https://book.traverum.com) |
 
 ## Next Steps
 

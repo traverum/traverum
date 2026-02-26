@@ -36,6 +36,8 @@ import EmailVerification from "./pages/EmailVerification";
 import AuthCallback from "./pages/AuthCallback";
 import Analytics from "./pages/Analytics";
 import HotelAnalytics from "./pages/hotel/Analytics";
+import Settings from "./pages/Settings";
+import Invite from "./pages/Invite";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +56,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/invite/:token" element={<Invite />} />
               
               {/* Smart redirect based on capabilities */}
               <Route 
@@ -228,6 +231,16 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <EmailVerification />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Settings */}
+              <Route 
+                path="/settings" 
+                element={
+                  <ProtectedRoute>
+                    <Settings />
                   </ProtectedRoute>
                 } 
               />

@@ -2,6 +2,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronDownIcon,
   PlusIcon,
+  Cog6ToothIcon,
 } from '@heroicons/react/24/outline';
 import {
   DropdownMenu,
@@ -126,6 +127,17 @@ export function OrganizationDropdown() {
         })}
 
         <DropdownMenuSeparator />
+
+        {/* Settings */}
+        <DropdownMenuItem
+          onClick={() => navigate('/settings')}
+          className="cursor-pointer px-2 py-1.5"
+        >
+          <span className="flex items-center gap-2 text-sm">
+            <Cog6ToothIcon className="h-4 w-4 flex-shrink-0" />
+            Settings
+          </span>
+        </DropdownMenuItem>
 
         {/* New Organization */}
         <DropdownMenuItem

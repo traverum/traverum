@@ -6,7 +6,7 @@ export interface UserPartner {
   id: string;
   user_id: string;
   partner_id: string;
-  role: 'owner' | 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'receptionist';
   is_default: boolean;
   created_at: string;
   partner: {

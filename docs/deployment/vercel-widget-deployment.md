@@ -56,6 +56,7 @@ FROM_EMAIL=Traverum <bookings@veyond.eu> # Optional, has default
 ```bash
 TOKEN_SECRET=your-secret-key # Optional, falls back to SUPABASE_SERVICE_ROLE_KEY
 CRON_SECRET=your-cron-secret # Optional, for securing cron endpoints
+RECAPTCHA_SECRET_KEY=your-recaptcha-v3-secret-key # Optional; if set, dashboard signup requires reCAPTCHA verification
 ```
 
 **Note**: `CRON_SECRET` is optional. If set, cron endpoints will require `Authorization: Bearer <CRON_SECRET>` header. Vercel Cron automatically includes this header, but external cron services will need it.
