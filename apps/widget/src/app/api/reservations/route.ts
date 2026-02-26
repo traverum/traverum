@@ -207,15 +207,8 @@ export async function POST(request: NextRequest) {
     // One group per session — claim it immediately, then redirect to payment.
     // =========================================================================
     if (!isRequest && sessionId && sessionData) {
-      // Claim the session (mark as booked — no longer visible in widget)
-      await (supabase
-        .from('experience_sessions') as any)
-        .update({
-          session_status: 'booked',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId)
-
+      // Session stays 'available' until payment is confirmed (via Stripe webhook).
+      // The reservation links to the session so the webhook can mark it as 'booked'.
       const paymentDeadline = addHours(new Date(), 24)
       
       const { data: reservation, error: reservationError } = await (supabase
@@ -241,14 +234,6 @@ export async function POST(request: NextRequest) {
       
       if (reservationError || !reservation) {
         console.error('Failed to create reservation:', reservationError)
-        // Rollback session status
-        await (supabase
-          .from('experience_sessions') as any)
-          .update({
-            session_status: 'available',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', sessionId)
         return NextResponse.json(
           { error: 'Failed to create reservation' },
           { status: 500 }

@@ -253,7 +253,9 @@ export function useBookingManagement() {
         const booking = bookingsMap.get(r.id);
         const session = r.experience_sessions;
 
-        if (r.reservation_status === 'approved' && !booking) {
+        // Only show request-based awaiting-payment (supplier accepted, guest hasn't paid yet).
+        // Session-based bookings stay invisible to the supplier until payment confirms.
+        if (r.reservation_status === 'approved' && !booking && r.is_request) {
           awaitingPayment.push({
             id: r.id,
             guest_name: r.guest_name,

@@ -584,8 +584,16 @@ async function createBookingFromPayment(
     })
     .eq('id', reservationId)
   
-  // Note: Session status was already set to 'booked' when reservation was created
-  // No further status change needed here
+  // Mark session as booked now that payment is confirmed
+  if (reservation.session_id) {
+    await (supabase
+      .from('experience_sessions') as any)
+      .update({
+        session_status: 'booked',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', reservation.session_id)
+  }
   
   // Get hotel config for URLs
   const { data: hotelConfig } = await supabase

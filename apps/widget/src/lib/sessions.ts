@@ -5,8 +5,7 @@ import { startOfDay, addDays, subDays, format } from 'date-fns'
 /**
  * Fetch available sessions for an experience.
  * Only sessions with status 'available' are shown in the widget.
- * Sessions with status 'booked' (claimed by a group or created from accepted request)
- * are not visible to other guests.
+ * Sessions become 'booked' only after payment is confirmed (via Stripe webhook).
  */
 export async function getAvailableSessions(
   experienceId: string,
