@@ -35,7 +35,7 @@ export interface Experience {
   extra_person_cents: number;
   min_participants: number;
   // Cancellation policy fields
-  cancellation_policy: 'flexible' | 'moderate' | 'strict' | 'non_refundable';
+  cancellation_policy: 'flexible' | 'moderate';
   force_majeure_refund: boolean;
 }
 

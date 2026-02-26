@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
@@ -796,6 +795,8 @@ export default function ExperienceForm() {
               onEndTimeChange={setEndTime}
               onValidFromChange={setValidFrom}
               onValidUntilChange={setValidUntil}
+              allowsRequests={allowsRequests}
+              onAllowsRequestsChange={setAllowsRequests}
               disabled={loading}
             />
           </FormSection>
@@ -809,7 +810,6 @@ export default function ExperienceForm() {
             isOpen={openSections.policies}
             onOpenChange={(open) => setOpenSections(s => ({ ...s, policies: open }))}
           >
-            <div className="space-y-6">
               <CancellationPolicySelector
                 policy={cancellationPolicy}
                 forceMajeureRefund={forceMajeureRefund}
@@ -817,25 +817,6 @@ export default function ExperienceForm() {
                 onForceMajeureChange={setForceMajeureRefund}
                 disabled={loading}
               />
-
-              {/* Booking Mode */}
-              <div className="pt-4 border-t">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 pr-4">
-                    <Label htmlFor="allowsRequests" className="font-medium">Accept booking requests</Label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Guests can request any date within your availability. You approve or decline each request.
-                    </p>
-                  </div>
-                  <Switch
-                    id="allowsRequests"
-                    checked={allowsRequests}
-                    onCheckedChange={setAllowsRequests}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-            </div>
           </FormSection>
 
           {/* Submit Button */}

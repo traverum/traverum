@@ -190,7 +190,7 @@ function formatSeasonDisplay(mmdd: string): string {
 }
 
 // Cancellation policy types and helpers
-export type CancellationPolicy = 'flexible' | 'moderate' | 'strict' | 'non_refundable';
+export type CancellationPolicy = 'flexible' | 'moderate';
 
 export const CANCELLATION_POLICIES: {
   value: CancellationPolicy;
@@ -208,16 +208,6 @@ export const CANCELLATION_POLICIES: {
     label: 'Moderate',
     description: 'Free cancellation up to 7 days before',
     recommended: true,
-  },
-  {
-    value: 'strict',
-    label: 'Strict',
-    description: 'No refunds after booking is confirmed',
-  },
-  {
-    value: 'non_refundable',
-    label: 'Non-refundable',
-    description: 'No refunds for guest cancellations',
   },
 ];
 

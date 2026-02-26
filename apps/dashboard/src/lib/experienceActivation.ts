@@ -39,8 +39,6 @@ export interface ActivationValidationResult {
 const VALID_CANCELLATION_POLICIES: CancellationPolicy[] = [
   'flexible',
   'moderate',
-  'strict',
-  'non_refundable',
 ];
 
 /**

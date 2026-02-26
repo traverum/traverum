@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1236,6 +1235,8 @@ function ExperienceDashboardInner() {
                   onEndTimeChange={setEndTime}
                   onValidFromChange={setValidFrom}
                   onValidUntilChange={setValidUntil}
+                  allowsRequests={allowsRequests}
+                  onAllowsRequestsChange={setAllowsRequests}
                 />
           </CardContent>
         </Card>
@@ -1251,26 +1252,6 @@ function ExperienceDashboardInner() {
                   onPolicyChange={setCancellationPolicy}
                   onForceMajeureChange={setForceMajeureRefund}
                 />
-
-                <div className="pt-4 border-t border-border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label htmlFor="allowsRequests" className="text-sm font-medium">
-                        Accept booking requests
-                      </Label>
-                      {allowsRequests && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          When on, you must set operating days and hours in the Availability tab.
-                        </p>
-                      )}
-                    </div>
-                    <Switch
-                      id="allowsRequests"
-                      checked={allowsRequests}
-                      onCheckedChange={setAllowsRequests}
-                    />
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

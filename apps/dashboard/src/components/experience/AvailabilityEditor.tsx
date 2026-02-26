@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -29,6 +30,8 @@ interface AvailabilityEditorProps {
   onEndTimeChange: (time: string) => void;
   onValidFromChange: (date: string | null) => void;
   onValidUntilChange: (date: string | null) => void;
+  allowsRequests?: boolean;
+  onAllowsRequestsChange?: (enabled: boolean) => void;
   disabled?: boolean;
 }
 
@@ -62,6 +65,8 @@ export function AvailabilityEditor({
   onEndTimeChange,
   onValidFromChange,
   onValidUntilChange,
+  allowsRequests,
+  onAllowsRequestsChange,
   disabled = false,
 }: AvailabilityEditorProps) {
   const [hasSeason, setHasSeason] = useState(
@@ -214,6 +219,25 @@ export function AvailabilityEditor({
           </div>
         )}
       </div>
+
+      {onAllowsRequestsChange && (
+        <div className="pt-4 border-t">
+          <div className="flex items-start justify-between">
+            <div className="flex-1 pr-4">
+              <Label htmlFor="allowsRequests" className="font-medium">Accept booking requests</Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                Guests can request any date within your availability. You approve or decline each request.
+              </p>
+            </div>
+            <Switch
+              id="allowsRequests"
+              checked={allowsRequests ?? false}
+              onCheckedChange={onAllowsRequestsChange}
+              disabled={disabled}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
