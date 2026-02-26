@@ -74,17 +74,17 @@ export function generateDeclineToken(reservationId: string, expiresInHours: numb
 }
 
 /**
- * Generate a cancel token for a booking
+ * Generate a cancel token for a booking.
+ * Token is valid until 7 days after the experience so the email link always works;
+ * the cancel route enforces the actual policy (e.g. "only cancel up to 7 days before").
  */
 export function generateCancelToken(bookingId: string, experienceDate: Date): string {
-  // Token expires 7 days before the experience
-  const sevenDaysBefore = new Date(experienceDate)
-  sevenDaysBefore.setDate(sevenDaysBefore.getDate() - 7)
-  
+  const expiry = new Date(experienceDate)
+  expiry.setDate(expiry.getDate() + 7)
   return signToken({
     id: bookingId,
     action: 'cancel',
-    exp: sevenDaysBefore.getTime(),
+    exp: expiry.getTime(),
   })
 }
 

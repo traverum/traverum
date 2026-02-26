@@ -88,6 +88,7 @@ export default function SessionDetail() {
   const currentPrice = hasCustomPrice ? session.price_override_cents! : defaultUnitPrice;
   const unitLabel = getUnitLabel(pricingType);
   const isCancelled = session.session_status === 'cancelled';
+  const isBooked = session.session_status === 'booked';
 
   const getStatusBadge = () => {
     switch (session.session_status) {
@@ -245,14 +246,14 @@ export default function SessionDetail() {
             <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
               Pricing
             </CardTitle>
-            {!isCancelled && !isEditingPricing && (
+            {!isCancelled && !isBooked && !isEditingPricing && (
               <Button variant="ghost" size="sm" onClick={handleStartEditPricing}>
                 Edit
               </Button>
             )}
           </CardHeader>
           <CardContent>
-            {isEditingPricing ? (
+            {isEditingPricing && !isBooked ? (
               <div className="space-y-4">
                 {hasBookings && (
                   <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">

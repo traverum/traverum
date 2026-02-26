@@ -281,7 +281,7 @@ export function SessionQuickEditPopup({
                 {session.price_override_cents !== null && (
                   <span className="text-[10px] text-muted-foreground">(custom)</span>
                 )}
-                {!isCancelled && (
+                {!isCancelled && !isBooked && (
                   <button
                     onClick={() => {
                       setEditPrice(session.price_override_cents !== null ? (session.price_override_cents / 100).toString() : '');
@@ -313,7 +313,7 @@ export function SessionQuickEditPopup({
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-1.5 border-t border-border">
-            {onDuplicate && (
+            {onDuplicate && !isBooked && (
               <Button
                 size="sm"
                 variant="outline"
