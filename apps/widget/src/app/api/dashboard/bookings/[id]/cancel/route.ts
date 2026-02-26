@@ -100,24 +100,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       await createRefund(booking.stripe_charge_id)
     }
 
-    // Update booking status to cancelled
+    // Update booking status to cancelled and clear session reference so we can delete the session
     await (supabase
       .from('bookings') as any)
       .update({
         booking_status: 'cancelled',
         cancelled_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        session_id: null,
       })
       .eq('id', id)
 
-    // Release session back to available
+    // Delete the session so the slot is removed from the calendar
     if (reservation.session_id) {
-      await (supabase
-        .from('experience_sessions') as any)
-        .update({
-          session_status: 'available',
-          updated_at: new Date().toISOString(),
-        })
+      await (supabase.from('experience_sessions') as any)
+        .delete()
         .eq('id', reservation.session_id)
     }
 
