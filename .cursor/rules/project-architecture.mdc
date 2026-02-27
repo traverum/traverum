@@ -43,6 +43,14 @@ Two separate Vercel projects. **NEVER** mix them up.
 
 Dashboard has NO Next.js dependency. If you see Next.js errors on dashboard, the wrong app is deployed.
 
+## Embed widget
+
+The embed custom element is `<veyond-widget>`. Hotels paste a snippet like:
+```html
+<veyond-widget hotel="hotel-slug"></veyond-widget>
+<script src="https://book.traverum.com/embed.js" async></script>
+```
+
 ## Documentation
 
 - Purpose docs: `docs/purpose/` — intent and key decisions (see `product-vision.mdc` for the AI contract)
