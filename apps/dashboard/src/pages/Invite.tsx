@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
-const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 
 const signupSchema = z.object({
   email: z.string().email('Please enter a valid email'),

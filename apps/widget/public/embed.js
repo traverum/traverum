@@ -1,9 +1,9 @@
 /**
- * Traverum Widget — Shadow DOM Embed
+ * Veyond Widget — Shadow DOM Embed
  * 
  * Usage:
- *   <traverum-widget hotel="hotel-slug"></traverum-widget>
- *   <script src="https://book.traverum.com/embed.js" async></script>
+ *   <veyond-widget hotel="hotel-slug"></veyond-widget>
+ *   <script src="https://book.veyond.eu/embed.js" async></script>
  *
  * Attributes:
  *   hotel            (required)  Hotel slug
@@ -100,9 +100,9 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-     Web Component: <traverum-widget>
+     Web Component: <veyond-widget>
      ═══════════════════════════════════════════════════════════ */
-  class TraverumWidget extends HTMLElement {
+  class VeyondWidget extends HTMLElement {
     constructor() {
       super();
       this._shadow = this.attachShadow({ mode: 'open' });
@@ -111,7 +111,7 @@
     connectedCallback() {
       var hotel = this.getAttribute('hotel');
       if (!hotel) {
-        this._shadow.innerHTML = '<p style="color:red">Traverum: missing <code>hotel</code> attribute</p>';
+        this._shadow.innerHTML = '<p style="color:red">Veyond: missing <code>hotel</code> attribute</p>';
         return;
       }
 
@@ -132,14 +132,14 @@
       fetch(apiUrl)
         .then(function (r) {
           if (!r.ok) {
-            console.error('Traverum widget API error:', r.status, r.statusText, 'URL:', apiUrl);
+            console.error('Veyond widget API error:', r.status, r.statusText, 'URL:', apiUrl);
             throw new Error('HTTP ' + r.status + ': ' + r.statusText);
           }
           return r.json();
         })
         .then(function (data) {
           if (!data || !data.experiences) {
-            console.warn('Traverum widget: No experiences data received', data);
+            console.warn('Veyond widget: No experiences data received', data);
           }
           self._render(data, hotel, hideTitle, buttonLabel);
         })
@@ -181,7 +181,7 @@
       
       // Debug logging
       if (window.location.hostname === 'localhost' || window.location.hostname.includes('127.0.0.1')) {
-        console.log('Traverum widget theme:', {
+        console.log('Veyond widget theme:', {
           textAlign: textAlign,
           sectionPadding: sectionPadding,
           titleMargin: titleMargin,
@@ -510,15 +510,15 @@
   }
 
   /* Register custom element (guard against double-registration) */
-  if (!customElements.get('traverum-widget')) {
+  if (!customElements.get('veyond-widget')) {
     try {
-      customElements.define('traverum-widget', TraverumWidget);
-      console.log('Traverum widget: Custom element registered');
+      customElements.define('veyond-widget', VeyondWidget);
+      console.log('Veyond widget: Custom element registered');
     } catch (err) {
-      console.error('Traverum widget: Failed to register custom element', err);
+      console.error('Veyond widget: Failed to register custom element', err);
     }
   } else {
-    console.log('Traverum widget: Custom element already registered');
+    console.log('Veyond widget: Custom element already registered');
   }
 
   /* ─── WordPress compatibility: Auto-initialize if custom element was stripped ─── */
@@ -526,32 +526,32 @@
   (function wordpressCompat() {
     // Wait for DOM to be ready
     function initWidgets() {
-      // Find all traverum-widget elements (if they survived sanitization)
-      var existingWidgets = document.querySelectorAll('traverum-widget');
+      // Find all veyond-widget elements (if they survived sanitization)
+      var existingWidgets = document.querySelectorAll('veyond-widget');
       
       // Also check for divs with data attributes (WordPress fallback)
-      var fallbackContainers = document.querySelectorAll('[data-traverum-hotel]');
+      var fallbackContainers = document.querySelectorAll('[data-veyond-hotel]');
       
       // Process existing widgets
       existingWidgets.forEach(function(widget) {
         // Widget already exists, it will initialize via connectedCallback
         if (!widget.hasAttribute('hotel')) {
-          var hotel = widget.getAttribute('data-hotel') || widget.getAttribute('data-traverum-hotel');
+          var hotel = widget.getAttribute('data-hotel') || widget.getAttribute('data-veyond-hotel');
           if (hotel) widget.setAttribute('hotel', hotel);
         }
       });
       
       // Process fallback containers (WordPress stripped the custom element)
       fallbackContainers.forEach(function(container) {
-        if (container.tagName.toLowerCase() === 'traverum-widget') return; // Already a widget
+        if (container.tagName.toLowerCase() === 'veyond-widget') return; // Already a widget
         
-        var hotel = container.getAttribute('data-traverum-hotel') || container.getAttribute('data-hotel');
+        var hotel = container.getAttribute('data-veyond-hotel') || container.getAttribute('data-hotel');
         if (!hotel) return;
         
         var max = container.getAttribute('data-max') || container.getAttribute('data-max-experiences');
         
         // Create widget element
-        var widget = document.createElement('traverum-widget');
+        var widget = document.createElement('veyond-widget');
         widget.setAttribute('hotel', hotel);
         if (max) widget.setAttribute('max', max);
         
@@ -566,14 +566,14 @@
         var scriptHotel = scriptEl.getAttribute('data-hotel');
         if (scriptHotel) {
           // Look for any container that might need initialization
-          var containers = document.querySelectorAll('[id*="traverum"], [class*="traverum"]');
+          var containers = document.querySelectorAll('[id*="veyond"], [class*="veyond"]');
           containers.forEach(function(container) {
-            if (container.tagName.toLowerCase() !== 'traverum-widget' && !container.hasAttribute('data-traverum-initialized')) {
-              var widget = document.createElement('traverum-widget');
+            if (container.tagName.toLowerCase() !== 'veyond-widget' && !container.hasAttribute('data-veyond-initialized')) {
+              var widget = document.createElement('veyond-widget');
               widget.setAttribute('hotel', scriptHotel);
               var scriptMax = scriptEl.getAttribute('data-max-experiences');
               if (scriptMax) widget.setAttribute('max', scriptMax);
-              container.setAttribute('data-traverum-initialized', 'true');
+              container.setAttribute('data-veyond-initialized', 'true');
               container.appendChild(widget);
             }
           });
@@ -594,10 +594,10 @@
   })();
 
   /* ─── Public API ─── */
-  window.TraverumWidget = {
+  window.VeyondWidget = {
     version: '2.0.0',
     reload: function (selector) {
-      var els = document.querySelectorAll(selector || 'traverum-widget');
+      var els = document.querySelectorAll(selector || 'veyond-widget');
       els.forEach(function (el) {
         // Re-trigger connectedCallback by removing and re-adding
         var parent = el.parentNode;

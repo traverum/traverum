@@ -47,7 +47,7 @@ export function baseTemplate(content: string, title: string) {
   <div class="container">
     ${content}
     <div class="footer">
-      <p style="font-size: 12px; color: rgba(55, 53, 47, 0.3);">Powered by Traverum</p>
+      <p style="font-size: 12px; color: rgba(55, 53, 47, 0.3);">Powered by Veyond</p>
     </div>
   </div>
 </body>

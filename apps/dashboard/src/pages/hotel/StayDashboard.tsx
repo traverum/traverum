@@ -378,7 +378,7 @@ function StayDashboardInner() {
               {hotelConfig?.slug && (
                 <p className="text-xs text-muted-foreground">
                   Widget URL:{' '}
-                  <span className="font-mono">book.traverum.com/{hotelConfig.slug}</span>
+                  <span className="font-mono">book.veyond.eu/{hotelConfig.slug}</span>
                 </p>
               )}
             </CardContent>

@@ -37,7 +37,7 @@ export function DashboardNav({ hotelName }: DashboardNavProps) {
           {/* Logo and Nav */}
           <div className="flex items-center gap-8">
             <Link href="/dashboard" className="text-xl font-bold text-gray-900">
-              Traverum
+              Veyond
             </Link>
             <nav className="hidden sm:flex items-center gap-1">
               {navItems.map((item) => {

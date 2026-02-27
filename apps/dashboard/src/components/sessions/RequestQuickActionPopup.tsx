@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { CalendarRequest } from '@/hooks/useCalendarRequests';
 
-const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 
 /** Format YYYY-MM-DD to "Mon 20 Feb" */
 function fmtDate(dateStr: string): string {

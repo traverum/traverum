@@ -14,7 +14,7 @@ export function EmbedResizer() {
 
     const sendHeight = () => {
       const height = document.body.scrollHeight
-      window.parent.postMessage({ type: 'traverum-resize', height }, '*')
+      window.parent.postMessage({ type: 'veyond-resize', height }, '*')
     }
     sendHeight()
 

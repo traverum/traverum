@@ -48,7 +48,7 @@ if (!RESEND_API_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 const resend = new Resend(RESEND_API_KEY)
-const FROM_EMAIL = process.env.FROM_EMAIL || 'Traverum <bookings@veyond.eu>'
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Veyond <bookings@veyond.eu>'
 
 // Allow URL override via command line argument or use env var
 // Usage: node scripts/send-test-completion-email.js http://localhost:3000
@@ -145,7 +145,7 @@ function baseTemplate(content, title) {
   <div class="container">
     ${content}
     <div class="footer">
-      <p>Powered by Traverum</p>
+      <p>Powered by Veyond</p>
     </div>
   </div>
 </body>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Traverum Widget',
+  title: 'Veyond Widget',
   robots: 'noindex, nofollow',
 }
 

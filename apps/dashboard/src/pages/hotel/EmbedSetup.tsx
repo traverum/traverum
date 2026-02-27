@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Copy, Code, Link as LinkIcon, Globe } from 'lucide-react';
 
-const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 
 function CopyBlock({ code, label }: { code: string; label: string }) {
   const [copied, setCopied] = useState(false);
@@ -93,8 +93,8 @@ export default function EmbedSetup({ embedded = false }: EmbedSetupProps) {
   const hotelSlug = hotelConfig.slug;
   const baseUrl = WIDGET_BASE_URL;
 
-  const embedCode = `<!-- Traverum Experiences Widget -->
-<traverum-widget hotel="${hotelSlug}"></traverum-widget>
+  const embedCode = `<!-- Veyond Experiences Widget -->
+<veyond-widget hotel="${hotelSlug}"></veyond-widget>
 <script src="${baseUrl}/embed.js" async></script>`;
 
   const fullPageUrl = `${baseUrl}/${hotelSlug}`;
@@ -102,8 +102,8 @@ export default function EmbedSetup({ embedded = false }: EmbedSetupProps) {
 
   const resizeScript = `<script>
 window.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'traverum-resize') {
-    document.querySelectorAll('iframe[src*="book.traverum.com"]').forEach(function(f) {
+  if (e.data && e.data.type === 'veyond-resize') {
+    document.querySelectorAll('iframe[src*="book.veyond.eu"]').forEach(function(f) {
       f.style.height = e.data.height + 'px';
     });
   }

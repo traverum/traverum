@@ -35,7 +35,7 @@ import {
 import { optimizeImage } from '@/lib/image-optimization';
 
 // ── Constants ──
-const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 
 const FONT_OPTIONS = [
   { value: 'Poppins, system-ui, sans-serif', label: 'Poppins' },

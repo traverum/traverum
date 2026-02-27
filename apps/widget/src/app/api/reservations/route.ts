@@ -317,7 +317,7 @@ export async function POST(request: NextRequest) {
     const manageUrl = `${appUrl}/request/${reservation.id}/respond?at=${acceptToken}&dt=${declineToken}`
 
     // Send email to supplier: Accept + "Respond to request" only (no one-click decline)
-    const dashboardUrl = 'https://dashboard.traverum.com/supplier/sessions'
+    const dashboardUrl = 'https://dashboard.veyond.eu/supplier/sessions'
 
     const supplierEmailHtml = supplierNewRequest({
       experienceTitle: experience.title,

@@ -203,7 +203,7 @@ function createResponse(type: 'success' | 'error' | 'info', message: string) {
       <div class="header"><h1>${titles[type]}</h1></div>
       <p>${message}</p>
     </div>
-    <div class="footer">Powered by Traverum</div>
+    <div class="footer">Powered by Veyond</div>
   </div>
 </body>
 </html>

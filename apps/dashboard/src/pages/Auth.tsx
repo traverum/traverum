@@ -10,7 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { getRecaptchaToken } from '@/lib/recaptcha';
 import { z } from 'zod';
 
-const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 type AuthMode = 'login' | 'signup' | 'reset-password';

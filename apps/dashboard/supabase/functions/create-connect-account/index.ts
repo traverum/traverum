@@ -126,7 +126,7 @@ serve(async (req) => {
     }
 
     // Use origin from the already-parsed request body for return URLs
-    const baseUrl = origin || 'https://dashboard.traverum.com';
+    const baseUrl = origin || 'https://dashboard.veyond.eu';
 
     // Create an account link for onboarding
     const accountLink = await stripe.accountLinks.create({

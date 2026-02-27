@@ -21,7 +21,7 @@ export default async function ProtectedDashboardLayout({
         <header className="border-b border-gray-200 bg-white">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex h-16 items-center">
-              <span className="text-xl font-bold text-gray-900">Traverum</span>
+              <span className="text-xl font-bold text-gray-900">Veyond</span>
             </div>
           </div>
         </header>
@@ -32,8 +32,8 @@ export default async function ProtectedDashboardLayout({
             </h1>
             <p className="text-gray-600 max-w-md mx-auto">
               {result.error === 'no_user_record'
-                ? 'Your user account is not linked to a hotel. Please contact Traverum support to complete your setup.'
-                : 'Your hotel configuration is not complete. Please contact Traverum support to finish setting up your account.'}
+                ? 'Your user account is not linked to a hotel. Please contact Veyond support to complete your setup.'
+                : 'Your hotel configuration is not complete. Please contact Veyond support to finish setting up your account.'}
             </p>
           </div>
         </main>

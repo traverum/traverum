@@ -65,7 +65,7 @@ interface ExperienceColorSet {
 }
 
 const EXPERIENCE_PALETTE: ExperienceColorSet[] = [
-  { // Olive — the Traverum color
+  { // Olive — the Veyond color
     bgSolid: 'rgb(200, 212, 188)', bgGhost: 'rgba(200, 212, 188, 0.18)',
     border: 'rgb(95, 110, 75)', textSolid: 'rgb(52, 62, 40)', textGhost: 'rgb(82, 95, 68)',
     dot: 'rgb(95, 110, 75)',

@@ -94,7 +94,7 @@ export default function ExperiencesPage() {
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <p className="text-gray-500">No experiences available yet.</p>
           <p className="text-sm text-gray-400 mt-1">
-            Contact Traverum to add experiences to your region.
+            Contact Veyond to add experiences to your region.
           </p>
         </div>
       ) : (

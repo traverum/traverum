@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Copy, Trash2, Users, Link as LinkIcon, Check, Mail, Building2 } from 'lucide-react';
 
-const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || window.location.origin;
 
 interface Member {

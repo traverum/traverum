@@ -14,7 +14,7 @@ export default async function EmbedPage({ params }: EmbedPageProps) {
     <>
       <div
         dangerouslySetInnerHTML={{
-          __html: `<traverum-widget hotel="${hotelSlug.replace(/"/g, '&quot;')}"></traverum-widget>`,
+          __html: `<veyond-widget hotel="${hotelSlug.replace(/"/g, '&quot;')}"></veyond-widget>`,
         }}
       />
       <Script src="/embed.js" strategy="afterInteractive" />

@@ -1,4 +1,4 @@
-// Traverum Shared Types
+// Veyond Shared Types
 // Export Supabase types and shared utilities here
 
 export * from './database.types';

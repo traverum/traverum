@@ -32,7 +32,7 @@ export default async function BookingCancelConfirmPage({ searchParams }: PagePro
             Invalid or missing link. Please use the link from your booking email.
           </p>
         )}
-        <p className="text-xs text-[rgba(55,53,47,0.3)] mt-6 tracking-[0.02em]">Powered by Traverum</p>
+        <p className="text-xs text-[rgba(55,53,47,0.3)] mt-6 tracking-[0.02em]">Powered by Veyond</p>
       </div>
     </div>
   )

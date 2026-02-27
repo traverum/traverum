@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { getTodayLocal, isBookingEnded } from '@/lib/date-utils';
 
-const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.traverum.com';
+const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 
 // --- Types ---
 

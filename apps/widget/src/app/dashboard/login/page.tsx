@@ -125,7 +125,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Traverum</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Veyond</h1>
           <p className="mt-2 text-gray-600">Hotel Dashboard</p>
         </div>
 
@@ -136,8 +136,8 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-gray-500">
           Don&apos;t have an account?{' '}
-          <a href="mailto:support@traverum.com" className="text-blue-600 hover:underline">
-            Contact Traverum
+          <a href="mailto:support@veyond.eu" className="text-blue-600 hover:underline">
+            Contact Veyond
           </a>
         </p>
       </div>

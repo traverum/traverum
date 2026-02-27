@@ -85,7 +85,7 @@ export function RespondClient({ data, reservationId, acceptToken, declineToken }
     }
   }
 
-  // Traverum palette (brand-essence)
+  // Veyond palette (brand-essence)
   const styles = {
     bg: '#F4EFE6',
     card: '#FEFCF9',
