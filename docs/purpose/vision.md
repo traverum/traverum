@@ -10,15 +10,16 @@ Traverum exists to solve a problem that no one has solved well:
 
 **Guests** want authentic local experiences but don't know what's available, don't trust random booking platforms, and would rather book through their hotel — a source they already trust.
 
-Traverum is the invisible infrastructure that connects all three. Hotels embed a branded widget. Suppliers manage availability. Guests book and pay. Everyone earns their share.
+Traverum is the infrastructure that connects all three. Hotels embed a branded widget. Suppliers manage availability. Guests book and pay — through their hotel or directly through Veyond. Everyone earns their share.
 
-The guest never knows Traverum exists. The hotel looks like they run the experience program. The supplier gets customers without marketing. That's the product.
+Through the hotel channel, the guest never knows Traverum exists — the hotel looks like they run the experience program. Through Veyond's own booking platform, guests discover and book experiences directly under the Veyond brand.
 
 ## Key decisions
 
-- **White-label first.** The widget looks like it belongs to the hotel. Custom colors, fonts, domain. Traverum branding is minimal (footer only).
-- **Three-party commission model.** Every booking splits revenue: supplier (default 80%) + hotel (default 12%) + platform (8%). Configurable per experience-hotel pair via the `distributions` table.
-- **No marketplace.** Guests don't browse Traverum. They browse their hotel's curated selection. Hotels choose which suppliers to feature.
+- **Two channels, one engine.** Hotel widget (white-label, hotel earns commission) and Veyond direct (`book.veyond.eu/experiences`, Veyond-branded, no hotel commission). Same booking engine, same APIs, same code.
+- **White-label for hotels.** The widget looks like it belongs to the hotel. Custom colors, fonts, domain. Traverum branding is minimal (footer only).
+- **Veyond direct for travelers.** All active experiences are browsable and bookable at `book.veyond.eu/experiences`. Veyond branding. No hotel involved. Notification email to `info@traverum.com` on every direct booking.
+- **Commission model.** Hotel channel: supplier (default 80%) + hotel (default 12%) + platform (8%), configurable per experience-hotel pair via the `distributions` table. Direct channel: supplier (92%) + platform (8%), no hotel share. Determined by whether `reservation.hotel_id` is null.
 - **Supplier self-service.** Suppliers manage their own experiences, sessions, pricing, and bookings. No Traverum staff involvement in day-to-day operations.
 - **Hotel zero-effort.** Hotels embed once, toggle experiences on/off, and earn. No booking management, no customer service.
 - **Location-based matching.** Hotels see experiences within a configurable radius (PostGIS). Suppliers operating in multiple areas create separate experiences.

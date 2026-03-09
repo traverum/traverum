@@ -43,7 +43,7 @@
 | # | Scenario | Flow | What Must Work |
 |---|----------|------|----------------|
 | 17 | Embed mode (Shadow DOM) | `<traverum-widget hotel="slug">` | Widget loads inside Shadow DOM, CSS isolation from host page, theme applied, responsive |
-| 18 | Full-page mode | `book.traverum.com/{slug}` | Same experience, standalone page, works for QR codes / email links |
+| 18 | Full-page mode | `book.veyond.eu/{slug}` | Same experience, standalone page, works for QR codes / email links |
 | 19 | Theming | Hotel config | Accent color, fonts, spacing, alignment applied correctly per hotel property |
 | 20 | Cancel outside policy window | Cancel link | Shows "Non-refundable" or "Window closed" message gracefully, doesn't allow refund |
 | 21 | Demo mode | `hotel-traverum` | Checkout simulates success without real Stripe call |
@@ -146,7 +146,7 @@
 | 12 | Stay dashboard | Hotel Dashboard | Property list, click-through to property detail |
 | 13 | Location settings | Hotel config | Lat/lng for location-based features (receptionist, radius filtering) |
 | 14 | Hotel commission payout | Monthly batch | **GAP:** Currently only recorded in DB; batch payout mechanism to hotels needs implementation |
-| 15 | Direct link to widget | Full-page URL | Hotel can share `book.traverum.com/{slug}` for QR codes, social media, etc. |
+| 15 | Direct link to widget | Full-page URL | Hotel can share `book.veyond.eu/{slug}` for QR codes, social media, etc. |
 
 ### P3 — Nice-to-have
 

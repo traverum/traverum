@@ -42,15 +42,15 @@
     --input: 214 32% 91%;
     --ring: 217 91% 60%;
     
-    /* Radius */
-    --radius: 0.5rem;
-    --radius-card: 0.75rem;
-    --radius-button: 0.5rem;
-    
+  /* Radius */
+  --radius: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-button: 0.5rem;
+
     /* Font families - can be overridden per hotel */
     --font-heading: var(--font-sans, 'Poppins, system-ui, sans-serif');
     --font-body: 'Inter, system-ui, sans-serif';
-    
+
     /* Font weights - can be overridden per hotel */
     --font-weight-heading: 200;  /* Default: extra light */
     --font-weight-base: 400;     /* Always 400 for readability */
@@ -58,6 +58,31 @@
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
   }
+}
+
+/* Veyond direct booking theme — docs/design/brand-essence.md */
+.veyond-theme {
+  --font-sans: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
+  --font-heading: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
+  --font-body: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
+  --background: 40 33% 93%;
+  --background-alt: 35 67% 98%;
+  --foreground: 40 9% 20%;
+  --heading-foreground: 28 31% 28%;
+  --accent: 95 16% 36%;
+  --accent-hover: 95 16% 32%;
+  --accent-foreground: 0 0% 100%;
+  --card: 35 67% 98%;
+  --card-foreground: 40 9% 20%;
+  --muted: 40 15% 94%;
+  --muted-foreground: 40 6% 45%;
+  --border: 40 9% 20% / 0.09;
+  --success: 120 15% 48%;
+  --warning: 43 45% 58%;
+  --destructive: 25 42% 62%;
+  --ring: 95 16% 36%;
+  --input: 40 9% 20% / 0.09;
+  --link-color: 28 31% 28%;
 }
 
 /* Override Tailwind font weights to use CSS variables (for hotel theming) */

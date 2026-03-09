@@ -35,6 +35,7 @@ import AddBusinessFlow from "./pages/onboarding/AddBusinessFlow";
 import EmailVerification from "./pages/EmailVerification";
 import AuthCallback from "./pages/AuthCallback";
 import Analytics from "./pages/Analytics";
+import SupplierAnalytics from "./pages/supplier/Analytics";
 import HotelAnalytics from "./pages/hotel/Analytics";
 import Settings from "./pages/Settings";
 import Invite from "./pages/Invite";
@@ -266,7 +267,7 @@ const App = () => (
                 path="/supplier/analytics" 
                 element={
                   <ProtectedRoute>
-                    <Analytics />
+                    <SupplierAnalytics />
                   </ProtectedRoute>
                 } 
               />

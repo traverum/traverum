@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { verifyWebhookSignature, stripe } from '@/lib/stripe'
 import { calculateCommissionSplit } from '@/lib/commission'
+import { SELF_OWNED_COMMISSION } from '@traverum/shared'
 import { sendEmail, sendBatchEmails, getAppUrl } from '@/lib/email/index'
 import { 
   guestPaymentConfirmed, 
@@ -526,24 +527,31 @@ async function createBookingFromPayment(
   const supplier = experience.supplier
   const session = reservation.session
   
-  // Get distribution for commission rates
-  const { data: distributionData } = await supabase
-    .from('distributions')
-    .select('*')
-    .eq('experience_id', experience.id)
-    .eq('hotel_id', reservation.hotel_id)
-    .eq('is_active', true)
-    .single()
-  
-  if (!distributionData) {
-    console.error(`Distribution not found for experience ${experience.id} and hotel ${reservation.hotel_id}`)
-    return
-  }
-  
-  const distribution = distributionData as any
-  
   // Calculate commission split
-  const split = calculateCommissionSplit(reservation.total_cents, distribution)
+  const isDirect = !reservation.hotel_id
+  let split
+  if (isDirect) {
+    split = calculateCommissionSplit(reservation.total_cents, {
+      commission_supplier: SELF_OWNED_COMMISSION.supplier,
+      commission_hotel: SELF_OWNED_COMMISSION.hotel,
+      commission_platform: SELF_OWNED_COMMISSION.platform,
+    })
+  } else {
+    const { data: distributionData } = await supabase
+      .from('distributions')
+      .select('*')
+      .eq('experience_id', experience.id)
+      .eq('hotel_id', reservation.hotel_id)
+      .eq('is_active', true)
+      .single()
+    
+    if (!distributionData) {
+      console.error(`Distribution not found for experience ${experience.id} and hotel ${reservation.hotel_id}`)
+      return
+    }
+    
+    split = calculateCommissionSplit(reservation.total_cents, distributionData as any)
+  }
   
   // Create booking
   const { data: booking, error: bookingError } = await (supabase
@@ -595,14 +603,16 @@ async function createBookingFromPayment(
       .eq('id', reservation.session_id)
   }
   
-  // Get hotel config for URLs
-  const { data: hotelConfig } = await supabase
-    .from('hotel_configs')
-    .select('slug')
-    .eq('partner_id', reservation.hotel_id)
-    .single()
-  
-  const hotelSlug = (hotelConfig as any)?.slug || 'default'
+  // Get hotel config for URLs (skip for direct bookings)
+  let hotelSlug = 'default'
+  if (!isDirect && reservation.hotel_id) {
+    const { data: hotelConfig } = await supabase
+      .from('hotel_configs')
+      .select('slug')
+      .eq('partner_id', reservation.hotel_id)
+      .single()
+    hotelSlug = (hotelConfig as any)?.slug || 'default'
+  }
   const isRental = experience.pricing_type === 'per_day'
   const date = isRental && reservation.rental_start_date
     ? reservation.rental_start_date
@@ -673,7 +683,57 @@ async function createBookingFromPayment(
     { to: supplier.email, subject: `Payment received - ${experience.title}`, html: supplierEmailHtml, replyTo: reservation.guest_email },
   ]
 
-  if (hotelEmail) {
+  if (isDirect) {
+    // Notify Traverum of direct Veyond bookings
+    const notifyEmail = process.env.VEYOND_BOOKING_NOTIFY_EMAIL || 'info@traverum.com'
+    const { baseTemplate } = await import('@/lib/email/templates')
+    const { escapeHtml } = await import('@/lib/sanitize')
+    const formatter = new Intl.NumberFormat('fi-FI', {
+      style: 'currency',
+      currency: experience.currency || 'EUR',
+    })
+    const veyondNotifyHtml = baseTemplate(`
+      <div class="card">
+        <div class="header"><h1>New Veyond Booking</h1></div>
+        <p>A new booking was made directly through Veyond.</p>
+        <div class="info-box">
+          <div class="info-row">
+            <span class="info-label">Experience</span>
+            <span class="info-value">${escapeHtml(experience.title)}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Supplier</span>
+            <span class="info-value">${escapeHtml(supplier.name)}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Guest</span>
+            <span class="info-value">${escapeHtml(reservation.guest_name)} (${escapeHtml(reservation.guest_email)})</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Date</span>
+            <span class="info-value">${date || 'TBD'}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Participants</span>
+            <span class="info-value">${reservation.participants}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Total</span>
+            <span class="info-value">${formatter.format(reservation.total_cents / 100)}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Platform commission</span>
+            <span class="info-value">${formatter.format(split.platformAmount / 100)}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Booking ID</span>
+            <span class="info-value">${booking.id.slice(0, 8).toUpperCase()}</span>
+          </div>
+        </div>
+      </div>
+    `, 'New Veyond Booking')
+    emailBatch.push({ to: notifyEmail, subject: `New Veyond booking - ${experience.title}`, html: veyondNotifyHtml })
+  } else if (hotelEmail) {
     const hotelEmailHtml = hotelBookingNotification({
       experienceTitle: experience.title,
       supplierName: supplier.name,

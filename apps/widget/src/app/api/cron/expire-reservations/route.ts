@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
             <div class="card">
               <div class="header"><h1>Payment Window Closed</h1></div>
               <p>Hi ${escapeHtml(reservation.guest_name)},</p>
-              <p>The payment window for your booking has closed. The provider approved your request, but payment was not completed within 24 hours.</p>
+              <p>The payment window for your booking has closed. The provider approved your request, but payment was not completed within 1 hour.</p>
               <div class="info-box">
                 <div class="info-row">
                   <span class="info-label">Experience</span>
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
               <div class="card">
                 <div class="header"><h1>Payment Not Completed</h1></div>
                 <p>Hi ${experience.supplier.name},</p>
-                <p>The guest did not complete payment within the 24-hour window.</p>
+                <p>The guest did not complete payment within the 1-hour window.</p>
                 <div class="info-box">
                   <div class="info-row">
                     <span class="info-label">Guest</span>

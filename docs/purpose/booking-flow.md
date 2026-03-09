@@ -35,7 +35,7 @@ The booking flow is the core product. Everything else exists to support it.
 | Window | Duration | Purpose |
 |--------|----------|---------|
 | Supplier response | 48 hours | Prevents requests sitting forever |
-| Guest payment | 24 hours | Prevents approved bookings going stale |
+| Guest payment | 1 hour | Reduces slot blocking; guest must pay promptly after approval |
 | Guest cancellation | Per policy (see below) | Fair, configurable cancellation |
 | Completion check | 1 day after experience | Supplier confirms delivery |
 | Auto-complete | 7 days after experience | Ensures supplier gets paid even if they forget |
@@ -46,7 +46,12 @@ Guest contact info (email, phone) is hidden from the supplier until payment is c
 
 ### Commission split
 
-Every payment splits three ways: supplier + hotel + platform = 100%. Default: 80/12/8. Configurable per experience-hotel pair. Rounding remainder goes to platform. Settlement happens after supplier confirms the experience happened (or auto-completes).
+Commission depends on the booking channel:
+
+- **Hotel channel** (`reservation.hotel_id` is set): Three-way split from the `distributions` table. Default: supplier 80% / hotel 12% / platform 8%. Configurable per experience-hotel pair. Rounding remainder goes to platform.
+- **Direct channel** (`reservation.hotel_id` is null): Two-way split using `SELF_OWNED_COMMISSION`. Supplier 92% / platform 8%. Hotel gets nothing because no hotel is involved. Uses the constant from `@traverum/shared`.
+
+Settlement happens after supplier confirms the experience happened (or auto-completes). The auto-complete cron job reads `supplier_amount_cents` from the booking record and transfers it — channel-agnostic.
 
 ### Cancellation policies
 

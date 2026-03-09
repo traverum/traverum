@@ -27,7 +27,7 @@ The widget uses a Shadow DOM Web Component. This was a deliberate choice over if
 
 | Mode | URL | Use case |
 |------|-----|----------|
-| Full-page | `book.traverum.com/{hotelSlug}` | QR codes, email links, direct traffic |
+| Full-page | `book.veyond.eu/{hotelSlug}` | QR codes, email links, direct traffic |
 | Section embed | Shadow DOM widget on hotel site | Embedded on hotel website pages |
 
 Both use the same Next.js app. The embed shows cards only; clicks open the full booking flow in a new tab.

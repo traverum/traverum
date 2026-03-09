@@ -3,28 +3,38 @@ description: Traverum product vision — the north star for every code decision
 alwaysApply: true
 ---
 
-# Traverum Vision
+# Vision
+
+## Traverum & Veyond
+Traverum is the company that builds technology for hospitality. Veyond is our customer facing brand.
 
 ## What we're building
 
-White-label booking infrastructure that makes local experiences bookable through hotels. Three parties, one platform:
+Booking infrastructure that makes local experiences bookable — through hotels (white-label) and directly through Veyond. Three parties, two channels, one platform:
 
-- **Suppliers** (tour operators, activity providers) create experiences and manage bookings. They gain hotel guests as customers without marketing costs.
+- **Suppliers** (tour operators, activity providers) create experiences and manage bookings. They gain customers without marketing costs — via hotel widgets and Veyond's own booking platform.
 - **Hotels** embed a branded widget on their website. They earn commission on every booking without operating experiences.
-- **Guests** browse and book local experiences through their hotel's website. It feels like a hotel service, not a third-party marketplace.
+- **Guests** browse and book local experiences — either through their hotel's website (white-label) or directly through Veyond (Veyond-branded).
+
+## Two channels
+
+1. **Hotel channel (white-label):** Guest books through the hotel's embedded widget. Commission splits three ways (supplier + hotel + platform). The hotel's brand is front and center; Traverum/Veyond is invisible.
+2. **Veyond direct channel:** Guest books through `book.veyond.eu/experiences`. Commission splits two ways (supplier 92% + platform 8%). Veyond branding. No hotel involved.
+
+Both channels use the same booking engine, same API, same payment flow, same email templates.
 
 ## Core promise
 
 **For hotels:** Zero effort. Embed a widget, earn commission, enhance guest experience.
-**For suppliers:** Access hotel guests. No marketing. Get paid after delivery.
-**For guests:** Trusted local experiences. Book through the hotel. Simple and beautiful.
+**For suppliers:** Access hotel guests and Veyond travelers. No marketing. Get paid after delivery.
+**For guests:** Trusted local experiences. Book through the hotel or through Veyond. Simple and beautiful.
 
 ## What must always be true
 
-1. **The guest books through the hotel, not through Traverum.** The widget is white-labeled. Traverum is invisible infrastructure.
-2. **Two booking paths.** Session-based (instant) for scheduled experiences. Request-based (approval) for custom times and rentals. Both end in payment.
+1. **Two channels, one engine.** Hotel widget (white-label, hotel earns commission) and Veyond direct (Veyond-branded, no hotel commission). Same booking flow, same API, same code. A reservation with `hotel_id = null` is a direct Veyond booking.
+2. **Two booking paths.** Session-based (instant) for scheduled experiences. Request-based (approval) for custom times and rentals. Both end in payment. Both work identically across channels.
 3. **Supplier is protected.** Guest contact info hidden until payment. Deadlines create urgency. Auto-complete ensures suppliers get paid.
-4. **Every flow ends in a commission split.** Supplier + hotel + platform = 100%. This is the business model.
+4. **Every flow ends in a commission split.** Hotel channel: supplier + hotel + platform = 100% (default 80/12/8). Direct channel: supplier + platform = 100% (92/8). This is the business model.
 5. **Design = effortlessly warm, quietly precise.** Nordic structure (sisu) + Italian warmth (sprezzatura). Never cold, never ornate.
 
 ## North star change detection
@@ -32,6 +42,7 @@ White-label booking infrastructure that makes local experiences bookable through
 **IMPORTANT:** When implementing changes that affect any of the following, STOP and tell the user:
 - Booking flow behavior (status transitions, timing windows, payment flow)
 - Commission split logic or revenue distribution
+- Channel logic (hotel widget vs Veyond direct, how hotel_id null/present changes behavior)
 - Privacy rules (when guest info is revealed)
 - Core entity relationships (partners, experiences, sessions, reservations, bookings)
 

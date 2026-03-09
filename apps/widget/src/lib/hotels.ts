@@ -1,4 +1,5 @@
 import { createAdminClient } from './supabase/server'
+import { SELF_OWNED_COMMISSION } from '@traverum/shared'
 import type { HotelConfig, Experience, Distribution, Media } from './supabase/types'
 
 export interface HotelWithExperiences {
@@ -215,5 +216,103 @@ export async function getExperienceForHotel(
       is_active: found.is_active,
       created_at: found.created_at,
     },
+  }
+}
+
+const DIRECT_DISTRIBUTION: Distribution = {
+  id: 'direct',
+  hotel_id: '',
+  hotel_config_id: null,
+  experience_id: '',
+  commission_supplier: SELF_OWNED_COMMISSION.supplier,
+  commission_hotel: SELF_OWNED_COMMISSION.hotel,
+  commission_platform: SELF_OWNED_COMMISSION.platform,
+  is_active: true,
+  sort_order: 0,
+  created_at: null,
+}
+
+/**
+ * Fetch all active experiences for direct (Veyond) booking
+ */
+export async function getAllActiveExperiences(): Promise<ExperienceWithMedia[]> {
+  const supabase = createAdminClient()
+
+  const { data: experiencesData, error } = await supabase
+    .from('experiences')
+    .select(`
+      *,
+      supplier:partners!experiences_partner_fk (
+        id, name, email, stripe_account_id, stripe_onboarding_complete
+      )
+    `)
+    .eq('experience_status', 'active')
+    .order('created_at', { ascending: false })
+
+  if (error || !experiencesData) return []
+
+  const experiences = experiencesData as any[]
+  const experienceIds = experiences.map(e => e.id)
+
+  if (experienceIds.length === 0) return []
+
+  const { data: mediaList } = await supabase
+    .from('media')
+    .select('*')
+    .in('experience_id', experienceIds)
+    .order('sort_order', { ascending: true })
+
+  const mediaData = (mediaList || []) as any[]
+
+  return experiences.map(exp => {
+    const expMedia = mediaData.filter(m => m.experience_id === exp.id)
+    return {
+      ...exp,
+      media: expMedia,
+      coverImage: expMedia[0]?.url || exp.image_url || null,
+      supplier: exp.supplier,
+      distribution: { ...DIRECT_DISTRIBUTION, experience_id: exp.id },
+    }
+  })
+}
+
+/**
+ * Fetch a single experience by slug for direct (Veyond) booking
+ */
+export async function getExperienceDirect(
+  experienceSlug: string
+): Promise<ExperienceWithMedia | null> {
+  const supabase = createAdminClient()
+
+  const { data: expData } = await supabase
+    .from('experiences')
+    .select(`
+      *,
+      supplier:partners!experiences_partner_fk (
+        id, name, email, stripe_account_id, stripe_onboarding_complete
+      )
+    `)
+    .eq('slug', experienceSlug)
+    .eq('experience_status', 'active')
+    .single()
+
+  if (!expData) return null
+
+  const exp = expData as any
+
+  const { data: mediaData } = await supabase
+    .from('media')
+    .select('*')
+    .eq('experience_id', exp.id)
+    .order('sort_order', { ascending: true })
+
+  const media = (mediaData || []) as any[]
+
+  return {
+    ...exp,
+    media,
+    coverImage: media[0]?.url || exp.image_url || null,
+    supplier: exp.supplier,
+    distribution: { ...DIRECT_DISTRIBUTION, experience_id: exp.id },
   }
 }

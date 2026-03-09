@@ -25,6 +25,9 @@ export const SELF_OWNED_COMMISSION = {
   platform: PLATFORM_COMMISSION,
 } as const;
 
+/** Hours the guest has to complete payment after approval (payment link validity). */
+export const PAYMENT_DEADLINE_HOURS = 1 as const;
+
 export const CURRENCY = {
   CODE: 'EUR',
   SYMBOL: '€',

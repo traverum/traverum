@@ -630,17 +630,18 @@ function ExperienceDashboardInner() {
 
   const handleStatusChange = async (newStatus: string) => {
     if (!experienceId) return;
-    
-    if (newStatus === 'active' && !hasStripe) {
-      toast({
-        title: 'Stripe setup required',
-        description: stripeStatus === 'incomplete'
-          ? 'Please complete your Stripe verification before publishing. Go to your dashboard to finish setup.'
-          : 'Please connect your Stripe account before publishing experiences. Go to your dashboard to set it up.',
-        variant: 'destructive',
-      });
-      return;
-    }
+
+    // TEMPORARY: Stripe-onboarding constraint disabled for testing. Re-enable to require Stripe before setting experience live.
+    // if (newStatus === 'active' && !hasStripe) {
+    //   toast({
+    //     title: 'Stripe setup required',
+    //     description: stripeStatus === 'incomplete'
+    //       ? 'Please complete your Stripe verification before publishing. Go to your dashboard to finish setup.'
+    //       : 'Please connect your Stripe account before publishing experiences. Go to your dashboard to set it up.',
+    //     variant: 'destructive',
+    //   });
+    //   return;
+    // }
 
     // Validate before allowing 'active' status
     if (newStatus === 'active') {
@@ -883,10 +884,11 @@ function ExperienceDashboardInner() {
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active" disabled={!hasStripe}>
+                  {/* TEMPORARY: Stripe constraint removed for testing — was disabled={!hasStripe} */}
+                  <SelectItem value="active">
                     <span className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-success" />
-                      <span>{hasStripe ? 'Active' : stripeStatus === 'incomplete' ? 'Active (complete Stripe setup)' : 'Active (connect Stripe first)'}</span>
+                      <span>Active</span>
                     </span>
                   </SelectItem>
                   <SelectItem value="draft">

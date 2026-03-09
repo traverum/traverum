@@ -10,8 +10,19 @@ Monorepo: **pnpm + Turborepo**
 | App | Stack | Purpose |
 |-----|-------|---------|
 | `apps/dashboard` | Vite + React SPA | Supplier & hotel management |
-| `apps/widget` | Next.js App Router | Guest booking, API routes, cron jobs, email |
+| `apps/widget` | Next.js App Router | Guest booking (hotel widget + Veyond direct), API routes, cron jobs, email |
 | `packages/shared` | TypeScript | Shared types, constants (`@traverum/shared`) |
+
+## Booking channels
+
+Two channels, one engine. Both live in `apps/widget`:
+
+| Channel | URL pattern | Branding | Commission |
+|---------|-------------|----------|------------|
+| Hotel widget | `book.veyond.eu/{hotelSlug}` or embed | Hotel (white-label) | 80/12/8 (supplier/hotel/platform) |
+| Veyond direct | `book.veyond.eu/experiences` | Veyond | 92/8 (supplier/platform) |
+
+A reservation with `hotel_id = null` is a direct Veyond booking. Same APIs, same payment flow.
 
 ## Key libraries
 
@@ -19,7 +30,7 @@ Monorepo: **pnpm + Turborepo**
 - **State:** React Context (useAuth, useActivePartner, useActiveHotelConfig) — no Zustand
 - **DB:** Supabase (Postgres + RLS + PostGIS for location)
 - **Payments:** Stripe Connect (Payment Links, not Checkout Sessions)
-- **Email:** Resend (from `Traverum <bookings@veyond.eu>`)
+- **Email:** Resend (from `Veyond <bookings@veyond.eu>`)
 - **Dates:** date-fns — European format `dd.MM.yyyy`, see timezone-global rule
 - **Shared constants:** `@traverum/shared` for commission rates, currency, categories
 
@@ -39,7 +50,7 @@ Two separate Vercel projects. **NEVER** mix them up.
 | Project | App | Framework | Root Directory | Domain |
 |---------|-----|-----------|----------------|--------|
 | Dashboard | `apps/dashboard` | Vite (React) | `apps/dashboard` | dashboard.traverum.com |
-| Widget | `apps/widget` | Next.js 14 | `apps/widget` | book.traverum.com |
+| Widget | `apps/widget` | Next.js 14 | `apps/widget` | book.veyond.eu |
 
 Dashboard has NO Next.js dependency. If you see Next.js errors on dashboard, the wrong app is deployed.
 
@@ -48,7 +59,7 @@ Dashboard has NO Next.js dependency. If you see Next.js errors on dashboard, the
 The embed custom element is `<veyond-widget>`. Hotels paste a snippet like:
 ```html
 <veyond-widget hotel="hotel-slug"></veyond-widget>
-<script src="https://book.traverum.com/embed.js" async></script>
+<script src="https://book.veyond.eu/embed.js" async></script>
 ```
 
 ## Documentation

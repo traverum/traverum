@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/tokens'
 import { createPaymentLink } from '@/lib/stripe'
 import { sendEmail, getAppUrl } from '@/lib/email/index'
 import { guestBookingApproved } from '@/lib/email/templates'
+import { PAYMENT_DEADLINE_HOURS } from '@traverum/shared'
 import { addHours } from 'date-fns'
 
 interface RouteParams {
@@ -95,14 +96,17 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
     return { success: false, error: 'You need to complete Stripe onboarding before accepting bookings. Please contact support.' }
   }
   
-  // Get hotel config for redirect URL
-  const { data: hotelConfig } = await supabase
-    .from('hotel_configs')
-    .select('slug')
-    .eq('partner_id', reservation.hotel_id)
-    .single()
-  
-  const hotelSlug = (hotelConfig as any)?.slug || 'default'
+  // Get hotel config for redirect URL (skip for direct Veyond bookings)
+  const isDirect = !reservation.hotel_id
+  let hotelSlug = 'default'
+  if (!isDirect) {
+    const { data: hotelConfig } = await supabase
+      .from('hotel_configs')
+      .select('slug')
+      .eq('partner_id', reservation.hotel_id)
+      .single()
+    hotelSlug = (hotelConfig as any)?.slug || 'default'
+  }
   
   const isRental = experience.pricing_type === 'per_day'
 
@@ -157,17 +161,24 @@ async function processAccept(id: string, token: string): Promise<{ success: bool
   }
   
   // Create Stripe Payment Link
+  const successPath = isDirect
+    ? `/experiences/confirmation/${reservation.id}`
+    : `/${hotelSlug}/confirmation/${reservation.id}`
+  const cancelPath = isDirect
+    ? `/experiences/reservation/${reservation.id}`
+    : `/${hotelSlug}/reservation/${reservation.id}`
+
   const paymentLink = await createPaymentLink({
     reservationId: reservation.id,
     experienceTitle: experience.title,
     amountCents: reservation.total_cents,
     currency: experience.currency,
-    successUrl: `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`,
-    cancelUrl: `${appUrl}/${hotelSlug}/reservation/${reservation.id}`,
+    successUrl: `${appUrl}${successPath}`,
+    cancelUrl: `${appUrl}${cancelPath}`,
   })
   
   // Update reservation
-  const paymentDeadline = addHours(new Date(), 24)
+  const paymentDeadline = addHours(new Date(), PAYMENT_DEADLINE_HOURS)
   
   await (supabase
     .from('reservations') as any)

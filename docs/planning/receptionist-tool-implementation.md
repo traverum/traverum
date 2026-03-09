@@ -1,6 +1,6 @@
 # Receptionist Tool Implementation Plan
 
-Build a receptionist booking tool that lives in the widget app (`apps/widget` at `book.traverum.com/receptionist`). Receptionists can browse experiences near their hotel property, book for guests by entering their details, and a payment link gets emailed to the guest automatically. The tool reuses the existing booking API, Stripe, and email infrastructure. No connection to the dashboard is needed.
+Build a receptionist booking tool that lives in the widget app (`apps/widget` at `book.veyond.eu/receptionist`). Receptionists can browse experiences near their hotel property, book for guests by entering their details, and a payment link gets emailed to the guest automatically. The tool reuses the existing booking API, Stripe, and email infrastructure. No connection to the dashboard is needed.
 
 ---
 
@@ -8,7 +8,7 @@ Build a receptionist booking tool that lives in the widget app (`apps/widget` at
 
 ```mermaid
 flowchart TD
-    subgraph widgetApp ["Widget App - book.traverum.com"]
+    subgraph widgetApp ["Widget App - book.veyond.eu"]
         subgraph publicRoutes ["Public Routes - existing"]
             G1["/{hotelSlug} - Guest browsing"]
             G2["/{hotelSlug}/checkout"]

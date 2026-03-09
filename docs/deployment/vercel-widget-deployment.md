@@ -36,7 +36,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 ### Application URL
 ```bash
-NEXT_PUBLIC_APP_URL=https://book.traverum.com
+NEXT_PUBLIC_APP_URL=https://book.veyond.eu
 # Or your Vercel deployment URL: https://your-project.vercel.app
 ```
 
@@ -98,7 +98,7 @@ After first deployment, update `NEXT_PUBLIC_APP_URL` in Vercel:
 ### 2. Configure Custom Domain (Optional)
 
 1. Go to Project Settings > Domains
-2. Add your domain: `book.traverum.com`
+2. Add your domain: `book.veyond.eu`
 3. Follow DNS configuration instructions
 4. SSL certificate will be automatically provisioned
 
@@ -143,7 +143,7 @@ These must be set up using external cron services (Vercel Hobby doesn't support 
 - **Schedule**: `0 * * * *` (every hour at minute 0)
 
 **Example cron-job.org setup for hourly jobs:**
-- URL: `https://book.traverum.com/api/cron/expire-unpaid`
+- URL: `https://book.veyond.eu/api/cron/expire-unpaid`
 - Schedule: `0 * * * *` (hourly)
 - Method: POST
 - Headers: `Authorization: Bearer your-cron-secret` (if CRON_SECRET is set)

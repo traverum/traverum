@@ -25,7 +25,7 @@
 
 | Doc | What it covers |
 |-----|----------------|
-| `vision.md` | Why Traverum exists. Three-party ecosystem. Core promise. |
+| `vision.md` | Why Traverum exists. Two channels (hotel widget + Veyond direct). Core promise. |
 | `booking-flow.md` | The booking lifecycle. Two flows, timing windows, privacy, commission. |
 | `pricing.md` | Four pricing models. Cents storage. Commission split. |
 

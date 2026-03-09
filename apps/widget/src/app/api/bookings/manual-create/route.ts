@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { stripe } from '@/lib/stripe'
 import { calculateCommissionSplit } from '@/lib/commission'
+import { SELF_OWNED_COMMISSION } from '@traverum/shared'
 import { sendEmail, sendBatchEmails, getAppUrl } from '@/lib/email/index'
 import { 
   guestPaymentConfirmed, 
@@ -149,26 +150,33 @@ export async function POST(request: NextRequest) {
     const supplier = experience.supplier
     const session = reservation.session
 
-    // Get distribution for commission rates
-    const { data: distributionData } = await supabase
-      .from('distributions')
-      .select('*')
-      .eq('experience_id', experience.id)
-      .eq('hotel_id', reservation.hotel_id)
-      .eq('is_active', true)
-      .single()
-
-    if (!distributionData) {
-      return NextResponse.json(
-        { error: 'Distribution not found for experience and hotel' },
-        { status: 404 }
-      )
-    }
-
-    const distribution = distributionData as any
-
     // Calculate commission split
-    const split = calculateCommissionSplit(reservation.total_cents, distribution)
+    const isDirect = !reservation.hotel_id
+    let split
+    if (isDirect) {
+      split = calculateCommissionSplit(reservation.total_cents, {
+        commission_supplier: SELF_OWNED_COMMISSION.supplier,
+        commission_hotel: SELF_OWNED_COMMISSION.hotel,
+        commission_platform: SELF_OWNED_COMMISSION.platform,
+      })
+    } else {
+      const { data: distributionData } = await supabase
+        .from('distributions')
+        .select('*')
+        .eq('experience_id', experience.id)
+        .eq('hotel_id', reservation.hotel_id)
+        .eq('is_active', true)
+        .single()
+
+      if (!distributionData) {
+        return NextResponse.json(
+          { error: 'Distribution not found for experience and hotel' },
+          { status: 404 }
+        )
+      }
+
+      split = calculateCommissionSplit(reservation.total_cents, distributionData as any)
+    }
 
     // Get payment intent if not provided
     if (!finalPaymentIntentId) {
@@ -229,14 +237,16 @@ export async function POST(request: NextRequest) {
         .eq('id', reservation.session_id)
     }
 
-    // Get hotel config for URLs
-    const { data: hotelConfig } = await supabase
-      .from('hotel_configs')
-      .select('slug')
-      .eq('partner_id', reservation.hotel_id)
-      .single()
-
-    const hotelSlug = (hotelConfig as any)?.slug || 'default'
+    // Get hotel config for URLs (skip for direct bookings)
+    let hotelSlug = 'default'
+    if (!isDirect && reservation.hotel_id) {
+      const { data: hotelConfig } = await supabase
+        .from('hotel_configs')
+        .select('slug')
+        .eq('partner_id', reservation.hotel_id)
+        .single()
+      hotelSlug = (hotelConfig as any)?.slug || 'default'
+    }
     const isRental = experience.pricing_type === 'per_day'
     const date = isRental && reservation.rental_start_date
       ? reservation.rental_start_date

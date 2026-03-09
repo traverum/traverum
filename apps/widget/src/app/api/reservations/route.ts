@@ -12,6 +12,7 @@ import { calculatePrice } from '@/lib/pricing'
 import { createPaymentLink } from '@/lib/stripe'
 import { sanitizeGuestText, sanitizeGuestEmail } from '@/lib/sanitize'
 import { reservationLimiter, getClientIp } from '@/lib/rate-limit'
+import { PAYMENT_DEADLINE_HOURS } from '@traverum/shared'
 import { addHours } from 'date-fns'
 
 export async function POST(request: NextRequest) {
@@ -45,10 +46,13 @@ export async function POST(request: NextRequest) {
       preferredLanguage,
       rentalDays: rentalDaysParam,
       quantity,
+      direct,
     } = body
+
+    const isDirect = direct === true
     
     // Validate required fields
-    if (!hotelSlug || !experienceId || !participants || !totalCents || !guestName || !guestEmail) {
+    if ((!hotelSlug && !isDirect) || !experienceId || !participants || !totalCents || !guestName || !guestEmail) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -70,22 +74,27 @@ export async function POST(request: NextRequest) {
     
     const supabase = createAdminClient()
     
-    // Get hotel config
-    const { data: hotelData } = await supabase
-      .from('hotel_configs')
-      .select('*, partner:partners!hotel_configs_partner_fk(*)')
-      .eq('slug', hotelSlug)
-      .eq('is_active', true)
-      .single()
-    
-    if (!hotelData) {
-      return NextResponse.json(
-        { error: 'Hotel not found' },
-        { status: 404 }
-      )
+    // Get hotel config (skip for direct Veyond bookings)
+    let hotel: any = null
+    if (!isDirect) {
+      const { data: hotelData } = await supabase
+        .from('hotel_configs')
+        .select('*, partner:partners!hotel_configs_partner_fk(*)')
+        .eq('slug', hotelSlug)
+        .eq('is_active', true)
+        .single()
+      
+      if (!hotelData) {
+        return NextResponse.json(
+          { error: 'Hotel not found' },
+          { status: 404 }
+        )
+      }
+      
+      hotel = hotelData
     }
     
-    const hotel = hotelData as any
+    const channelName = isDirect ? 'Veyond' : hotel.display_name
     
     // Get experience with supplier
     const { data: experienceData } = await supabase
@@ -209,14 +218,14 @@ export async function POST(request: NextRequest) {
     if (!isRequest && sessionId && sessionData) {
       // Session stays 'available' until payment is confirmed (via Stripe webhook).
       // The reservation links to the session so the webhook can mark it as 'booked'.
-      const paymentDeadline = addHours(new Date(), 24)
+      const paymentDeadline = addHours(new Date(), PAYMENT_DEADLINE_HOURS)
       
       const { data: reservation, error: reservationError } = await (supabase
         .from('reservations') as any)
         .insert({
           experience_id: experienceId,
-          hotel_id: hotel.partner_id,
-          hotel_config_id: hotel.id,
+          hotel_id: isDirect ? null : hotel.partner_id,
+          hotel_config_id: isDirect ? null : hotel.id,
           session_id: sessionId,
           guest_name: cleanName,
           guest_email: cleanEmail,
@@ -240,14 +249,19 @@ export async function POST(request: NextRequest) {
         )
       }
       
+      const successPath = isDirect
+        ? `/experiences/confirmation/${reservation.id}`
+        : `/${hotelSlug}/confirmation/${reservation.id}`
+      const cancelPath = isDirect ? '/experiences' : `/${hotelSlug}`
+
       // Create payment link immediately - user goes straight to payment
       const paymentLink = await createPaymentLink({
         reservationId: reservation.id,
         experienceTitle: experience.title,
         amountCents: expectedTotal,
         currency: experience.currency,
-        successUrl: `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`,
-        cancelUrl: `${appUrl}/${hotelSlug}`,
+        successUrl: `${appUrl}${successPath}`,
+        cancelUrl: `${appUrl}${cancelPath}`,
       })
       
       // Update reservation with payment link
@@ -278,8 +292,8 @@ export async function POST(request: NextRequest) {
       .from('reservations') as any)
       .insert({
         experience_id: experienceId,
-        hotel_id: hotel.partner_id,
-        hotel_config_id: hotel.id,
+        hotel_id: isDirect ? null : hotel.partner_id,
+        hotel_config_id: isDirect ? null : hotel.id,
         session_id: sessionId || null,
         guest_name: cleanName,
         guest_email: cleanEmail,
@@ -329,7 +343,7 @@ export async function POST(request: NextRequest) {
       currency: experience.currency,
       acceptUrl,
       manageUrl,
-      hotelName: hotel.display_name,
+      hotelName: channelName,
       dashboardUrl,
       ...(isRental ? { rentalEndDate: rentalEndDate || undefined, rentalDays } : {}),
     })
@@ -348,7 +362,7 @@ export async function POST(request: NextRequest) {
       participants: isRental ? (quantity || 1) : participants,
       totalCents: expectedTotal,
       currency: experience.currency,
-      hotelName: hotel.display_name,
+      hotelName: channelName,
       ...(isRental ? { rentalEndDate: rentalEndDate || undefined, rentalDays } : {}),
     })
 

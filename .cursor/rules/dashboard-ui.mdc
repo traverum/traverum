@@ -29,6 +29,8 @@ Before writing any dashboard UI, ask yourself:
 1. **Unified surface** — everything on same warm white background. Borders create distinction, **never** shadows or background color variation.
 2. **Icons only** — Lucide (`lucide-react`). **Never** emojis.
 3. **Visual over text** — badges, status dots, and color communicate state. Text only when essential.
+4. **Never gradients**
+5. **Capital letters only in the beginning of the sentence**
 
 ## Anti-patterns — never do these
 

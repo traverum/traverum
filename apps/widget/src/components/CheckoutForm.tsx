@@ -19,7 +19,7 @@ const checkoutSchema = z.object({
 type CheckoutFormData = z.infer<typeof checkoutSchema>
 
 interface CheckoutFormProps {
-  hotelSlug: string
+  hotelSlug?: string
   experienceId: string
   experienceTitle: string
   currency: string
@@ -90,11 +90,12 @@ export function CheckoutForm({
     }
     
     try {
+      const isDirect = !hotelSlug || hotelSlug === 'experiences'
       const response = await fetch('/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          hotelSlug,
+          ...(isDirect ? { direct: true } : { hotelSlug }),
           experienceId,
           sessionId,
           participants,
@@ -120,13 +121,12 @@ export function CheckoutForm({
       // For session-based bookings, redirect directly to payment
       // For request-based bookings, redirect to reservation page
       if (!isRequest && result.paymentUrl) {
-        // Direct redirect to payment (standard e-commerce flow)
         window.location.href = result.paymentUrl
       } else {
-        // Request-based: redirect to reservation page to wait for approval
+        const basePath = isDirect ? '/experiences' : `/${hotelSlug}`
         const next = returnUrl
-          ? `/${hotelSlug}/reservation/${result.reservationId}?returnUrl=${encodeURIComponent(returnUrl)}`
-          : `/${hotelSlug}/reservation/${result.reservationId}`
+          ? `${basePath}/reservation/${result.reservationId}?returnUrl=${encodeURIComponent(returnUrl)}`
+          : `${basePath}/reservation/${result.reservationId}`
         router.push(next)
       }
     } catch (err) {
@@ -268,7 +268,7 @@ export function CheckoutForm({
             totalCents={totalCents}
             currency={currency}
             guestName={`${submittedData.firstName} ${submittedData.lastName}`}
-            hotelSlug={hotelSlug}
+            hotelSlug={hotelSlug || 'experiences'}
             isRequest={isRequest}
             onClose={() => setShowDemoSuccess(false)}
             returnUrl={returnUrl}
