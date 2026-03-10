@@ -21,11 +21,13 @@ interface AnalyticsBooking {
   supplier_amount_cents: number;
   paid_at: string;
   completed_at: string | null;
+  session: {
+    session_date: string;
+  } | null;
   reservation: {
     experience_id: string;
     hotel_id: string;
     guest_name: string;
-    session_date: string | null;
     requested_date: string | null;
     experience: { id: string; title: string };
     hotel: { id: string; name: string };
@@ -78,7 +80,7 @@ function periodKey(date: Date, granularity: PeriodGranularity): { label: string;
 
 function bookingDate(b: AnalyticsBooking): Date {
   const dateStr =
-    b.reservation?.session_date ??
+    b.session?.session_date ??
     b.reservation?.requested_date ??
     b.completed_at ??
     b.paid_at;
@@ -117,11 +119,13 @@ export function useSupplierAnalytics() {
           supplier_amount_cents,
           paid_at,
           completed_at,
+          session:experience_sessions!bookings_session_fk(
+            session_date
+          ),
           reservation:reservations!bookings_reservation_fk(
             experience_id,
             hotel_id,
             guest_name,
-            session_date,
             requested_date,
             experience:experiences!reservations_experience_fk(id, title),
             hotel:partners!reservations_hotel_fk(id, name)
