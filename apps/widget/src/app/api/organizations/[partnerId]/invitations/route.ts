@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/supabase/types'
+import { resolveAdminUser } from '@/lib/superadmin'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,26 +37,22 @@ export async function POST(
 
     const adminClient = createAdminClient()
 
-    // Verify caller is an owner
-    const { data: appUser } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('auth_id', user.id)
-      .single() as { data: { id: string } | null }
-
-    if (!appUser) {
+    const adminUser = await resolveAdminUser(adminClient, user.id)
+    if (!adminUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const { data: membership } = await adminClient
-      .from('user_partners')
-      .select('id, role')
-      .eq('user_id', appUser.id)
-      .eq('partner_id', partnerId)
-      .single() as { data: { id: string; role: string } | null }
+    if (!adminUser.isSuperadmin) {
+      const { data: membership } = await adminClient
+        .from('user_partners')
+        .select('id, role')
+        .eq('user_id', adminUser.userId)
+        .eq('partner_id', partnerId)
+        .single() as { data: { id: string; role: string } | null }
 
-    if (!membership || membership.role !== 'owner') {
-      return NextResponse.json({ error: 'Only organization owners can create invitations' }, { status: 403 })
+      if (!membership || membership.role !== 'owner') {
+        return NextResponse.json({ error: 'Only organization owners can create invitations' }, { status: 403 })
+      }
     }
 
     const body = await request.json().catch(() => ({}))
@@ -85,7 +82,7 @@ export async function POST(
       .insert({
         partner_id: partnerId,
         role,
-        created_by: appUser.id,
+        created_by: adminUser.userId,
       })
       .select('token, expires_at')
       .single() as { data: { token: string; expires_at: string } | null; error: any }

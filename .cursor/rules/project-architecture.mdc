@@ -9,8 +9,9 @@ Monorepo: **pnpm + Turborepo**
 
 | App | Stack | Purpose |
 |-----|-------|---------|
-| `apps/dashboard` | Vite + React SPA | Supplier & hotel management |
+| `apps/dashboard` | Vite + React SPA | Supplier & hotel management (partners/customers) |
 | `apps/widget` | Next.js App Router | Guest booking (hotel widget + Veyond direct), API routes, cron jobs, email |
+| `apps/admin` | Vite + React SPA | Traverum platform admin: hotel payouts, partner list, superadmin “act as partner” (internal only) |
 | `packages/shared` | TypeScript | Shared types, constants (`@traverum/shared`) |
 
 ## Booking channels
@@ -45,14 +46,17 @@ A reservation with `hotel_id = null` is a direct Veyond booking. Same APIs, same
 
 ## Vercel deployment (CRITICAL)
 
-Two separate Vercel projects. **NEVER** mix them up.
+**Three separate Vercel projects.** One project per app. **NEVER** mix them: wrong Root Directory or wrong build command will deploy the wrong app and cause broken production.
 
-| Project | App | Framework | Root Directory | Domain |
-|---------|-----|-----------|----------------|--------|
-| Dashboard | `apps/dashboard` | Vite (React) | `apps/dashboard` | dashboard.traverum.com |
-| Widget | `apps/widget` | Next.js 14 | `apps/widget` | book.veyond.eu |
+| Vercel project name | App | Framework | Root Directory | Build command (from repo root) | Domain |
+|---------------------|-----|-----------|----------------|----------------------------------|--------|
+| Dashboard | `apps/dashboard` | Vite (React) | `apps/dashboard` | `pnpm --filter @traverum/dashboard build` | dashboard.traverum.com |
+| Widget | `apps/widget` | Next.js 14 | `apps/widget` | `pnpm --filter @traverum/widget build` | book.veyond.eu |
+| Admin | `apps/admin` | Vite (React) | `apps/admin` | `pnpm --filter @traverum/admin build` | admin.traverum.com |
 
-Dashboard has NO Next.js dependency. If you see Next.js errors on dashboard, the wrong app is deployed.
+- **Dashboard** and **Admin** are Vite SPAs (no Next.js). If you see Next.js errors on either, the wrong app is deployed (e.g. Root Directory pointing to `apps/widget`).
+- **Widget** is the only Next.js app; it has API routes, crons, and server-side code. Never use the widget build for dashboard or admin.
+- When adding deployment docs or CI, always identify the app by **Root Directory** and **filter** (`@traverum/dashboard`, `@traverum/widget`, `@traverum/admin`) so there is no confusion.
 
 ## Embed widget
 

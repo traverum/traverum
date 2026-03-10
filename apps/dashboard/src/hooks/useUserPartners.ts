@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
+import { useSuperadmin } from './useSuperadmin';
 
 export interface UserPartner {
   id: string;
   user_id: string;
   partner_id: string;
-  role: 'owner' | 'admin' | 'member' | 'receptionist';
+  role: 'owner' | 'admin' | 'member' | 'receptionist' | 'superadmin';
   is_default: boolean;
   created_at: string;
   partner: {
@@ -30,19 +31,18 @@ export interface PartnerCapabilities {
 
 export function useUserPartners() {
   const { user } = useAuth();
+  const { isSuperadmin, isLoading: superadminLoading } = useSuperadmin();
 
-  // Fetch all partners the current user has access to
   const {
     data: userPartners = [],
-    isLoading,
+    isLoading: partnersLoading,
     error,
     refetch,
   } = useQuery({
-    queryKey: ['userPartners', user?.id],
+    queryKey: ['userPartners', user?.id, isSuperadmin],
     queryFn: async () => {
       if (!user?.id) return [];
 
-      // First get the user record
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
@@ -54,7 +54,29 @@ export function useUserPartners() {
         return [];
       }
 
-      // Then get all partner memberships with partner details
+      // Superadmins see all partners directly
+      if (isSuperadmin) {
+        const { data: allPartners, error: partnerError } = await supabase
+          .from('partners')
+          .select('id, name, email, partner_type, stripe_account_id, stripe_onboarding_complete, city, country')
+          .order('name');
+
+        if (partnerError) {
+          console.error('Error fetching all partners:', partnerError);
+          throw partnerError;
+        }
+
+        return (allPartners || []).map((p: any) => ({
+          id: `sa-${p.id}`,
+          user_id: userData.id,
+          partner_id: p.id,
+          role: 'superadmin' as const,
+          is_default: false,
+          created_at: '',
+          partner: p,
+        })) as UserPartner[];
+      }
+
       const { data, error } = await supabase
         .from('user_partners')
         .select(`
@@ -86,13 +108,11 @@ export function useUserPartners() {
 
       return (data || []) as UserPartner[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !superadminLoading,
   });
 
-  // Get the default partner (first one marked as default, or first in list)
+  const isLoading = partnersLoading || superadminLoading;
   const defaultPartner = userPartners.find(up => up.is_default) || userPartners[0] || null;
-
-  // Check if user has multiple partners
   const hasMultiplePartners = userPartners.length > 1;
 
   return {
@@ -100,6 +120,7 @@ export function useUserPartners() {
     defaultPartner,
     hasMultiplePartners,
     isLoading,
+    isSuperadmin,
     error,
     refetch,
   };

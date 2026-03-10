@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronDownIcon,
@@ -15,23 +16,30 @@ import {
   DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useAuth } from '@/hooks/useAuth';
+import { useSuperadmin } from '@/hooks/useSuperadmin';
 import { cn } from '@/lib/utils';
+import { Shield } from 'lucide-react';
 
 const VIEW_STORAGE_KEY = 'traverum_active_view';
 type ViewMode = 'experiences' | 'stays';
+
+const MAX_VISIBLE_PARTNERS = 20;
 
 export function OrganizationDropdown() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut } = useAuth();
+  const { isSuperadmin } = useSuperadmin();
   const {
     activePartner,
     activePartnerId,
     setActivePartnerId,
     userPartners,
   } = useActivePartner();
+  const [search, setSearch] = useState('');
 
   if (!activePartner) {
     return null;
@@ -42,7 +50,6 @@ export function OrganizationDropdown() {
     navigate('/auth');
   };
 
-  // Determine current view from route or localStorage
   const getCurrentView = (): ViewMode => {
     if (location.pathname.startsWith('/supplier')) return 'experiences';
     if (location.pathname.startsWith('/hotel') || location.pathname.startsWith('/stays')) return 'stays';
@@ -55,7 +62,6 @@ export function OrganizationDropdown() {
 
   const currentView = getCurrentView();
 
-  // Handle selecting a view for any organization (switches org + view in one action)
   const handleViewSelect = (partnerId: string, view: ViewMode) => {
     if (partnerId !== activePartnerId) {
       setActivePartnerId(partnerId);
@@ -70,27 +76,60 @@ export function OrganizationDropdown() {
     }
   };
 
+  const filteredPartners = useMemo(() => {
+    let list = userPartners;
+    if (isSuperadmin && search) {
+      const q = search.toLowerCase();
+      list = list.filter(
+        (up) =>
+          up.partner.name.toLowerCase().includes(q) ||
+          up.partner.email.toLowerCase().includes(q)
+      );
+    }
+    return list.slice(0, MAX_VISIBLE_PARTNERS);
+  }, [userPartners, search, isSuperadmin]);
+
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={() => setSearch('')}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           className="w-full justify-between h-auto py-1.5 px-3 hover:bg-accent transition-ui"
         >
           <div className="flex flex-col items-start flex-1 min-w-0">
-            <span className="font-medium text-sm text-foreground truncate block w-full text-left">
-              {activePartner.partner.name}
-            </span>
+            <div className="flex items-center gap-1.5 w-full">
+              {isSuperadmin && (
+                <Shield className="h-3 w-3 text-primary flex-shrink-0" />
+              )}
+              <span className="font-medium text-sm text-foreground truncate block text-left">
+                {activePartner.partner.name}
+              </span>
+            </div>
             <span className="text-[11px] text-muted-foreground leading-tight">
-              {currentView === 'experiences' ? 'Experiences' : 'Stays'}
+              {isSuperadmin ? 'Superadmin' : currentView === 'experiences' ? 'Experiences' : 'Stays'}
             </span>
           </div>
           <ChevronDownIcon className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
-        {/* Organization list with view submenus */}
-        {userPartners.map((up) => {
+      <DropdownMenuContent align="start" className="w-56 max-h-[70vh] overflow-y-auto">
+        {isSuperadmin && (
+          <>
+            <div className="px-2 py-1.5">
+              <Input
+                placeholder="Search partners..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-7 text-xs"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
+            <DropdownMenuSeparator />
+          </>
+        )}
+
+        {filteredPartners.map((up) => {
           const isActiveOrg = up.partner_id === activePartnerId;
           return (
             <DropdownMenuSub key={up.id}>
@@ -126,9 +165,20 @@ export function OrganizationDropdown() {
           );
         })}
 
+        {isSuperadmin && filteredPartners.length === 0 && (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            No partners found.
+          </div>
+        )}
+
+        {isSuperadmin && userPartners.length > MAX_VISIBLE_PARTNERS && !search && (
+          <div className="px-3 py-1.5 text-xs text-muted-foreground">
+            Showing {MAX_VISIBLE_PARTNERS} of {userPartners.length}. Use search to find more.
+          </div>
+        )}
+
         <DropdownMenuSeparator />
 
-        {/* Settings */}
         <DropdownMenuItem
           onClick={() => navigate('/settings')}
           className="cursor-pointer px-2 py-1.5"
@@ -139,7 +189,6 @@ export function OrganizationDropdown() {
           </span>
         </DropdownMenuItem>
 
-        {/* New Organization */}
         <DropdownMenuItem
           onClick={() => navigate('/onboarding/add-business')}
           className="cursor-pointer px-2 py-1.5"
@@ -152,7 +201,6 @@ export function OrganizationDropdown() {
 
         <DropdownMenuSeparator />
 
-        {/* Sign out */}
         <DropdownMenuItem
           onClick={handleSignOut}
           className="cursor-pointer text-destructive focus:text-destructive px-2 py-1.5"

@@ -1,6 +1,8 @@
 # Dashboard Vercel Deployment Guide
 
-This guide helps you deploy the Traverum dashboard (Vite + React) to Vercel.
+This guide helps you deploy the Traverum **dashboard** (`apps/dashboard`, Vite + React) to Vercel.
+
+**Important:** This is one of three separate Vercel projects. See [VERCEL_DEPLOYMENTS.md](./VERCEL_DEPLOYMENTS.md) for the full overview. Use **Root Directory** `apps/dashboard` only for the dashboard project — never point it at `apps/widget` or `apps/admin`.
 
 ## Prerequisites
 
@@ -10,14 +12,14 @@ This guide helps you deploy the Traverum dashboard (Vite + React) to Vercel.
 
 ## Step 1: Configure Vercel Project Settings
 
-1. Go to your Vercel project dashboard
-2. Navigate to **Settings → General**
-3. Set **Root Directory** to: `.` (repo root) or leave empty
-4. **Framework Preset**: Vite (or Other)
-5. The `vercel.json` is already configured with:
-   - `installCommand: "pnpm install"`
-   - `buildCommand: "pnpm --filter @traverum/dashboard build"`
-   - `outputDirectory: "apps/dashboard/dist"`
+1. Go to your Vercel project dashboard (the project used **only** for the dashboard app).
+2. Navigate to **Settings → General**.
+3. Set **Root Directory** to: **`apps/dashboard`** (required — so Vercel uses that app’s `vercel.json`).
+4. **Framework Preset**: Vite (or Other).
+5. The `apps/dashboard/vercel.json` provides:
+   - `installCommand`: `cd ../.. && pnpm install`
+   - `buildCommand`: `cd ../.. && pnpm --filter @traverum/dashboard build`
+   - `outputDirectory`: `dist`
 
 ## Step 2: Configure Environment Variables
 

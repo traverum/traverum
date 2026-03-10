@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import type { Database } from '@/lib/supabase/types'
 import { DEFAULT_COMMISSION, SELF_OWNED_COMMISSION } from '@traverum/shared'
+import { resolveAdminUser } from '@/lib/superadmin'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,26 +31,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body. Required: experience_id, is_active, partner_id, hotel_config_id' }, { status: 400 })
     }
 
-    // Validate that user has access to this partner via user_partners
-    const { data: userData } = await adminClient
-      .from('users')
-      .select('id')
-      .eq('auth_id', user.id)
-      .single() as { data: { id: string } | null }
-
-    if (!userData) {
+    const adminUser = await resolveAdminUser(adminClient, user.id)
+    if (!adminUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    const { data: membership } = await adminClient
-      .from('user_partners')
-      .select('id')
-      .eq('user_id', userData.id)
-      .eq('partner_id', partner_id)
-      .single() as { data: { id: string } | null }
+    if (!adminUser.isSuperadmin) {
+      const { data: membership } = await adminClient
+        .from('user_partners')
+        .select('id')
+        .eq('user_id', adminUser.userId)
+        .eq('partner_id', partner_id)
+        .single() as { data: { id: string } | null }
 
-    if (!membership) {
-      return NextResponse.json({ error: 'Unauthorized for this partner' }, { status: 403 })
+      if (!membership) {
+        return NextResponse.json({ error: 'Unauthorized for this partner' }, { status: 403 })
+      }
     }
 
     // Check if distribution exists

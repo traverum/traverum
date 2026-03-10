@@ -1,103 +1,53 @@
-# Vercel Deployment Checklist
+# Vercel deployment checklist
 
-Quick checklist for deploying the Traverum widget to Vercel.
+Traverum has **three Vercel projects**. Use one project per app and set **Root Directory** correctly so the right app is deployed. See [VERCEL_DEPLOYMENTS.md](./VERCEL_DEPLOYMENTS.md) for the overview.
 
-## Pre-Deployment
+## Which app are you deploying?
 
-- [ ] Repository is connected to Vercel
-- [ ] All environment variables are ready (see below)
-- [ ] Stripe webhook endpoint is ready
-- [ ] Custom domain is configured (if applicable)
+| App | Root Directory | Guide | Env / checklist |
+|-----|----------------|-------|------------------|
+| **Dashboard** | `apps/dashboard` | [DASHBOARD_VERCEL_DEPLOYMENT.md](./DASHBOARD_VERCEL_DEPLOYMENT.md) | VITE_* (Supabase, optional Google Maps, etc.) |
+| **Widget** | `apps/widget` | [vercel-widget-deployment.md](./vercel-widget-deployment.md) | NEXT_PUBLIC_*, Stripe, Resend, CRON_SECRET, etc. |
+| **Admin** | `apps/admin` | [ADMIN_VERCEL_DEPLOYMENT.md](./ADMIN_VERCEL_DEPLOYMENT.md) | VITE_SUPABASE_*, VITE_DASHBOARD_URL, VITE_WIDGET_API_URL |
 
-## Environment Variables Setup
+## Pre-deployment (all apps)
 
-Copy these into Vercel Project Settings > Environment Variables:
+- [ ] Vercel project is created and **Root Directory** is set to the correct app path (`apps/dashboard`, `apps/widget`, or `apps/admin`).
+- [ ] Repository is connected; you are not reusing one Vercel project for a different app.
+- [ ] Environment variables for that app are added (see the app-specific guide above).
 
-### Required
-- [ ] `NEXT_PUBLIC_SUPABASE_URL`
-- [ ] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- [ ] `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] `NEXT_PUBLIC_APP_URL` (set after first deployment)
-- [ ] `STRIPE_SECRET_KEY`
-- [ ] `STRIPE_WEBHOOK_SECRET`
-- [ ] `RESEND_API_KEY`
+## Widget-only checklist (when deploying widget)
 
-### Optional
-- [ ] `TOKEN_SECRET` (defaults to SUPABASE_SERVICE_ROLE_KEY)
-- [ ] `CRON_SECRET` (for securing cron endpoints)
-- [ ] `FROM_EMAIL` (defaults to "Traverum <bookings@veyond.eu>")
+- [ ] Required: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `RESEND_API_KEY`
+- [ ] Optional: `TOKEN_SECRET`, `CRON_SECRET`, `FROM_EMAIL`
+- [ ] Stripe webhook URL: `https://book.veyond.eu/api/webhooks/stripe` (or your widget domain)
+- [ ] Cron jobs: see [vercel-widget-deployment.md](./vercel-widget-deployment.md)
 
-## Deployment Steps
+## Dashboard-only checklist (when deploying dashboard)
 
-1. [ ] Push code to main branch (or connect via Vercel dashboard)
-2. [ ] Verify build succeeds in Vercel dashboard
-3. [ ] Test deployment URL: `https://your-project.vercel.app/[hotel-slug]`
-4. [ ] Update `NEXT_PUBLIC_APP_URL` to production domain
-5. [ ] Redeploy to apply `NEXT_PUBLIC_APP_URL` change
+- [ ] Required: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`
+- [ ] Optional: `VITE_GOOGLE_MAPS_API_KEY`, `VITE_RECAPTCHA_SITE_KEY`, `VITE_WIDGET_URL`
+- [ ] Redeploy after any env change (Vite embeds at build time)
 
-## Post-Deployment
+## Admin-only checklist (when deploying admin)
 
-### Domain Setup
-- [ ] Add custom domain in Vercel (if applicable)
-- [ ] Configure DNS records
-- [ ] Wait for SSL certificate provisioning
-- [ ] Verify domain works
+- [ ] Required: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_DASHBOARD_URL`, `VITE_WIDGET_API_URL`
+- [ ] Redeploy after any env change (Vite embeds at build time)
 
-### Stripe Webhooks
-- [ ] Add webhook endpoint in Stripe Dashboard
-- [ ] URL: `https://your-domain.com/api/webhooks/stripe`
-- [ ] Select required events
-- [ ] Copy webhook signing secret
-- [ ] Add as `STRIPE_WEBHOOK_SECRET` in Vercel
-- [ ] Test webhook delivery
+## Verification
 
-### Cron Jobs
-- [ ] **If Vercel Pro/Enterprise**: Cron jobs auto-configured
-- [ ] **If using external service**: Set up cron jobs (see deployment guide)
-- [ ] Test cron endpoints manually first
+- **Dashboard:** Login, partner switcher, no Next.js in build log.
+- **Widget:** Hotel/experience pages, embed.js, API routes, crons; build log shows Next.js.
+- **Admin:** Login (superadmin only), Overview, Payouts, Partners; build log shows Vite, not Next.js.
 
-## Verification Tests
+## Rollback
 
-- [ ] Homepage loads: `https://your-domain.com`
-- [ ] Hotel page loads: `https://your-domain.com/[hotel-slug]`
-- [ ] Experience page loads: `https://your-domain.com/[hotel-slug]/[experience-slug]`
-- [ ] Embed script loads: `https://your-domain.com/embed.js`
-- [ ] API endpoints respond: `https://your-domain.com/api/embed/[hotel-slug]`
-- [ ] Checkout flow works
-- [ ] Payment processing works
-- [ ] Email sending works (test booking)
+- Vercel dashboard → Deployments → previous deployment → Promote to Production.
 
-## Monitoring Setup
-
-- [ ] Enable Vercel Analytics (optional)
-- [ ] Set up error alerts
-- [ ] Monitor Stripe webhook logs
-- [ ] Monitor Supabase logs
-- [ ] Check cron job execution
-
-## Rollback Plan
-
-If issues occur:
-- [ ] Identify last working deployment
-- [ ] Promote previous deployment to production
-- [ ] Investigate issues in build logs
-- [ ] Fix and redeploy
-
-## Quick Commands
+## Quick build commands (local)
 
 ```bash
-# Build locally to test
+pnpm --filter @traverum/dashboard build
 pnpm --filter @traverum/widget build
-
-# Run production build locally
-pnpm --filter @traverum/widget start
-
-# Check environment variables
-# (Verify all are set in Vercel dashboard)
+pnpm --filter @traverum/admin build
 ```
-
-## Support Resources
-
-- [Full Deployment Guide](./vercel-widget-deployment.md)
-- [Vercel Documentation](https://vercel.com/docs)
-- [Next.js Deployment](https://nextjs.org/docs/deployment)
