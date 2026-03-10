@@ -53,6 +53,7 @@ export default function Settings() {
   }, [activePartner?.partner?.name, activePartner?.partner?.email]);
 
   const isOwner = activePartner?.role === 'owner';
+  const canManageSettings = isOwner || activePartner?.role === 'superadmin';
 
   // Fetch members
   const { data: members = [], isLoading: membersLoading, isError: membersError, refetch: refetchMembers } = useQuery({
@@ -72,7 +73,7 @@ export default function Settings() {
       const data = await res.json();
       return data.members as Member[];
     },
-    enabled: !!activePartnerId && !!session?.access_token && isOwner,
+    enabled: !!activePartnerId && !!session?.access_token && canManageSettings,
     retry: 1,
   });
 
@@ -206,7 +207,7 @@ export default function Settings() {
       <h1 className="text-2xl font-semibold text-foreground mb-6">Settings</h1>
 
       {/* Organization name */}
-      {isOwner && (
+      {canManageSettings && (
         <Card className="border border-border mb-4">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -243,7 +244,7 @@ export default function Settings() {
       )}
 
       {/* Organization email */}
-      {isOwner && (
+      {canManageSettings && (
         <Card className="border border-border mb-4">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-medium flex items-center gap-2">
@@ -291,19 +292,19 @@ export default function Settings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {!isOwner && (
+          {!canManageSettings && (
             <p className="text-sm text-muted-foreground">
               Only organization owners can manage members.
             </p>
           )}
 
-          {isOwner && membersLoading && (
+          {canManageSettings && membersLoading && (
             <div className="py-4 flex justify-center">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
             </div>
           )}
 
-          {isOwner && membersError && (
+          {canManageSettings && membersError && (
             <div className="py-4 space-y-2 text-center">
               <p className="text-sm text-muted-foreground">Failed to load members</p>
               <Button variant="outline" size="sm" onClick={() => refetchMembers()}>
@@ -312,7 +313,7 @@ export default function Settings() {
             </div>
           )}
 
-          {isOwner && !membersLoading && !membersError && (
+          {canManageSettings && !membersLoading && !membersError && (
             <>
               {/* Member list */}
               <div className="divide-y divide-border">

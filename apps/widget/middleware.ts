@@ -11,8 +11,8 @@ const corsHeaders = {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Handle CORS for /api/dashboard/* routes (dashboard app calls cross-origin)
-  if (pathname.startsWith('/api/dashboard')) {
+  // Handle CORS for dashboard/organization APIs (dashboard app calls cross-origin)
+  if (pathname.startsWith('/api/dashboard') || pathname.startsWith('/api/organizations')) {
     // Preflight OPTIONS → respond immediately
     if (request.method === 'OPTIONS') {
       return new NextResponse(null, { status: 204, headers: corsHeaders })
@@ -100,5 +100,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/api/dashboard/:path*'],
+  matcher: ['/dashboard/:path*', '/api/dashboard/:path*', '/api/organizations/:path*'],
 }
