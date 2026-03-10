@@ -11,9 +11,11 @@
     "dev": "turbo run dev",
     "dev:widget": "pnpm --filter @traverum/widget dev",
     "dev:dashboard": "pnpm --filter @traverum/dashboard dev",
+    "dev:admin": "pnpm --filter @traverum/admin dev",
     "build": "turbo run build",
     "build:widget": "pnpm --filter @traverum/widget build",
     "build:dashboard": "pnpm --filter @traverum/dashboard build",
+    "build:admin": "pnpm --filter @traverum/admin build",
     "lint": "turbo run lint"
   },
   "devDependencies": {

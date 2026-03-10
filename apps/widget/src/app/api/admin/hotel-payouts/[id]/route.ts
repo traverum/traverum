@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { isSuperadmin } from '@/lib/superadmin'
 
-function verifyCronSecret(request: NextRequest): boolean {
+async function verifyAdminAccess(request: NextRequest): Promise<boolean> {
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true
 
-  if (!cronSecret) return true
-  return authHeader === `Bearer ${cronSecret}`
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+    const adminClient = createAdminClient()
+    return await isSuperadmin(adminClient, user.id)
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -17,7 +26,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!verifyCronSecret(request)) {
+  if (!await verifyAdminAccess(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

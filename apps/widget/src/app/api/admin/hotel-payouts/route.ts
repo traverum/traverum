@@ -1,12 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { isSuperadmin } from '@/lib/superadmin'
 
-function verifyCronSecret(request: NextRequest): boolean {
+async function verifyAdminAccess(request: NextRequest): Promise<boolean> {
+  // Option 1: CRON_SECRET header (for automated jobs)
   const authHeader = request.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true
 
-  if (!cronSecret) return true
-  return authHeader === `Bearer ${cronSecret}`
+  // Option 2: Authenticated superadmin user (for admin panel)
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+    const adminClient = createAdminClient()
+    return await isSuperadmin(adminClient, user.id)
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -16,7 +27,7 @@ function verifyCronSecret(request: NextRequest): boolean {
  * and links the bookings.
  */
 export async function POST(request: NextRequest) {
-  if (!verifyCronSecret(request)) {
+  if (!await verifyAdminAccess(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -116,7 +127,7 @@ export async function POST(request: NextRequest) {
  * Query params: ?partnerId=xxx
  */
 export async function GET(request: NextRequest) {
-  if (!verifyCronSecret(request)) {
+  if (!await verifyAdminAccess(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

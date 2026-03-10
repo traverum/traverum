@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/lib/supabase/types'
+import { resolveAdminUser } from '@/lib/superadmin'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,24 +21,22 @@ function authenticateRequest(request: NextRequest) {
 }
 
 async function verifyOwnership(adminClient: any, authUserId: string, partnerId: string) {
-  const { data: appUser } = await adminClient
-    .from('users')
-    .select('id')
-    .eq('auth_id', authUserId)
-    .single() as { data: { id: string } | null }
+  const adminUser = await resolveAdminUser(adminClient, authUserId)
+  if (!adminUser) return null
 
-  if (!appUser) return null
+  // Superadmins have owner-level access to all partners
+  if (adminUser.isSuperadmin) return adminUser.userId
 
   const { data: membership } = await adminClient
     .from('user_partners')
     .select('id, role')
-    .eq('user_id', appUser.id)
+    .eq('user_id', adminUser.userId)
     .eq('partner_id', partnerId)
     .single() as { data: { id: string; role: string } | null }
 
   if (!membership || membership.role !== 'owner') return null
 
-  return appUser.id
+  return adminUser.userId
 }
 
 // GET /api/organizations/[partnerId]/members — list org members

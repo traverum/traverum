@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 20% 99%;
+    --foreground: 0 0% 22%;
+
+    --card: 40 20% 99%;
+    --card-foreground: 0 0% 22%;
+
+    --popover: 40 20% 99%;
+    --popover-foreground: 0 0% 22%;
+
+    --primary: 100 17% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 40 15% 95%;
+    --secondary-foreground: 0 0% 22%;
+
+    --muted: 40 10% 96%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 40 15% 94%;
+    --accent-foreground: 0 0% 22%;
+
+    --destructive: 20 45% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 120 20% 55%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 40 45% 55%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 210 35% 60%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 0 0% 22% / 0.09;
+    --input: 0 0% 22% / 0.09;
+    --ring: 100 17% 36%;
+
+    --radius: 0.1875rem;
+    --radius-card: 0.25rem;
+    --radius-button: 0.1875rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  html {
+    font-family: 'DM Sans', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .transition-ui {
+    transition: all 0.02s ease-in;
+  }
+
+  .transition-state {
+    transition: all 0.15s ease;
+  }
+}
