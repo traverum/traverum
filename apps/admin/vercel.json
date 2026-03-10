@@ -1,6 +1,6 @@
 {
-  "installCommand": "cd ../.. && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter @traverum/admin build",
+  "installCommand": "cd ../.. && pnpm install --filter @traverum/admin...",
+  "buildCommand": "npx vite build",
   "outputDirectory": "dist",
   "framework": null,
   "rewrites": [

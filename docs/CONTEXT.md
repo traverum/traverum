@@ -127,5 +127,5 @@ Full reference specs. `@mention` these when doing deep implementation work.
 
 | Folder | What it contains |
 |--------|-----------------|
-| `docs/deployment/` | Vercel deployment guides, cron job scheduling |
+| `docs/deployment/` | **Start here:** [VERCEL_DEPLOYMENTS.md](deployment/VERCEL_DEPLOYMENTS.md) — three-app overview. Then per-app: Dashboard, Widget, Admin deployment guides; cron job scheduling. |
 | `docs/planning/` | Future features not yet implemented |

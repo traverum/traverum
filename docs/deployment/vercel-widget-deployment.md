@@ -1,6 +1,8 @@
 # Vercel Widget Deployment Guide
 
-This guide covers deploying the Traverum widget (`apps/widget`) to Vercel.
+This guide covers deploying the Traverum **widget** (`apps/widget`, Next.js) to Vercel.
+
+**Important:** This is one of three separate Vercel projects. See [VERCEL_DEPLOYMENTS.md](./VERCEL_DEPLOYMENTS.md) for the full overview. Use **Root Directory** `apps/widget` only for the widget project — never point it at `apps/dashboard` or `apps/admin`.
 
 ## Prerequisites
 
@@ -16,11 +18,9 @@ This guide covers deploying the Traverum widget (`apps/widget`) to Vercel.
    - Vercel will auto-detect the Next.js app in `apps/widget`
 
 2. **Configure Project Settings**
-   - **Root Directory**: `apps/widget` (or use the `vercel.json` configuration)
+   - **Root Directory**: **`apps/widget`** (required — this is the only Next.js app; do not use `apps/dashboard` or `apps/admin`).
    - **Framework Preset**: Next.js
-   - **Build Command**: `pnpm --filter @traverum/widget build`
-   - **Output Directory**: `.next` (default for Next.js)
-   - **Install Command**: `pnpm install`
+   - The repo’s `apps/widget/vercel.json` provides install/build from monorepo root; do not override with dashboard or admin commands.
 
 3. **Environment Variables**
    Add all required environment variables in Vercel's project settings:
