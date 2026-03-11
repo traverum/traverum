@@ -1,9 +1,19 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { formatPrice } from '@/lib/pricing';
 import { useHotelCommission } from '@/hooks/useHotelCommission';
 import { format, parseISO } from 'date-fns';
+
+const euroFinanceFormatter = new Intl.NumberFormat('it-IT', {
+  style: 'currency',
+  currency: 'EUR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatFinanceAmount(cents: number): string {
+  return euroFinanceFormatter.format(cents / 100);
+}
 
 function formatPeriodLabel(start: string, end: string): string {
   const startDate = parseISO(start);
@@ -38,7 +48,7 @@ export default function HotelAnalytics() {
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-1">Next payout</p>
               <p className="text-xl font-semibold text-foreground">
-                {formatPrice(data.totalOwedCents)}
+                <span className="tabular-nums">{formatFinanceAmount(data.totalOwedCents)}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {data.totalOwedCount} {data.totalOwedCount === 1 ? 'booking' : 'bookings'}
@@ -50,7 +60,7 @@ export default function HotelAnalytics() {
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-1">Received</p>
               <p className="text-xl font-semibold text-foreground">
-                {formatPrice(data.totalReceivedCents)}
+                <span className="tabular-nums">{formatFinanceAmount(data.totalReceivedCents)}</span>
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 {data.payouts.filter(p => p.status === 'paid').length} {data.payouts.filter(p => p.status === 'paid').length === 1 ? 'payout' : 'payouts'}
@@ -82,7 +92,7 @@ export default function HotelAnalytics() {
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-foreground flex-shrink-0">
-                      {formatPrice(prop.owedCents)}
+                      <span className="tabular-nums">{formatFinanceAmount(prop.owedCents)}</span>
                     </p>
                   </div>
                 ))}
@@ -138,7 +148,7 @@ export default function HotelAnalytics() {
                         {payout.status === 'paid' ? 'Paid' : 'Processing'}
                       </Badge>
                       <p className="text-sm font-semibold text-foreground">
-                        {formatPrice(payout.amountCents)}
+                        <span className="tabular-nums">{formatFinanceAmount(payout.amountCents)}</span>
                       </p>
                     </div>
                   </div>

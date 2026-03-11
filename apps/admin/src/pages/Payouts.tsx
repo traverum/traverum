@@ -1,10 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -30,10 +29,22 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatPrice, formatDate } from '@/lib/utils';
-import { CreditCard, Plus, Check, Loader2, Search } from 'lucide-react';
-import { format } from 'date-fns';
+import {
+  CreditCard,
+  Plus,
+  Check,
+  Loader2,
+  Search,
+  AlertCircle,
+  ArrowRight,
+  Pencil,
+  Trash2,
+  Undo2,
+} from 'lucide-react';
+import { fetchAdminJson } from '@/lib/adminApi';
+import { PayoutStatusBadge } from '@/components/payouts/PayoutStatusBadge';
 
-const WIDGET_API = import.meta.env.VITE_WIDGET_API_URL || 'https://book.veyond.eu';
+// ─── Types ──────────────────────────────────────────────────
 
 interface Payout {
   id: string;
@@ -52,32 +63,42 @@ interface Payout {
   partner_name?: string;
 }
 
-interface Partner {
-  id: string;
-  name: string;
+interface PendingObligation {
+  hotelId: string;
+  hotelName: string;
+  month: string;
+  monthLabel: string;
+  amountCents: number;
+  bookingCount: number;
+  periodStart: string;
+  periodEnd: string;
 }
 
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const { data: { session } } = await supabase.auth.getSession();
-  return {
-    'Content-Type': 'application/json',
-    ...(session?.access_token ? { Cookie: `sb-access-token=${session.access_token}; sb-refresh-token=${session.refresh_token}` } : {}),
-  };
+interface PendingResponse {
+  pending: PendingObligation[];
+  totalOwedCents: number;
+  totalBookings: number;
+}
+
+// ─── Hooks ──────────────────────────────────────────────────
+
+function usePendingObligations() {
+  return useQuery({
+    queryKey: ['admin-pending-obligations'],
+    queryFn: () => fetchAdminJson<PendingResponse>('/api/admin/hotel-payouts/pending'),
+  });
 }
 
 function usePayouts() {
   return useQuery({
     queryKey: ['admin-payouts'],
     queryFn: async () => {
-      // Fetch payouts and partners in parallel
       const [payoutsRes, partnersRes] = await Promise.all([
         supabase
           .from('hotel_payouts')
           .select('*')
           .order('created_at', { ascending: false }),
-        supabase
-          .from('partners')
-          .select('id, name'),
+        supabase.from('partners').select('id, name'),
       ]);
 
       if (payoutsRes.error) throw payoutsRes.error;
@@ -86,7 +107,6 @@ function usePayouts() {
         (partnersRes.data || []).map((p: any) => [p.id, p.name])
       );
 
-      // Get booking counts per payout
       const payoutIds = (payoutsRes.data || []).map((p: any) => p.id);
       let bookingCounts: Record<string, number> = {};
 
@@ -111,21 +131,7 @@ function usePayouts() {
   });
 }
 
-function useHotelPartners() {
-  return useQuery({
-    queryKey: ['admin-hotel-partners'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partners')
-        .select('id, name')
-        .eq('partner_type', 'hotel')
-        .order('name');
-
-      if (error) throw error;
-      return (data || []) as Partner[];
-    },
-  });
-}
+// ─── Dialogs ────────────────────────────────────────────────
 
 function MarkPaidDialog({
   payout,
@@ -145,10 +151,8 @@ function MarkPaidDialog({
     mutationFn: async () => {
       if (!payout) return;
 
-      const res = await fetch(`${WIDGET_API}/api/admin/hotel-payouts/${payout.id}`, {
+      await fetchAdminJson(`/api/admin/hotel-payouts/${payout.id}`, {
         method: 'PATCH',
-        headers: await getAuthHeaders(),
-        credentials: 'include',
         body: JSON.stringify({
           status: 'paid',
           paymentRef: paymentRef || undefined,
@@ -156,14 +160,10 @@ function MarkPaidDialog({
           notes: notes || undefined,
         }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Failed' }));
-        throw new Error(err.error || 'Failed to mark as paid');
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-obligations'] });
       queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
       onOpenChange(false);
       setPaymentRef('');
@@ -205,7 +205,7 @@ function MarkPaidDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs">Payment reference (optional)</Label>
+              <Label className="text-xs">Payment reference</Label>
               <Input
                 placeholder="e.g. transfer ID, IBAN ref..."
                 value={paymentRef}
@@ -250,40 +250,218 @@ function MarkPaidDialog({
   );
 }
 
-function CreatePayoutDialog({
+function EditPayoutDialog({
+  payout,
   open,
   onOpenChange,
 }: {
+  payout: Payout | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const queryClient = useQueryClient();
-  const { data: hotelPartners = [] } = useHotelPartners();
-  const [partnerId, setPartnerId] = useState('');
-  const [periodStart, setPeriodStart] = useState('');
-  const [periodEnd, setPeriodEnd] = useState('');
+  const [paymentRef, setPaymentRef] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
+  const [notes, setNotes] = useState('');
+
+  // Sync form when dialog opens with a payout
+  useEffect(() => {
+    if (open && payout) {
+      setPaymentRef(payout.payment_ref || '');
+      setPaymentMethod(payout.payment_method || 'bank_transfer');
+      setNotes(payout.notes || '');
+    }
+  }, [open, payout?.id, payout?.payment_ref, payout?.payment_method, payout?.notes]);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`${WIDGET_API}/api/admin/hotel-payouts`, {
-        method: 'POST',
-        headers: await getAuthHeaders(),
-        credentials: 'include',
-        body: JSON.stringify({ partnerId, periodStart, periodEnd }),
-      });
+      if (!payout) return;
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: 'Failed' }));
-        throw new Error(err.error || 'Failed to create payout');
-      }
+      await fetchAdminJson(`/api/admin/hotel-payouts/${payout.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          paymentRef,
+          paymentMethod,
+          notes,
+        }),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-payouts'] });
+      onOpenChange(false);
+    },
+  });
+
+  const revertMutation = useMutation({
+    mutationFn: async () => {
+      if (!payout) return;
+
+      await fetchAdminJson(`/api/admin/hotel-payouts/${payout.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'pending' }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-obligations'] });
       queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
       onOpenChange(false);
-      setPartnerId('');
-      setPeriodStart('');
-      setPeriodEnd('');
+    },
+  });
+
+  const [showRevertConfirm, setShowRevertConfirm] = useState(false);
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit payout</DialogTitle>
+          </DialogHeader>
+
+          {payout && (
+            <div className="space-y-4">
+              <div className="bg-accent/50 rounded-sm p-3 space-y-1">
+                <p className="text-sm font-medium">{payout.partner_name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDate(payout.period_start)} — {formatDate(payout.period_end)}
+                </p>
+                <p className="text-lg font-semibold">{formatPrice(payout.amount_cents)}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <PayoutStatusBadge status={payout.status} />
+                  {payout.paid_at && (
+                    <span className="text-xs text-muted-foreground">
+                      paid {formatDate(payout.paid_at)}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bank_transfer">Bank transfer</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment reference</Label>
+                <Input
+                  placeholder="e.g. transfer ID, IBAN ref..."
+                  value={paymentRef}
+                  onChange={(e) => setPaymentRef(e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Notes</Label>
+                <Input
+                  placeholder="Internal notes..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+
+              {payout.status === 'paid' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs text-amber-600"
+                  onClick={() => setShowRevertConfirm(true)}
+                  disabled={revertMutation.isPending}
+                >
+                  <Undo2 className="h-3.5 w-3.5 mr-1" />
+                  Revert to pending
+                </Button>
+              )}
+
+              {(mutation.error || revertMutation.error) && (
+                <p className="text-xs text-destructive">
+                  {((mutation.error || revertMutation.error) as Error).message}
+                </p>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+              {mutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Check className="h-4 w-4 mr-1.5" />
+                  Save changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRevertConfirm} onOpenChange={setShowRevertConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Revert to pending?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will mark the payout as unpaid. The paid date will be cleared.
+            The bookings will remain linked to this payout.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRevertConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => revertMutation.mutate()}
+              disabled={revertMutation.isPending}
+            >
+              {revertMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Revert to pending'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function DeletePayoutDialog({
+  payout,
+  open,
+  onOpenChange,
+}: {
+  payout: Payout | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (!payout) return;
+
+      await fetchAdminJson(`/api/admin/hotel-payouts/${payout.id}`, {
+        method: 'DELETE',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-obligations'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+      onOpenChange(false);
     },
   });
 
@@ -291,70 +469,34 @@ function CreatePayoutDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Create hotel payout</DialogTitle>
+          <DialogTitle>Delete this payout?</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            Finds all completed bookings in the selected period that have not yet been assigned to a payout.
+        {payout && (
+          <p className="text-sm text-muted-foreground">
+            This will permanently delete the payout for{' '}
+            <strong>{payout.partner_name}</strong> ({formatPrice(payout.amount_cents)},{' '}
+            {formatDate(payout.period_start)} — {formatDate(payout.period_end)}).
+            <br /><br />
+            The {payout.booking_count} linked{' '}
+            {payout.booking_count === 1 ? 'booking' : 'bookings'} will be unlinked
+            and return to the pending obligations view.
           </p>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs">Hotel partner</Label>
-            <Select value={partnerId} onValueChange={setPartnerId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select hotel..." />
-              </SelectTrigger>
-              <SelectContent>
-                {hotelPartners.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Period start</Label>
-              <Input
-                type="date"
-                value={periodStart}
-                onChange={(e) => setPeriodStart(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Period end</Label>
-              <Input
-                type="date"
-                value={periodEnd}
-                onChange={(e) => setPeriodEnd(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {mutation.error && (
-            <p className="text-xs text-destructive">
-              {(mutation.error as Error).message}
-            </p>
-          )}
-        </div>
-
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
+            variant="destructive"
             onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !partnerId || !periodStart || !periodEnd}
+            disabled={mutation.isPending}
           >
             {mutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <>
-                <Plus className="h-4 w-4 mr-1.5" />
-                Create payout
+                <Trash2 className="h-4 w-4 mr-1.5" />
+                Delete payout
               </>
             )}
           </Button>
@@ -364,12 +506,231 @@ function CreatePayoutDialog({
   );
 }
 
+function CreatePayoutFromPendingDialog({
+  obligation,
+  open,
+  onOpenChange,
+}: {
+  obligation: PendingObligation | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [paymentRef, setPaymentRef] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
+  const [notes, setNotes] = useState('');
+  const [step, setStep] = useState<'review' | 'paid'>('review');
+  const [createdPayout, setCreatedPayout] = useState<Payout | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!obligation) return;
+
+      return await fetchAdminJson<{ payout: any; bookingCount: number; amountCents: number }>(
+        '/api/admin/hotel-payouts',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            partnerId: obligation.hotelId,
+            periodStart: obligation.periodStart,
+            periodEnd: obligation.periodEnd,
+          }),
+        }
+      );
+    },
+    onSuccess: (result) => {
+      if (result?.payout) {
+        setCreatedPayout({
+          ...result.payout,
+          partner_name: obligation?.hotelName,
+          booking_count: result.bookingCount,
+        });
+        setStep('paid');
+      }
+      queryClient.invalidateQueries({ queryKey: ['admin-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-obligations'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+    },
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: async () => {
+      if (!createdPayout) return;
+
+      await fetchAdminJson(`/api/admin/hotel-payouts/${createdPayout.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'paid',
+          paymentRef: paymentRef || undefined,
+          paymentMethod,
+          notes: notes || undefined,
+        }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-payouts'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-obligations'] });
+      queryClient.invalidateQueries({ queryKey: ['platform-stats'] });
+      handleClose();
+    },
+  });
+
+  function handleClose() {
+    onOpenChange(false);
+    setStep('review');
+    setCreatedPayout(null);
+    setPaymentRef('');
+    setNotes('');
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {step === 'review' ? 'Create payout' : 'Record payment'}
+          </DialogTitle>
+        </DialogHeader>
+
+        {obligation && step === 'review' && (
+          <div className="space-y-4">
+            <div className="bg-accent/50 rounded-sm p-3 space-y-1">
+              <p className="text-sm font-medium">{obligation.hotelName}</p>
+              <p className="text-xs text-muted-foreground">{obligation.monthLabel}</p>
+              <p className="text-lg font-semibold">{formatPrice(obligation.amountCents)}</p>
+              <p className="text-xs text-muted-foreground">
+                {obligation.bookingCount}{' '}
+                {obligation.bookingCount === 1 ? 'booking' : 'bookings'}
+              </p>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              This will create a payout record for {obligation.monthLabel} and link all
+              {' '}{obligation.bookingCount} completed{' '}
+              {obligation.bookingCount === 1 ? 'booking' : 'bookings'} to it.
+              You can then mark it as paid with a payment reference.
+            </p>
+
+            {createMutation.error && (
+              <p className="text-xs text-destructive">
+                {(createMutation.error as Error).message}
+              </p>
+            )}
+          </div>
+        )}
+
+        {step === 'paid' && createdPayout && (
+          <div className="space-y-4">
+            <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-sm p-3 space-y-1">
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                Payout created
+              </p>
+              <p className="text-sm font-medium">{obligation?.hotelName}</p>
+              <p className="text-lg font-semibold">{formatPrice(createdPayout.amount_cents)}</p>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Transfer the amount to the hotel, then record the payment details below.
+              You can also do this later from the payouts table.
+            </p>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Payment method</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bank_transfer">Bank transfer</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Payment reference</Label>
+              <Input
+                placeholder="e.g. transfer ID, IBAN ref..."
+                value={paymentRef}
+                onChange={(e) => setPaymentRef(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Notes (optional)</Label>
+              <Input
+                placeholder="Internal notes..."
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+              />
+            </div>
+
+            {markPaidMutation.error && (
+              <p className="text-xs text-destructive">
+                {(markPaidMutation.error as Error).message}
+              </p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          {step === 'review' && (
+            <>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => createMutation.mutate()}
+                disabled={createMutation.isPending}
+              >
+                {createMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Create payout
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+          {step === 'paid' && (
+            <>
+              <Button variant="outline" onClick={handleClose}>
+                Mark later
+              </Button>
+              <Button
+                onClick={() => markPaidMutation.mutate()}
+                disabled={markPaidMutation.isPending}
+              >
+                {markPaidMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-1.5" />
+                    Mark as paid
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────
+
 export default function Payouts() {
-  const { data: payouts = [], isLoading } = usePayouts();
+  const { data: pendingData, isLoading: pendingLoading } = usePendingObligations();
+  const { data: payouts = [], isLoading: payoutsLoading } = usePayouts();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [markPaidPayout, setMarkPaidPayout] = useState<Payout | null>(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editPayout, setEditPayout] = useState<Payout | null>(null);
+  const [deletePayout, setDeletePayout] = useState<Payout | null>(null);
+  const [selectedObligation, setSelectedObligation] = useState<PendingObligation | null>(null);
 
   const filtered = useMemo(() => {
     return payouts.filter((p) => {
@@ -382,148 +743,254 @@ export default function Payouts() {
     });
   }, [payouts, statusFilter, search]);
 
-  const pendingTotal = useMemo(
-    () => payouts.filter((p) => p.status === 'pending').reduce((s, p) => s + p.amount_cents, 0),
+  const pendingPayoutsTotal = useMemo(
+    () =>
+      payouts
+        .filter((p) => p.status === 'pending')
+        .reduce((s, p) => s + p.amount_cents, 0),
     [payouts]
   );
 
-  const pendingCount = payouts.filter((p) => p.status === 'pending').length;
+  const pendingPayoutsCount = payouts.filter((p) => p.status === 'pending').length;
+  const pending = pendingData?.pending || [];
+  const totalOwedCents = pendingData?.totalOwedCents || 0;
 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Hotel payouts</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage hotel commission payouts. Create payouts for a period, then mark them as paid after transferring.
-          </p>
-        </div>
-        <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          Create payout
-        </Button>
+      <div>
+        <h1 className="text-lg font-semibold text-foreground">Hotel payouts</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Track hotel commission obligations, create payouts, and record payments.
+        </p>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-4 max-w-sm">
+      {/* Summary cards */}
+      <div className="grid grid-cols-3 gap-4 max-w-2xl">
         <Card className="border border-border">
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-1">Pending</p>
-            <p className="text-xl font-semibold">{formatPrice(pendingTotal)}</p>
+            <p className="text-xs text-muted-foreground mb-1">Owed to hotels</p>
+            <p className="text-xl font-semibold text-foreground">
+              {formatPrice(totalOwedCents)}
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {pendingCount} {pendingCount === 1 ? 'payout' : 'payouts'}
+              {pendingData?.totalBookings || 0} completed bookings
             </p>
           </CardContent>
         </Card>
         <Card className="border border-border">
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground mb-1">Total payouts</p>
-            <p className="text-xl font-semibold">{payouts.length}</p>
+            <p className="text-xs text-muted-foreground mb-1">Payouts created</p>
+            <p className="text-xl font-semibold text-foreground">
+              {formatPrice(pendingPayoutsTotal)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {pendingPayoutsCount} pending transfer{pendingPayoutsCount !== 1 ? 's' : ''}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border border-border">
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground mb-1">Total paid</p>
+            <p className="text-xl font-semibold text-foreground">
+              {formatPrice(
+                payouts
+                  .filter((p) => p.status === 'paid')
+                  .reduce((s, p) => s + p.amount_cents, 0)
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {payouts.filter((p) => p.status === 'paid').length} completed payout
+              {payouts.filter((p) => p.status === 'paid').length !== 1 ? 's' : ''}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search partner..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="paid">Paid</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Pending obligations */}
+      <div className="space-y-2">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+          Pending obligations
+        </h2>
+
+        {pendingLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
+          </div>
+        ) : pending.length === 0 ? (
+          <Card className="border border-border">
+            <CardContent className="p-6 text-center">
+              <Check className="h-6 w-6 text-emerald-500 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No unpaid hotel commissions. All caught up.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card className="border border-border">
+            <CardContent className="p-0 divide-y divide-border">
+              {pending.map((ob) => (
+                <div
+                  key={`${ob.hotelId}-${ob.month}`}
+                  className="flex items-center justify-between px-4 py-3 hover:bg-accent/30 transition-colors"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {ob.hotelName}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 ml-5.5">
+                      {ob.monthLabel} — {ob.bookingCount}{' '}
+                      {ob.bookingCount === 1 ? 'booking' : 'bookings'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <p className="text-sm font-semibold text-foreground">
+                      {formatPrice(ob.amountCents)}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => setSelectedObligation(ob)}
+                    >
+                      Create payout
+                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* Payouts table */}
-      <Card className="border border-border">
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-6 space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="p-8 text-center">
-              <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">
-                {search || statusFilter !== 'all'
-                  ? 'No payouts match your filters.'
-                  : 'No payouts yet. Create one to get started.'}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Hotel</TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Bookings</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Paid</TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((payout) => (
-                  <TableRow key={payout.id}>
-                    <TableCell className="font-medium">{payout.partner_name}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatDate(payout.period_start)} — {formatDate(payout.period_end)}
-                    </TableCell>
-                    <TableCell className="text-sm">{payout.booking_count}</TableCell>
-                    <TableCell className="font-medium">
-                      {formatPrice(payout.amount_cents)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={payout.status === 'paid' ? 'default' : 'secondary'}
-                        className={payout.status === 'paid' ? 'bg-success text-xs' : 'text-xs'}
-                      >
-                        {payout.status === 'paid' ? 'Paid' : 'Pending'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {payout.paid_at ? formatDate(payout.paid_at) : '—'}
-                    </TableCell>
-                    <TableCell>
-                      {payout.status === 'pending' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs"
-                          onClick={() => setMarkPaidPayout(payout)}
-                        >
-                          <Check className="h-3.5 w-3.5 mr-1" />
-                          Pay
-                        </Button>
-                      )}
-                      {payout.status === 'paid' && payout.payment_ref && (
-                        <span className="text-xs text-muted-foreground">
-                          {payout.payment_ref}
-                        </span>
-                      )}
-                    </TableCell>
-                  </TableRow>
+      {/* Payout history */}
+      <div className="space-y-2">
+        <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
+          Payout history
+        </h2>
+
+        <div className="flex items-center gap-3">
+          <div className="relative max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search hotel..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Card className="border border-border">
+          <CardContent className="p-0">
+            {payoutsLoading ? (
+              <div className="p-6 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-full" />
                 ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="p-8 text-center">
+                <CreditCard className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  {search || statusFilter !== 'all'
+                    ? 'No payouts match your filters.'
+                    : 'No payouts yet. Create one from the pending obligations above.'}
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Hotel</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Bookings</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Paid on</TableHead>
+                    <TableHead>Reference</TableHead>
+                    <TableHead className="w-[100px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((payout) => (
+                    <TableRow key={payout.id}>
+                      <TableCell className="font-medium">
+                        {payout.partner_name}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {formatDate(payout.period_start)} —{' '}
+                        {formatDate(payout.period_end)}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {payout.booking_count}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {formatPrice(payout.amount_cents)}
+                      </TableCell>
+                      <TableCell>
+                        <PayoutStatusBadge status={payout.status} />
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {payout.paid_at ? formatDate(payout.paid_at) : '—'}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[140px] truncate">
+                        {payout.payment_ref || '—'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {payout.status === 'pending' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => setMarkPaidPayout(payout)}
+                            >
+                              <Check className="h-3.5 w-3.5 mr-1" />
+                              Pay
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-8 w-8 p-0"
+                            onClick={() => setEditPayout(payout)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => setDeletePayout(payout)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <MarkPaidDialog
         payout={markPaidPayout}
@@ -531,9 +998,22 @@ export default function Payouts() {
         onOpenChange={(open) => !open && setMarkPaidPayout(null)}
       />
 
-      <CreatePayoutDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
+      <EditPayoutDialog
+        payout={editPayout}
+        open={!!editPayout}
+        onOpenChange={(open) => !open && setEditPayout(null)}
+      />
+
+      <DeletePayoutDialog
+        payout={deletePayout}
+        open={!!deletePayout}
+        onOpenChange={(open) => !open && setDeletePayout(null)}
+      />
+
+      <CreatePayoutFromPendingDialog
+        obligation={selectedObligation}
+        open={!!selectedObligation}
+        onOpenChange={(open) => !open && setSelectedObligation(null)}
       />
     </div>
   );

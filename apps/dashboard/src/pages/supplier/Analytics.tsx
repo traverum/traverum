@@ -19,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { formatPrice } from '@/lib/pricing';
 import {
   useSupplierAnalytics,
   type PeriodGranularity,
@@ -33,6 +32,17 @@ const GRANULARITIES: { value: PeriodGranularity; label: string }[] = [
   { value: 'month', label: 'Month' },
   { value: 'week', label: 'Week' },
 ];
+
+const euroFinanceFormatter = new Intl.NumberFormat('it-IT', {
+  style: 'currency',
+  currency: 'EUR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatFinanceAmount(cents: number): string {
+  return euroFinanceFormatter.format(cents / 100);
+}
 
 function RankedList({ title, items }: { title: string; items: RankedItem[] }) {
   if (items.length === 0) return null;
@@ -62,8 +72,8 @@ function RankedList({ title, items }: { title: string; items: RankedItem[] }) {
                   </p>
                 </div>
               </div>
-              <p className="text-sm font-semibold text-foreground flex-shrink-0">
-                {formatPrice(item.revenueCents)}
+              <p className="text-sm font-semibold text-foreground flex-shrink-0 tabular-nums">
+                {formatFinanceAmount(item.revenueCents)}
               </p>
             </div>
           ))}
@@ -187,8 +197,8 @@ export default function SupplierAnalytics() {
           <Card className="border border-border">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-1">Revenue earned</p>
-              <p className="text-xl font-semibold text-foreground">
-                {formatPrice(totalRevenueCents)}
+              <p className="text-xl font-semibold text-foreground tabular-nums">
+                {formatFinanceAmount(totalRevenueCents)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">completed</p>
             </CardContent>
@@ -197,8 +207,8 @@ export default function SupplierAnalytics() {
           <Card className="border border-border">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-1">Pending payouts</p>
-              <p className="text-xl font-semibold text-foreground">
-                {formatPrice(pendingPayoutsCents)}
+              <p className="text-xl font-semibold text-foreground tabular-nums">
+                {formatFinanceAmount(pendingPayoutsCents)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">pending transfer</p>
             </CardContent>
@@ -206,9 +216,9 @@ export default function SupplierAnalytics() {
 
           <Card className="border border-border">
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground mb-1">Commissions</p>
-              <p className="text-xl font-semibold text-foreground">
-                {formatPrice(totalCommissionsCentsThisMonth)}
+              <p className="text-xs text-muted-foreground mb-1">Commissions to Traverum and Hotels</p>
+              <p className="text-xl font-semibold text-foreground tabular-nums">
+                {formatFinanceAmount(totalCommissionsCentsThisMonth)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">this month</p>
             </CardContent>
@@ -272,13 +282,13 @@ export default function SupplierAnalytics() {
                             {b.guestName}
                           </TableCell>
                           <TableCell className="text-sm text-right whitespace-nowrap">
-                            {formatPrice(b.grossCents)}
+                            <span className="tabular-nums">{formatFinanceAmount(b.grossCents)}</span>
                           </TableCell>
                           <TableCell className="text-sm text-right whitespace-nowrap">
-                            {formatPrice(b.commissionCents)}
+                            <span className="tabular-nums">{formatFinanceAmount(b.commissionCents)}</span>
                           </TableCell>
                           <TableCell className="text-sm text-right whitespace-nowrap font-medium">
-                            {formatPrice(b.netCents)}
+                            <span className="tabular-nums">{formatFinanceAmount(b.netCents)}</span>
                           </TableCell>
                           <TableCell>
                             <span
@@ -299,13 +309,13 @@ export default function SupplierAnalytics() {
                           Total
                         </TableCell>
                         <TableCell className="text-sm text-right">
-                          {formatPrice(statementTotals.gross)}
+                          <span className="tabular-nums">{formatFinanceAmount(statementTotals.gross)}</span>
                         </TableCell>
                         <TableCell className="text-sm text-right">
-                          {formatPrice(statementTotals.commission)}
+                          <span className="tabular-nums">{formatFinanceAmount(statementTotals.commission)}</span>
                         </TableCell>
                         <TableCell className="text-sm text-right">
-                          {formatPrice(statementTotals.net)}
+                          <span className="tabular-nums">{formatFinanceAmount(statementTotals.net)}</span>
                         </TableCell>
                         <TableCell />
                       </TableRow>
@@ -395,8 +405,8 @@ export default function SupplierAnalytics() {
                         {p.count} {p.count === 1 ? 'booking' : 'bookings'}
                       </p>
                     </div>
-                    <p className="text-sm font-semibold text-foreground flex-shrink-0">
-                      {formatPrice(p.revenueCents)}
+                    <p className="text-sm font-semibold text-foreground flex-shrink-0 tabular-nums">
+                      {formatFinanceAmount(p.revenueCents)}
                     </p>
                   </div>
                 ))}

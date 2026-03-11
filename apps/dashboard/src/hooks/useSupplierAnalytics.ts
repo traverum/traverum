@@ -157,7 +157,7 @@ export function useSupplierAnalytics() {
 
     const totalBookings = rawBookings.length;
     const totalRevenueCents = completedBookings.reduce(
-      (sum, b) => sum + (b.supplier_amount_cents || 0),
+      (sum, b) => sum + (b.amount_cents || 0),
       0
     );
 

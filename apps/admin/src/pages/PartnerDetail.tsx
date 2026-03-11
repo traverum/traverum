@@ -406,10 +406,12 @@ export default function PartnerDetail() {
           </Card>
           <Card className="border border-border">
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground mb-1">Pending payouts</p>
-              <p className="text-xl font-semibold">{formatPrice(summary.pendingCents)}</p>
+              <p className="text-xs text-muted-foreground mb-1">Owed (not yet paid)</p>
+              <p className="text-xl font-semibold">{formatPrice(summary.pendingFromEarningsCents)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {summary.pendingPayoutCount} pending payouts
+                {summary.unassignedBookingCount} unassigned booking
+                {summary.unassignedBookingCount !== 1 ? 's' : ''}
+                {summary.pendingPayoutCount > 0 && ` · ${summary.pendingPayoutCount} payout batch${summary.pendingPayoutCount !== 1 ? 'es' : ''} created`}
               </p>
             </CardContent>
           </Card>

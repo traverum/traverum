@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Overview from "./pages/Overview";
 import Payouts from "./pages/Payouts";
 import Partners from "./pages/Partners";
+import PartnerDetail from "./pages/PartnerDetail";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/" element={<Overview />} />
               <Route path="/payouts" element={<Payouts />} />
               <Route path="/partners" element={<Partners />} />
+              <Route path="/partners/:partnerId" element={<PartnerDetail />} />
             </Route>
           </Routes>
         </BrowserRouter>

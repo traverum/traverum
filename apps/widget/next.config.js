@@ -42,6 +42,15 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Headers', value: 'Content-Type' },
         ],
       },
+      // CORS for admin API (admin app calls widget API cross-origin)
+      {
+        source: '/api/admin/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PATCH, DELETE, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+        ],
+      },
       // CORS for dashboard API (dashboard app calls widget API cross-origin)
       {
         source: '/api/dashboard/:path*',
