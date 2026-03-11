@@ -1,45 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { isSuperadmin } from '@/lib/superadmin'
+import { NextRequest } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { verifyAdminAccess, jsonResponse, optionsResponse } from '@/app/api/admin/_lib/verifyAdminAccess'
 
-async function verifyAdminAccess(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true
-
-  try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return false
-    const adminClient = createAdminClient()
-    return await isSuperadmin(adminClient, user.id)
-  } catch {
-    return false
-  }
+export async function OPTIONS() {
+  return optionsResponse()
 }
 
 /**
- * PATCH — Mark a hotel payout as paid.
- * Input: { status: 'paid', paymentRef?, paymentMethod?, notes? }
+ * PATCH — Update a hotel payout.
+ * Supports: marking as paid, editing payment details, or reverting to pending.
+ * Input: { status?, paymentRef?, paymentMethod?, notes? }
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   if (!await verifyAdminAccess(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
   const { id } = await params
   const body = await request.json()
   const { status, paymentRef, paymentMethod, notes } = body
-
-  if (status !== 'paid') {
-    return NextResponse.json(
-      { error: 'Only status "paid" is supported' },
-      { status: 400 }
-    )
-  }
 
   const supabase = createAdminClient()
 
@@ -50,21 +32,26 @@ export async function PATCH(
     .single()
 
   if (fetchErr || !existing) {
-    return NextResponse.json({ error: 'Payout not found' }, { status: 404 })
+    return jsonResponse({ error: 'Payout not found' }, 404)
   }
 
-  if ((existing as any).status === 'paid') {
-    return NextResponse.json({ error: 'Payout already marked as paid' }, { status: 409 })
+  const updateFields: Record<string, any> = {}
+
+  if (status === 'paid') {
+    updateFields.status = 'paid'
+    updateFields.paid_at = new Date().toISOString()
+  } else if (status === 'pending') {
+    updateFields.status = 'pending'
+    updateFields.paid_at = null
   }
 
-  const updateFields: Record<string, any> = {
-    status: 'paid',
-    paid_at: new Date().toISOString(),
-  }
+  if (paymentRef !== undefined) updateFields.payment_ref = paymentRef || null
+  if (paymentMethod !== undefined) updateFields.payment_method = paymentMethod || null
+  if (notes !== undefined) updateFields.notes = notes || null
 
-  if (paymentRef) updateFields.payment_ref = paymentRef
-  if (paymentMethod) updateFields.payment_method = paymentMethod
-  if (notes) updateFields.notes = notes
+  if (Object.keys(updateFields).length === 0) {
+    return jsonResponse({ error: 'No fields to update' }, 400)
+  }
 
   const { data: updated, error: updateErr } = await (supabase
     .from('hotel_payouts') as any)
@@ -75,8 +62,52 @@ export async function PATCH(
 
   if (updateErr) {
     console.error('Error updating payout:', updateErr)
-    return NextResponse.json({ error: 'Failed to update payout' }, { status: 500 })
+    return jsonResponse({ error: 'Failed to update payout' }, 500)
   }
 
-  return NextResponse.json({ payout: updated })
+  return jsonResponse({ payout: updated })
+}
+
+/**
+ * DELETE — Delete a hotel payout and unlink its bookings.
+ * The linked bookings' hotel_payout_id is set back to null so they
+ * reappear in the pending obligations view.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!await verifyAdminAccess(request)) {
+    return jsonResponse({ error: 'Unauthorized' }, 401)
+  }
+
+  const { id } = await params
+  const supabase = createAdminClient()
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from('hotel_payouts')
+    .select('id, status')
+    .eq('id', id)
+    .single()
+
+  if (fetchErr || !existing) {
+    return jsonResponse({ error: 'Payout not found' }, 404)
+  }
+
+  // Unlink bookings first so they return to pending obligations
+  await (supabase.from('bookings') as any)
+    .update({ hotel_payout_id: null, updated_at: new Date().toISOString() })
+    .eq('hotel_payout_id', id)
+
+  const { error: deleteErr } = await supabase
+    .from('hotel_payouts')
+    .delete()
+    .eq('id', id)
+
+  if (deleteErr) {
+    console.error('Error deleting payout:', deleteErr)
+    return jsonResponse({ error: 'Failed to delete payout' }, 500)
+  }
+
+  return jsonResponse({ success: true })
 }

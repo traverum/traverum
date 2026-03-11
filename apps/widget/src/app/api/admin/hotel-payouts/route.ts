@@ -1,23 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient, createAdminClient } from '@/lib/supabase/server'
-import { isSuperadmin } from '@/lib/superadmin'
+import { NextRequest } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/server'
+import { verifyAdminAccess, jsonResponse, optionsResponse } from '@/app/api/admin/_lib/verifyAdminAccess'
 
-async function verifyAdminAccess(request: NextRequest): Promise<boolean> {
-  // Option 1: CRON_SECRET header (for automated jobs)
-  const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true
-
-  // Option 2: Authenticated superadmin user (for admin panel)
-  try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return false
-    const adminClient = createAdminClient()
-    return await isSuperadmin(adminClient, user.id)
-  } catch {
-    return false
-  }
+export async function OPTIONS() {
+  return optionsResponse()
 }
 
 /**
@@ -28,16 +14,16 @@ async function verifyAdminAccess(request: NextRequest): Promise<boolean> {
  */
 export async function POST(request: NextRequest) {
   if (!await verifyAdminAccess(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
   const body = await request.json()
   const { partnerId, periodStart, periodEnd, currency = 'EUR' } = body
 
   if (!partnerId || !periodStart || !periodEnd) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: 'partnerId, periodStart, and periodEnd are required' },
-      { status: 400 }
+      400
     )
   }
 
@@ -60,7 +46,7 @@ export async function POST(request: NextRequest) {
 
   if (fetchErr) {
     console.error('Error fetching bookings for payout:', fetchErr)
-    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    return jsonResponse({ error: 'Database error' }, 500)
   }
 
   const eligible = (bookings || []).filter((b: any) => {
@@ -75,9 +61,9 @@ export async function POST(request: NextRequest) {
   })
 
   if (eligible.length === 0) {
-    return NextResponse.json(
+    return jsonResponse(
       { error: 'No unpaid completed bookings found in this period' },
-      { status: 404 }
+      404
     )
   }
 
@@ -102,7 +88,7 @@ export async function POST(request: NextRequest) {
 
   if (insertErr || !payout) {
     console.error('Error creating payout:', insertErr)
-    return NextResponse.json({ error: 'Failed to create payout' }, { status: 500 })
+    return jsonResponse({ error: 'Failed to create payout' }, 500)
   }
 
   const bookingIds = eligible.map((b: any) => b.id)
@@ -112,10 +98,10 @@ export async function POST(request: NextRequest) {
 
   if (updateErr) {
     console.error('Error linking bookings to payout:', updateErr)
-    return NextResponse.json({ error: 'Payout created but failed to link bookings' }, { status: 500 })
+    return jsonResponse({ error: 'Payout created but failed to link bookings' }, 500)
   }
 
-  return NextResponse.json({
+  return jsonResponse({
     payout,
     bookingCount: eligible.length,
     amountCents,
@@ -128,7 +114,7 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   if (!await verifyAdminAccess(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return jsonResponse({ error: 'Unauthorized' }, 401)
   }
 
   const { searchParams } = new URL(request.url)
@@ -149,10 +135,9 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     console.error('Error fetching payouts:', error)
-    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+    return jsonResponse({ error: 'Database error' }, 500)
   }
 
-  // For each payout, get linked booking count
   const payoutIds = (payouts || []).map((p: any) => p.id)
   let bookingCounts: Record<string, number> = {}
 
@@ -175,5 +160,5 @@ export async function GET(request: NextRequest) {
     booking_count: bookingCounts[p.id] || 0,
   }))
 
-  return NextResponse.json({ payouts: enriched })
+  return jsonResponse({ payouts: enriched })
 }

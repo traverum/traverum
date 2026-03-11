@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -45,9 +46,44 @@ function usePartners() {
   });
 }
 
+function usePartnerCapabilities() {
+  return useQuery({
+    queryKey: ['admin-partner-capabilities'],
+    queryFn: async () => {
+      const [
+        { data: experienceRows },
+        { data: hotelConfigRows },
+      ] = await Promise.all([
+        supabase.from('experiences').select('partner_id'),
+        supabase.from('hotel_configs').select('partner_id'),
+      ]);
+      const partnerIdsWithExperiences = new Set((experienceRows || []).map((r: { partner_id: string }) => r.partner_id));
+      const partnerIdsWithHotelConfigs = new Set((hotelConfigRows || []).map((r: { partner_id: string }) => r.partner_id));
+      return { partnerIdsWithExperiences, partnerIdsWithHotelConfigs };
+    },
+  });
+}
+
+function getDerivedTypeLabel(
+  partner: Partner,
+  partnerIdsWithExperiences: Set<string>,
+  partnerIdsWithHotelConfigs: Set<string>
+) {
+  const hasExperiences = partnerIdsWithExperiences.has(partner.id);
+  const hasHotelConfig = partnerIdsWithHotelConfigs.has(partner.id);
+  if (hasHotelConfig && hasExperiences) return 'Hotel & experiences';
+  if (hasHotelConfig) return 'Hotel';
+  if (hasExperiences) return 'Experiences';
+  return partner.partner_type;
+}
+
 export default function Partners() {
+  const navigate = useNavigate();
   const { data: partners = [], isLoading } = usePartners();
+  const { data: capabilities } = usePartnerCapabilities();
   const [search, setSearch] = useState('');
+  const partnerIdsWithExperiences = capabilities?.partnerIdsWithExperiences ?? new Set<string>();
+  const partnerIdsWithHotelConfigs = capabilities?.partnerIdsWithHotelConfigs ?? new Set<string>();
 
   const filtered = partners.filter((p) => {
     const q = search.toLowerCase();
@@ -112,17 +148,21 @@ export default function Partners() {
               </TableHeader>
               <TableBody>
                 {filtered.map((partner) => (
-                  <TableRow key={partner.id}>
+                  <TableRow
+                    key={partner.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/partners/${partner.id}`)}
+                  >
                     <TableCell className="font-medium">{partner.name}</TableCell>
                     <TableCell className="text-muted-foreground text-xs">
                       {partner.email}
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={partner.partner_type === 'hotel' ? 'secondary' : 'default'}
+                        variant={partnerIdsWithHotelConfigs.has(partner.id) || partner.partner_type === 'hotel' ? 'secondary' : 'default'}
                         className="text-xs"
                       >
-                        {partner.partner_type}
+                        {getDerivedTypeLabel(partner, partnerIdsWithExperiences, partnerIdsWithHotelConfigs)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
@@ -141,7 +181,10 @@ export default function Partners() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openInDashboard(partner.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openInDashboard(partner.id);
+                        }}
                         className="text-xs"
                       >
                         <ExternalLink className="h-3.5 w-3.5 mr-1.5" />

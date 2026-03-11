@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/utils';
-import { Building2, CreditCard, Users, TrendingUp } from 'lucide-react';
+import { fetchAdminJson } from '@/lib/adminApi';
+import { Building2, CreditCard, TrendingUp } from 'lucide-react';
 
 interface PlatformStats {
   partnerCount: number;
@@ -18,38 +18,7 @@ interface PlatformStats {
 function usePlatformStats() {
   return useQuery({
     queryKey: ['platform-stats'],
-    queryFn: async (): Promise<PlatformStats> => {
-      const [
-        { count: partnerCount },
-        { count: supplierCount },
-        { count: hotelCount },
-        { data: pendingPayouts },
-        { count: totalBookings },
-        { count: completedBookings },
-      ] = await Promise.all([
-        supabase.from('partners').select('*', { count: 'exact', head: true }),
-        supabase.from('partners').select('*', { count: 'exact', head: true }).eq('partner_type', 'supplier'),
-        supabase.from('partners').select('*', { count: 'exact', head: true }).eq('partner_type', 'hotel'),
-        supabase.from('hotel_payouts').select('amount_cents').eq('status', 'pending') as any,
-        supabase.from('bookings').select('*', { count: 'exact', head: true }),
-        supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('booking_status', 'completed'),
-      ]);
-
-      const pendingPayoutsCents = (pendingPayouts || []).reduce(
-        (sum: number, p: any) => sum + (p.amount_cents || 0),
-        0
-      );
-
-      return {
-        partnerCount: partnerCount || 0,
-        supplierCount: supplierCount || 0,
-        hotelCount: hotelCount || 0,
-        pendingPayoutsCents,
-        pendingPayoutsCount: (pendingPayouts || []).length,
-        totalBookings: totalBookings || 0,
-        completedBookings: completedBookings || 0,
-      };
-    },
+    queryFn: () => fetchAdminJson<PlatformStats>('/api/admin/stats'),
     staleTime: 30 * 1000,
   });
 }
