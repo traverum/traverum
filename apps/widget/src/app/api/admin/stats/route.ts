@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     supabase.from('partners').select('*', { count: 'exact', head: true }),
     supabase.from('experiences').select('partner_id'),
     supabase.from('hotel_configs').select('partner_id'),
-    supabase.from('hotel_payouts').select('amount_cents').eq('status', 'pending') as Promise<{ data: { amount_cents: number }[] | null }>,
+    supabase.from('hotel_payouts').select('amount_cents').eq('status', 'pending') as unknown as Promise<{ data: { amount_cents: number }[] | null }>,
     supabase.from('bookings').select('*', { count: 'exact', head: true }),
     supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('booking_status', 'completed'),
   ])
