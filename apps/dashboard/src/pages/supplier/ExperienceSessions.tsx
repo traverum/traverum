@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SessionsCalendar } from '@/components/sessions/SessionsCalendar';
 import { SessionsListView } from '@/components/sessions/SessionsListView';
@@ -76,6 +77,7 @@ export default function ExperienceSessions() {
           title: 'Error',
           description: 'Cannot create sessions in the past. Please select a future date and time.',
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
         return;
       }
@@ -110,6 +112,7 @@ export default function ExperienceSessions() {
             title: 'No sessions created',
             description: 'All selected sessions are in the past.',
             variant: 'destructive',
+            action: <SupportToastAction />,
           });
           return;
         }
@@ -128,6 +131,7 @@ export default function ExperienceSessions() {
         title: 'Error creating session',
         description: 'Please try again.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     }
   };

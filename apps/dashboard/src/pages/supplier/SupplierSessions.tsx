@@ -6,6 +6,7 @@ import { SessionsCalendar } from '@/components/sessions/SessionsCalendar';
 import { SessionsListView } from '@/components/sessions/SessionsListView';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { useSupplierData } from '@/hooks/useSupplierData';
 import { generateRecurringSessions } from '@/hooks/useExperienceSessions';
 import { supabase } from '@/integrations/supabase/client';
@@ -54,6 +55,7 @@ export default function SupplierSessions() {
         title: 'Error',
         description: 'Please select an experience.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
       return;
     }
@@ -74,6 +76,7 @@ export default function SupplierSessions() {
           title: 'Error',
           description: 'Cannot create sessions in the past. Please select a future date and time.',
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
         return;
       }
@@ -112,6 +115,7 @@ export default function SupplierSessions() {
             title: 'No sessions created',
             description: 'All selected sessions are in the past.',
             variant: 'destructive',
+            action: <SupportToastAction />,
           });
           return;
         }
@@ -136,6 +140,7 @@ export default function SupplierSessions() {
         title: 'Error creating session',
         description: error.message || 'Please try again.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     }
   };

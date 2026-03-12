@@ -5,6 +5,7 @@ import { X, Calendar, Clock, User, Users, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPrice } from '@/lib/pricing';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
@@ -55,7 +56,7 @@ function RequestCard({
 
   const handleAccept = async () => {
     if (!canAccept) {
-      toast({ title: 'Cannot accept', description: 'This request has no specific time. Please decline and suggest alternatives.', variant: 'destructive' });
+      toast({ title: 'Cannot accept', description: 'This request has no specific time. Please decline and suggest alternatives.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
@@ -80,7 +81,7 @@ function RequestCard({
       setIsProcessed(true);
       onAction();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message, variant: 'destructive', action: <SupportToastAction /> });
     } finally {
       setIsAccepting(false);
     }
@@ -109,7 +110,7 @@ function RequestCard({
       setIsProcessed(true);
       onAction();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message, variant: 'destructive', action: <SupportToastAction /> });
     } finally {
       setIsDeclining(false);
     }

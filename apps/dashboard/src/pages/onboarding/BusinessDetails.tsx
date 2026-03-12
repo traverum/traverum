@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { useCreateOrganization } from '@/hooks/useCreateOrganization';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 
 interface BusinessDetailsProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function BusinessDetails({ open, onOpenChange }: BusinessDetailsProps) {
         title: 'Could not create organization',
         description: result.error.message,
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     }
   };

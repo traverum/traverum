@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCreateHotelProperty } from '@/hooks/useCreateHotelProperty';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 
 interface AddHotelPropertyProps {
   open: boolean;
@@ -35,6 +36,7 @@ export function AddHotelProperty({ open, onOpenChange }: AddHotelPropertyProps) 
         title: 'Could not add hotel property',
         description: result.error.message,
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } else {
       toast({

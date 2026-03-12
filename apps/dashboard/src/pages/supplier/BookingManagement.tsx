@@ -32,6 +32,7 @@ import { formatPrice } from '@/lib/pricing';
 import { getLanguageName } from '@/components/LanguageSelector';
 import { useBookingManagement, type PendingRequest, type AwaitingPaymentItem, type BookingItem } from '@/hooks/useBookingManagement';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 
 function fmtDate(dateStr: string): string {
   return format(new Date(dateStr + 'T12:00:00'), 'd.M.yyyy');
@@ -652,7 +653,7 @@ export default function BookingManagement() {
       await acceptRequest.mutateAsync(reservationId);
       toast({ title: 'Request accepted', description: 'The guest will receive a payment link.' });
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to accept request.', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to accept request.', variant: 'destructive', action: <SupportToastAction /> });
     }
   };
 
@@ -661,7 +662,7 @@ export default function BookingManagement() {
       await declineRequest.mutateAsync({ reservationId, message });
       toast({ title: 'Request declined', description: 'The guest has been notified.' });
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to decline request.', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to decline request.', variant: 'destructive', action: <SupportToastAction /> });
     }
   };
 
@@ -670,7 +671,7 @@ export default function BookingManagement() {
       await cancelBooking.mutateAsync(bookingId);
       toast({ title: 'Booking cancelled', description: 'A full refund has been issued and the guest notified.' });
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to cancel booking.', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to cancel booking.', variant: 'destructive', action: <SupportToastAction /> });
     }
   };
 
@@ -679,7 +680,7 @@ export default function BookingManagement() {
       await completeBooking.mutateAsync(bookingId);
       toast({ title: 'Experience confirmed', description: 'Your payout has been initiated.' });
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to complete booking.', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to complete booking.', variant: 'destructive', action: <SupportToastAction /> });
     }
   };
 
@@ -688,7 +689,7 @@ export default function BookingManagement() {
       await reportNoExperience.mutateAsync(bookingId);
       toast({ title: 'Refund processed', description: 'The guest has been refunded.' });
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message || 'Failed to process.', variant: 'destructive' });
+      toast({ title: 'Error', description: err.message || 'Failed to process.', variant: 'destructive', action: <SupportToastAction /> });
     }
   };
 

@@ -10,6 +10,7 @@ import { formatPrice, getUnitLabel, getDefaultUnitPrice } from '@/lib/pricing';
 import { getLanguageName } from '@/components/LanguageSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -137,7 +138,7 @@ export function SessionQuickEditPopup({
       setEditingField(null);
       onSessionUpdate?.();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message, variant: 'destructive', action: <SupportToastAction /> });
     } finally {
       setSaving(false);
     }
@@ -157,7 +158,7 @@ export function SessionQuickEditPopup({
       onSessionUpdate?.();
       onClose();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message, variant: 'destructive', action: <SupportToastAction /> });
     } finally {
       setSaving(false);
     }
@@ -197,7 +198,7 @@ export function SessionQuickEditPopup({
       onSessionUpdate?.();
       onClose();
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      toast({ title: 'Error', description: err.message, variant: 'destructive', action: <SupportToastAction /> });
     } finally {
       setSaving(false);
     }

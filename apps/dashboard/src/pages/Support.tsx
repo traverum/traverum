@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Send, Paperclip, Loader2 } from 'lucide-react';
+import { getSupportToastOptionsSonner } from '@/lib/support';
 
 const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 
@@ -56,7 +57,7 @@ export default function Support() {
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       console.error('Support submit error:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to send. Try emailing us directly.');
+      toast.error(err instanceof Error ? err.message : 'Failed to send. Try emailing us directly.', getSupportToastOptionsSonner());
     } finally {
       setSubmitting(false);
     }
@@ -65,9 +66,8 @@ export default function Support() {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8">
       <div className="w-full max-w-2xl mx-auto">
-        {/* Single line: this sends real email */}
         <p className="text-center text-sm text-muted-foreground mb-6">
-          This sends an email to{' '}
+          Your message goes to{' '}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
             className="text-foreground font-medium hover:underline"

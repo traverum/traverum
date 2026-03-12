@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { SortableImage } from './SortableImage';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { supabase } from '@/integrations/supabase/client';
 import { optimizeCoverImage, optimizeGalleryImage } from '@/lib/image-optimization';
 import {
@@ -87,6 +88,7 @@ export function ImageUploader({
         title: 'Maximum images reached',
         description: `You can only upload up to ${maxImages} images.`,
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
       return;
     }
@@ -101,6 +103,7 @@ export function ImageUploader({
         title: 'Invalid file type',
         description: 'Please upload only JPG, PNG, or WebP images.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
       return;
     }
@@ -142,6 +145,7 @@ export function ImageUploader({
               title: 'Upload failed',
               description: uploadError.message,
               variant: 'destructive',
+              action: <SupportToastAction />,
             });
             continue;
           }
@@ -164,6 +168,7 @@ export function ImageUploader({
             title: 'Image processing failed',
             description: error.message || 'Failed to process image.',
             variant: 'destructive',
+            action: <SupportToastAction />,
           });
         }
       }
@@ -180,6 +185,7 @@ export function ImageUploader({
         title: 'Upload failed',
         description: error.message || 'Failed to upload images.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } finally {
       setUploading(false);
@@ -223,6 +229,7 @@ export function ImageUploader({
         title: 'Delete failed',
         description: error.message || 'Failed to delete image.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     }
   };

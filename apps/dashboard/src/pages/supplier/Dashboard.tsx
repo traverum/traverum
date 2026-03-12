@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { getTodayLocal, isSessionUpcoming, parseLocalDate } from '@/lib/date-utils';
 import { useUpcomingRentals } from '@/hooks/useUpcomingRentals';
 import { toast } from 'sonner';
+import { getSupportToastOptionsSonner } from '@/lib/support';
 
 const EU_COUNTRIES = [
   { code: 'AT', name: 'Austria' },
@@ -117,7 +118,7 @@ export default function SupplierDashboard() {
       }
     } catch (error: any) {
       console.error('Stripe Connect error:', error);
-      toast.error(error.message || 'Failed to connect Stripe');
+      toast.error(error.message || 'Failed to connect Stripe', getSupportToastOptionsSonner());
       setStripeLoading(false);
     }
   };
@@ -151,7 +152,7 @@ export default function SupplierDashboard() {
       }
     } catch (error: any) {
       console.error('Stripe Connect error:', error);
-      toast.error(error.message || 'Failed to resume Stripe setup');
+      toast.error(error.message || 'Failed to resume Stripe setup', getSupportToastOptionsSonner());
       setStripeLoading(false);
     }
   };

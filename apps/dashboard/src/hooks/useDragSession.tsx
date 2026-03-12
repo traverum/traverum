@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import type { SessionWithExperience } from '@/hooks/useAllSessions';
 import { yToTime, timeToY } from '@/components/sessions/calendar-utils';
 
@@ -141,7 +142,7 @@ export function useDragSession({ scrollRef, onSessionUpdate }: UseDragSessionOpt
                   .eq('id', session.id);
                 onSessionUpdateRef.current?.();
               } catch {
-                toast({ title: 'Failed to undo', variant: 'destructive' });
+                toast({ title: 'Failed to undo', variant: 'destructive', action: <SupportToastAction /> });
               }
             }}>
               Undo
@@ -150,7 +151,7 @@ export function useDragSession({ scrollRef, onSessionUpdate }: UseDragSessionOpt
         });
       } catch (err) {
         console.error('Failed to move session:', err);
-        toast({ title: 'Failed to move session', variant: 'destructive' });
+        toast({ title: 'Failed to move session', variant: 'destructive', action: <SupportToastAction /> });
         // Refetch to revert visual state
         onSessionUpdateRef.current?.();
       } finally {

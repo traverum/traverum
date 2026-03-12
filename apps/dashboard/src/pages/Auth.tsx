@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { supabase } from '@/integrations/supabase/client';
 import { getRecaptchaToken } from '@/lib/recaptcha';
 import { z } from 'zod';
@@ -106,12 +107,14 @@ export default function Auth() {
             title: 'Login failed',
             description: 'Invalid email or password. Please try again.',
             variant: 'destructive',
+            action: <SupportToastAction />,
           });
         } else {
           toast({
             title: 'Login failed',
             description: error.message,
             variant: 'destructive',
+            action: <SupportToastAction />,
           });
         }
       }
@@ -155,6 +158,7 @@ export default function Auth() {
             title: 'Verification failed',
             description: verifyData.error ?? 'Please try again or refresh the page.',
             variant: 'destructive',
+            action: <SupportToastAction />,
           });
           setLoading(false);
           return;
@@ -167,6 +171,7 @@ export default function Auth() {
           title: 'Signup failed',
           description: error.message,
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
       } else {
         toast({
@@ -187,6 +192,7 @@ export default function Auth() {
         title: 'Email required',
         description: 'Please enter your email address first.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
       return;
     }
@@ -198,6 +204,7 @@ export default function Auth() {
         title: 'Invalid email',
         description: 'Please enter a valid email address.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
       return;
     }
@@ -209,6 +216,7 @@ export default function Auth() {
         title: 'Could not send reset email',
         description: error.message,
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } else {
       toast({
@@ -247,6 +255,7 @@ export default function Auth() {
           title: 'Could not update password',
           description: error.message,
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
       } else {
         toast({
@@ -438,7 +447,7 @@ export default function Auth() {
                   className="w-full h-7"
                   onClick={() => {
                     if (!email) {
-                      toast({ title: 'Enter your email', variant: 'destructive' });
+                      toast({ title: 'Enter your email', variant: 'destructive', action: <SupportToastAction /> });
                       return;
                     }
                     handleForgotPassword();

@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { formatPrice } from '@/lib/pricing';
 import { LocationAutocomplete } from '@/components/LocationAutocomplete';
 import { Search, Clock, Users, MapPin, CheckCircle2, Loader2, Check, GripVertical } from 'lucide-react';
@@ -308,6 +309,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
           title: 'Error',
           description: 'Failed to save location. Please try again.',
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
       }
     };
@@ -506,6 +508,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
         title: 'Error',
         description: 'Failed to update selection. Please try again.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
       console.error('Toggle error:', error);
     },
@@ -540,6 +543,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
         title: 'Error',
         description: 'Failed to save order. Please try again.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
       console.error('Reorder error:', error);
     },

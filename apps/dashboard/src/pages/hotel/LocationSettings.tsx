@@ -3,6 +3,7 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -132,6 +133,7 @@ export default function LocationSettings({ embedded = false }: LocationSettingsP
           title: 'Error saving location',
           description: error.message || 'Failed to save location settings',
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
         setSaveStatus('idle');
       } finally {

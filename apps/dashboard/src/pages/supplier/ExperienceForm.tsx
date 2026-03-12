@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { ImageUploader, MediaItem } from '@/components/ImageUploader';
 import { PricingType, PricingConfig, getPriceExamples } from '@/lib/pricing';
 import { CategorySelector } from '@/components/CategorySelector';
@@ -259,35 +260,36 @@ export default function ExperienceForm() {
         title: 'Error',
         description: 'Partner information not found.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
       return;
     }
 
     // Validation
     if (!title.trim() || title.length < 3) {
-      toast({ title: 'Validation error', description: 'Title must be at least 3 characters.', variant: 'destructive' });
+      toast({ title: 'Validation error', description: 'Title must be at least 3 characters.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
     if (!description.trim() || description.length < 50) {
-      toast({ title: 'Validation error', description: 'Description must be at least 50 characters.', variant: 'destructive' });
+      toast({ title: 'Validation error', description: 'Description must be at least 50 characters.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
     if (!category) {
-      toast({ title: 'Validation error', description: 'Please select a category.', variant: 'destructive' });
+      toast({ title: 'Validation error', description: 'Please select a category.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
     const durationValue = parseInt(durationMinutes);
     if (isNaN(durationValue) || durationValue < 15) {
-      toast({ title: 'Validation error', description: 'Please select a duration.', variant: 'destructive' });
+      toast({ title: 'Validation error', description: 'Please select a duration.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
     const participantsValue = parseInt(maxParticipants);
     if (isNaN(participantsValue) || participantsValue < 1) {
-      toast({ title: 'Validation error', description: 'Max participants must be at least 1.', variant: 'destructive' });
+      toast({ title: 'Validation error', description: 'Max participants must be at least 1.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
@@ -298,47 +300,49 @@ export default function ExperienceForm() {
     const inclP = parseInt(includedParticipants) || 0;
 
     if (pricingType === 'per_person' && extraP < 100) {
-      toast({ title: 'Validation error', description: 'Price per person must be at least 1€.', variant: 'destructive' });
+      toast({ title: 'Validation error', description: 'Price per person must be at least 1€.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
     if (pricingType === 'flat_rate' && baseP < 100) {
-      toast({ title: 'Validation error', description: 'Flat rate price must be at least 1€.', variant: 'destructive' });
+      toast({ title: 'Validation error', description: 'Flat rate price must be at least 1€.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
     if (pricingType === 'base_plus_extra') {
       if (baseP < 100) {
-        toast({ title: 'Validation error', description: 'Base price must be at least 1€.', variant: 'destructive' });
+        toast({ title: 'Validation error', description: 'Base price must be at least 1€.', variant: 'destructive', action: <SupportToastAction /> });
         return;
       }
       if (inclP < 1) {
-        toast({ title: 'Validation error', description: 'Included participants must be at least 1.', variant: 'destructive' });
+        toast({ title: 'Validation error', description: 'Included participants must be at least 1.', variant: 'destructive', action: <SupportToastAction /> });
         return;
       }
     }
 
     if (minP > participantsValue) {
-      toast({ title: 'Validation error', description: 'Minimum participants cannot exceed maximum.', variant: 'destructive' });
+      toast({ title: 'Validation error', description: 'Minimum participants cannot exceed maximum.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
     // Validate location (mandatory for new experiences)
     if (!isEditing && (!locationAddress.trim() || locationLat === null || locationLng === null)) {
-      toast({ 
-        title: 'Validation error', 
-        description: 'Please set a location for your experience. Hotels need to know where experiences are located.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Validation error',
+        description: 'Please set a location for your experience. Hotels need to know where experiences are located.',
+        variant: 'destructive',
+        action: <SupportToastAction />,
       });
       return;
     }
 
     // If editing and location is set, validate it
     if (isEditing && locationAddress.trim() && (locationLat === null || locationLng === null)) {
-      toast({ 
-        title: 'Validation error', 
-        description: 'Please geocode the location address to save coordinates.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Validation error',
+        description: 'Please geocode the location address to save coordinates.',
+        variant: 'destructive',
+        action: <SupportToastAction />,
       });
       return;
     }
@@ -445,6 +449,7 @@ export default function ExperienceForm() {
         title: 'Error',
         description: error.message || 'Failed to save experience.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } finally {
       setLoading(false);

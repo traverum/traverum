@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { getSupportToastOptionsSonner } from '@/lib/support';
 
 const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 
@@ -100,7 +101,7 @@ export default function Invite() {
           setState('signup');
           return;
         }
-        toast.error(data.error || 'Failed to create account');
+        toast.error(data.error || 'Failed to create account', getSupportToastOptionsSonner());
         setState('signup');
         return;
       }
@@ -108,7 +109,7 @@ export default function Invite() {
       // Sign in with the newly created credentials
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
       if (signInError) {
-        toast.error('Account created but login failed. Please sign in manually.');
+        toast.error('Account created but login failed. Please sign in manually.', getSupportToastOptionsSonner());
         navigate('/auth', { replace: true });
         return;
       }
@@ -116,7 +117,7 @@ export default function Invite() {
       toast.success(`Welcome to ${partnerName}`);
       navigate('/dashboard', { replace: true });
     } catch {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong', getSupportToastOptionsSonner());
       setState('signup');
     }
   };
@@ -138,7 +139,7 @@ export default function Invite() {
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || 'Failed to join organization');
+        toast.error(data.error || 'Failed to join organization', getSupportToastOptionsSonner());
         setState('join');
         return;
       }
@@ -146,7 +147,7 @@ export default function Invite() {
       toast.success(`You've joined ${partnerName}`);
       navigate('/dashboard', { replace: true });
     } catch {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong', getSupportToastOptionsSonner());
       setState('join');
     }
   };
@@ -166,12 +167,20 @@ export default function Invite() {
           <Card className="border border-border">
             <CardContent className="p-8 text-center">
               <p className="text-sm text-foreground mb-4">{errorMessage}</p>
-              <Link
-                to="/auth"
-                className="text-sm text-primary hover:underline font-medium"
-              >
-                Go to login
-              </Link>
+              <div className="flex flex-col gap-2 items-center">
+                <Link
+                  to="/auth"
+                  className="text-sm text-primary hover:underline font-medium"
+                >
+                  Go to login
+                </Link>
+                <Link
+                  to="/support"
+                  className="text-sm text-primary hover:underline font-medium"
+                >
+                  Contact support
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>

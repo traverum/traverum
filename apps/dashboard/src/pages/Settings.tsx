@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Copy, Trash2, Users, Link as LinkIcon, Check, Mail, Building2 } from 'lucide-react';
+import { getSupportToastOptionsSonner } from '@/lib/support';
 
 const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || window.location.origin;
@@ -92,14 +94,14 @@ export default function Settings() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Failed to generate invite link');
+        toast.error(err.error || 'Failed to generate invite link', getSupportToastOptionsSonner());
         return;
       }
 
       const data = await res.json();
       setInviteToken(data.token);
     } catch {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong', getSupportToastOptionsSonner());
     } finally {
       setInviteLoading(false);
     }
@@ -134,7 +136,7 @@ export default function Settings() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Failed to remove member');
+        toast.error(err.error || 'Failed to remove member', getSupportToastOptionsSonner());
         return;
       }
 
@@ -142,7 +144,7 @@ export default function Settings() {
       refetchMembers();
       queryClient.invalidateQueries({ queryKey: ['userPartners'] });
     } catch {
-      toast.error('Something went wrong');
+      toast.error('Something went wrong', getSupportToastOptionsSonner());
     } finally {
       setRemovingUserId(null);
     }
@@ -167,7 +169,7 @@ export default function Settings() {
       setOrgNameDirty(false);
       queryClient.invalidateQueries({ queryKey: ['userPartners'] });
     } catch {
-      toast.error('Failed to update name');
+      toast.error('Failed to update name', getSupportToastOptionsSonner());
     } finally {
       setOrgNameSaving(false);
     }
@@ -194,7 +196,7 @@ export default function Settings() {
       setOrgEmailDirty(false);
       queryClient.invalidateQueries({ queryKey: ['userPartners'] });
     } catch {
-      toast.error('Failed to update email');
+      toast.error('Failed to update email', getSupportToastOptionsSonner());
     } finally {
       setOrgEmailSaving(false);
     }
@@ -307,9 +309,14 @@ export default function Settings() {
           {canManageSettings && membersError && (
             <div className="py-4 space-y-2 text-center">
               <p className="text-sm text-muted-foreground">Failed to load members</p>
-              <Button variant="outline" size="sm" onClick={() => refetchMembers()}>
-                Try again
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => refetchMembers()}>
+                  Try again
+                </Button>
+                <Link to="/support" className="text-sm text-primary hover:underline font-medium">
+                  Contact support
+                </Link>
+              </div>
             </div>
           )}
 

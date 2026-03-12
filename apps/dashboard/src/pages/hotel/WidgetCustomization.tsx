@@ -3,6 +3,7 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -557,6 +558,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
           title: 'Error saving',
           description: error.message || 'Failed to save widget settings',
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
         setTimeout(() => setSaveStatus('idle'), 3000);
       }
@@ -590,7 +592,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
 
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
       if (!validTypes.includes(file.type)) {
-        toast({ title: 'Invalid file type', description: 'Please upload a JPG, PNG, WebP, or SVG image.', variant: 'destructive' });
+        toast({ title: 'Invalid file type', description: 'Please upload a JPG, PNG, WebP, or SVG image.', variant: 'destructive', action: <SupportToastAction /> });
         return;
       }
 
@@ -640,7 +642,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
         toast({ title: 'Logo updated' });
       } catch (error: any) {
         console.error('Logo upload error:', error);
-        toast({ title: 'Upload failed', description: error.message || 'Failed to upload logo.', variant: 'destructive' });
+        toast({ title: 'Upload failed', description: error.message || 'Failed to upload logo.', variant: 'destructive', action: <SupportToastAction /> });
       } finally {
         setLogoUploading(false);
         if (logoInputRef.current) logoInputRef.current.value = '';
@@ -671,7 +673,7 @@ export default function WidgetCustomization({ embedded = false }: WidgetCustomiz
       toast({ title: 'Logo removed' });
     } catch (error: any) {
       console.error('Logo remove error:', error);
-      toast({ title: 'Remove failed', description: error.message || 'Failed to remove logo.', variant: 'destructive' });
+      toast({ title: 'Remove failed', description: error.message || 'Failed to remove logo.', variant: 'destructive', action: <SupportToastAction /> });
     }
   }, [hotelConfigId, logoUrl, toast]);
 

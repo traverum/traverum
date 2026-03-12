@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { useSupplierData, Experience } from '@/hooks/useSupplierData';
 import { useExperienceAvailability } from '@/hooks/useExperienceAvailability';
 import { supabase } from '@/integrations/supabase/client';
@@ -487,6 +488,7 @@ function ExperienceDashboardInner() {
             ? errorMessage.substring(0, 100) + '...'
             : errorMessage,
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
       }
     };
@@ -547,6 +549,7 @@ function ExperienceDashboardInner() {
           title: 'Failed to save availability',
           description: 'Your availability changes were not saved. Please try again.',
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
       }
     };
@@ -671,6 +674,7 @@ function ExperienceDashboardInner() {
           title: 'Cannot publish yet',
           description: `Please complete: ${validation.errors.join(', ')}.`,
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
         return;
       }
@@ -696,6 +700,7 @@ function ExperienceDashboardInner() {
         title: 'Error updating status',
         description: error.message || 'Please try again.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } finally {
       setStatusUpdating(false);
@@ -724,6 +729,7 @@ function ExperienceDashboardInner() {
             title: 'Cannot delete experience',
             description: 'Some sessions still have bookings. Cancel those sessions and refund guests first, then delete sessions with 0 bookings.',
             variant: 'destructive',
+            action: <SupportToastAction />,
           });
           setDeleting(false);
           return;
@@ -742,6 +748,7 @@ function ExperienceDashboardInner() {
           title: 'Cannot delete experience',
           description: 'There are pending or approved reservations for this experience. Handle those first before deleting.',
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
         setDeleting(false);
         return;
@@ -784,6 +791,7 @@ function ExperienceDashboardInner() {
         title: 'Error',
         description: error.message || 'Failed to delete experience.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } finally {
       setDeleting(false);

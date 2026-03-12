@@ -4,6 +4,7 @@ import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -153,6 +154,7 @@ function StayDashboardInner() {
           title: 'Error saving',
           description: error.message || 'Failed to save property settings',
           variant: 'destructive',
+          action: <SupportToastAction />,
         });
         setSaveStatus('idle');
       }
@@ -181,6 +183,7 @@ function StayDashboardInner() {
         title: 'Error updating status',
         description: error.message || 'Failed to update status',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } finally {
       setStatusUpdating(false);
@@ -210,6 +213,7 @@ function StayDashboardInner() {
         title: 'Error deleting',
         description: error.message || 'Failed to delete property',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } finally {
       setDeleting(false);

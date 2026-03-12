@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Mail, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 
 export default function EmailVerification() {
   const { user, isEmailVerified, resendVerificationEmail } = useAuth();
@@ -25,6 +26,7 @@ export default function EmailVerification() {
         title: 'Could not send email',
         description: error.message,
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     } else {
       toast({

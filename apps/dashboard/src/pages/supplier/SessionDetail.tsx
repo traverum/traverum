@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { SupportToastAction } from '@/components/SupportToastAction';
 import { useSessionDetail, type SessionUpdate } from '@/hooks/useSessionDetail';
 import { formatPrice, getUnitLabel } from '@/lib/pricing';
 import { getLanguageName } from '@/components/LanguageSelector';
@@ -151,6 +152,7 @@ export default function SessionDetail() {
         title: 'Error updating session',
         description: 'Please try again.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     }
   };
@@ -165,6 +167,7 @@ export default function SessionDetail() {
         title: 'Error deleting session',
         description: error?.message || 'Cannot delete. Refund guests and remove all bookings first.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     }
   };
@@ -179,6 +182,7 @@ export default function SessionDetail() {
         title: 'Error cancelling session',
         description: 'Please try again.',
         variant: 'destructive',
+        action: <SupportToastAction />,
       });
     }
   };

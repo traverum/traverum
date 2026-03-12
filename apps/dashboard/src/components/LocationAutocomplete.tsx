@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
@@ -284,9 +285,17 @@ export function LocationAutocomplete({
       </div>
       
       {status === 'error' && errorMessage && (
-        <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs">
-          <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
-          <span className="text-red-900 dark:text-red-100">{errorMessage}</span>
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-xs">
+            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+            <span className="text-red-900 dark:text-red-100">{errorMessage}</span>
+          </div>
+          <Link
+            to="/support"
+            className="text-xs text-primary hover:underline font-medium"
+          >
+            If this persists, contact support and describe what you were doing.
+          </Link>
         </div>
       )}
 

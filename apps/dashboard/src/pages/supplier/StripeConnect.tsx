@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getSupportToastOptionsSonner } from '@/lib/support';
 
 /**
  * Stripe Connect redirect handler.
@@ -54,7 +55,7 @@ export default function StripeConnect() {
         }
       } catch (error: any) {
         console.error('Stripe Connect refresh error:', error);
-        toast.error('Something went wrong. Please try again from the dashboard.');
+        toast.error('Something went wrong. Please try again from the dashboard.', getSupportToastOptionsSonner());
         navigate('/supplier/dashboard', { replace: true });
       }
     }
