@@ -16,7 +16,7 @@ import {
   ChevronRightIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
-import { PanelLeft, HelpCircle } from 'lucide-react';
+import { PanelLeft, HelpCircle, Settings } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -478,8 +478,23 @@ export function Sidebar({ children }: SidebarProps) {
           </div>
         </nav>
 
-        {/* Bottom: Support — visible for both supplier and hotel */}
-        <div className="border-t border-border px-2 py-2 flex-shrink-0">
+        {/* Bottom: Settings + Support */}
+        <div className="border-t border-border px-2 py-2 flex-shrink-0 space-y-px">
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                'hover:bg-accent',
+                isActive
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )
+            }
+          >
+            <Settings className="h-4 w-4 flex-shrink-0" />
+            <span>Settings</span>
+          </NavLink>
           <NavLink
             to="/support"
             className={({ isActive }) =>

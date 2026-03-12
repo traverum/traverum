@@ -286,6 +286,13 @@ export function useSupplierAnalytics() {
         .slice(0, 5);
     })();
 
+    const completedCount = completedBookings.length;
+    const completedThisMonth = completedBookings.filter((b) => {
+      if (!b.completed_at) return false;
+      const d = parseISO(b.completed_at);
+      return getMonth(d) === currentMonth && getYear(d) === currentYear;
+    }).length;
+
     return {
       totalBookings,
       totalRevenueCents,
@@ -296,6 +303,8 @@ export function useSupplierAnalytics() {
       revenueByPeriod,
       topExperiences,
       topHotels,
+      guestsServedCount: completedCount,
+      guestsServedThisMonth: completedThisMonth,
     };
   }, [rawBookings]);
 

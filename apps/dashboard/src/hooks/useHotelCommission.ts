@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { getMonth, getYear } from 'date-fns';
+import { parseISO } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
@@ -44,6 +46,7 @@ export function useHotelCommission() {
         .from('bookings')
         .select(`
           id,
+          completed_at,
           hotel_amount_cents,
           booking_status,
           hotel_payout_id,
@@ -145,5 +148,22 @@ export function useHotelCommission() {
     };
   }, [rawBookings, hotelConfigs, rawPayouts, paidPayoutIds]);
 
-  return { data: commissionData, isLoading: bookingsLoading || payoutsLoading };
+  const now = new Date();
+  const currentMonth = getMonth(now);
+  const currentYear = getYear(now);
+
+  const travelersGuidedThisMonth = useMemo(() => {
+    return rawBookings.filter((b: { completed_at: string | null }) => {
+      if (!b.completed_at) return false;
+      const d = parseISO(b.completed_at);
+      return getMonth(d) === currentMonth && getYear(d) === currentYear;
+    }).length;
+  }, [rawBookings, currentMonth, currentYear]);
+
+  return {
+    data: commissionData,
+    isLoading: bookingsLoading || payoutsLoading,
+    travelersGuidedCount: rawBookings.length,
+    travelersGuidedThisMonth,
+  };
 }
