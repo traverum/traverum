@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 
-// Use a placeholder key for build time if not set
-const resendApiKey = process.env.RESEND_API_KEY || 're_placeholder_key'
+// Use a placeholder for build time when env is not set (invalid; runtime sends will fail until RESEND_API_KEY is set)
+const resendApiKey = process.env.RESEND_API_KEY || ''
 export const resend = new Resend(resendApiKey)
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Veyond <bookings@veyond.eu>'

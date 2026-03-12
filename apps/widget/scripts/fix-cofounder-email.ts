@@ -1,23 +1,25 @@
 /**
  * One-off: Add alessio.garzonio@traverum.com as owner in every partner org.
  *
- * Usage (from apps/widget; ensure .env.local has Supabase URL and service role key):
- *   pnpm run fix-cofounder-email
+ * Usage (from apps/widget; ensure .env.local has Supabase URL, service role key, and one-time secret):
+ *   ONE_TIME_CREATE_USER_SECRET=your-chosen-secret pnpm run fix-cofounder-email
  *   pnpm run fix-cofounder-email -- --dry-run
  *
  * What it does:
  *   1. Finds or creates the Auth user for alessio.garzonio@traverum.com.
  *   2. Ensures a public.users row exists for that user.
  *   3. Adds that user as 'owner' in every partner org (skips if already a member).
+ *
+ * ONE_TIME_CREATE_USER_SECRET is only used when creating a new Auth user; they must change it on first login.
  */
 
 import { createClient } from '@supabase/supabase-js'
 
-const EMAIL = 'alessio.garzonio@traverum.com'
-const TEMP_PASSWORD = 'changeme-' + Math.random().toString(36).slice(2, 10)
+const COFOUNDER_EMAIL = 'alessio.garzonio@traverum.com'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const oneTimeSecret = process.env.ONE_TIME_CREATE_USER_SECRET
 const dryRun = process.argv.includes('--dry-run')
 
 if (!url || !serviceRoleKey) {
@@ -30,7 +32,7 @@ const supabase = createClient(url, serviceRoleKey, {
 })
 
 async function main() {
-  console.log(`Add ${EMAIL} as owner in every partner org`)
+  console.log(`Add ${COFOUNDER_EMAIL} as owner in every partner org`)
   console.log('—')
   if (dryRun) console.log('DRY RUN (no changes will be made)\n')
 
@@ -39,20 +41,24 @@ async function main() {
 
   const { data: listData } = await supabase.auth.admin.listUsers()
   const existingAuth = listData?.users?.find(
-    (u) => u.email?.toLowerCase() === EMAIL.toLowerCase()
+    (u) => u.email?.toLowerCase() === COFOUNDER_EMAIL.toLowerCase()
   )
 
   if (existingAuth) {
     authId = existingAuth.id
     console.log(`Auth user already exists: ${authId}`)
   } else if (dryRun) {
-    console.log('[dry-run] Would create Auth user for', EMAIL)
+    console.log('[dry-run] Would create Auth user for', COFOUNDER_EMAIL)
     console.log('[dry-run] Cannot continue without a real user ID. Exiting.')
     return
   } else {
+    if (!oneTimeSecret || oneTimeSecret.length < 8) {
+      console.error('Set ONE_TIME_CREATE_USER_SECRET (min 8 chars) when creating a new user. User must change it on first login.')
+      process.exit(1)
+    }
     const { data: newAuth, error: createErr } = await supabase.auth.admin.createUser({
-      email: EMAIL,
-      password: TEMP_PASSWORD,
+      email: COFOUNDER_EMAIL,
+      password: oneTimeSecret,
       email_confirm: true,
     })
     if (createErr || !newAuth?.user) {
@@ -60,8 +66,7 @@ async function main() {
       process.exit(1)
     }
     authId = newAuth.user.id
-    console.log(`Created Auth user: ${authId}`)
-    console.log(`Temporary password: ${TEMP_PASSWORD}  (change on first login!)`)
+    console.log(`Created Auth user: ${authId}. User must change secret on first login.`)
     await new Promise((r) => setTimeout(r, 500))
   }
 
@@ -79,7 +84,7 @@ async function main() {
     }
     const { data: inserted, error: insertErr } = await (supabase
       .from('users') as any)
-      .insert({ auth_id: authId, email: EMAIL })
+      .insert({ auth_id: authId, email: COFOUNDER_EMAIL })
       .select('id')
       .single() as { data: { id: string } | null; error: unknown }
     if (insertErr || !inserted) {
