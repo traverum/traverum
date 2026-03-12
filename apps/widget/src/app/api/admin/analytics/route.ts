@@ -18,15 +18,14 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient()
 
   // --- Widget views ---
-  let viewsQuery = supabase
-    .from('analytics_events')
+  let viewsQuery = (supabase.from('analytics_events') as any)
     .select('id, source, hotel_config_id, created_at')
     .eq('event_type', 'widget_view')
 
   if (from) viewsQuery = viewsQuery.gte('created_at', `${from}T00:00:00Z`)
   if (to) viewsQuery = viewsQuery.lte('created_at', `${to}T23:59:59Z`)
 
-  const { data: viewRows } = await viewsQuery
+  const { data: viewRows } = await viewsQuery as { data: any[] | null }
 
   const totalWidgetViews = (viewRows || []).length
   const sourceMap = new Map<string, number>()
@@ -56,7 +55,7 @@ export async function GET(request: NextRequest) {
     const { data: configs } = await supabase
       .from('hotel_configs')
       .select('id, display_name')
-      .in('id', topHotelConfigIds)
+      .in('id', topHotelConfigIds) as { data: { id: string; display_name: string }[] | null }
     for (const c of configs || []) {
       hotelNameMap.set(c.id, c.display_name)
     }
@@ -118,7 +117,7 @@ export async function GET(request: NextRequest) {
   const topExpIds = Array.from(expMap.keys())
   let expTitleMap = new Map<string, string>()
   if (topExpIds.length > 0) {
-    const { data: exps } = await supabase.from('experiences').select('id, title').in('id', topExpIds)
+    const { data: exps } = await supabase.from('experiences').select('id, title').in('id', topExpIds) as { data: { id: string; title: string }[] | null }
     for (const e of exps || []) {
       expTitleMap.set(e.id, e.title)
     }
@@ -148,7 +147,7 @@ export async function GET(request: NextRequest) {
   const topHotelPartnerIds = Array.from(hotelBookingMap.keys()).slice(0, 10)
   let hotelPartnerNameMap = new Map<string, string>()
   if (topHotelPartnerIds.length > 0) {
-    const { data: partners } = await supabase.from('partners').select('id, name').in('id', topHotelPartnerIds)
+    const { data: partners } = await supabase.from('partners').select('id, name').in('id', topHotelPartnerIds) as { data: { id: string; name: string }[] | null }
     for (const p of partners || []) {
       hotelPartnerNameMap.set(p.id, p.name)
     }

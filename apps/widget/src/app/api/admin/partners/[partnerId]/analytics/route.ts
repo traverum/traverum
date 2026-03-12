@@ -34,8 +34,8 @@ export async function GET(
     { data: hotelConfigs },
     { data: partnerExperiences },
   ] = await Promise.all([
-    supabase.from('hotel_configs').select('id, display_name, slug').eq('partner_id', partnerId),
-    supabase.from('experiences').select('id, title').eq('partner_id', partnerId),
+    supabase.from('hotel_configs').select('id, display_name, slug').eq('partner_id', partnerId) as unknown as Promise<{ data: { id: string; display_name: string; slug: string }[] | null }>,
+    supabase.from('experiences').select('id, title').eq('partner_id', partnerId) as unknown as Promise<{ data: { id: string; title: string }[] | null }>,
   ])
 
   const configs = hotelConfigs || []
@@ -53,19 +53,19 @@ export async function GET(
   if (hasHotel) {
     // Widget views per property
     const { data: viewRows } = await dateFilter(
-      supabase.from('analytics_events')
+      (supabase.from('analytics_events') as any)
         .select('hotel_config_id, source, created_at')
         .eq('event_type', 'widget_view')
         .in('hotel_config_id', configIds)
-    )
+    ) as { data: any[] | null }
 
     // Experience views per property
     const { data: expViewRows } = await dateFilter(
-      supabase.from('analytics_events')
+      (supabase.from('analytics_events') as any)
         .select('hotel_config_id, experience_id, event_type')
         .in('event_type', ['experience_view', 'experience_details'])
         .in('hotel_config_id', configIds)
-    )
+    ) as { data: any[] | null }
 
     // Reservations through this hotel partner
     const { data: reservationRows } = await dateFilter(
@@ -84,12 +84,12 @@ export async function GET(
     // Collect all experience IDs referenced in views/bookings to fetch titles
     const allExpIds = new Set<string>()
     for (const r of expViewRows || []) if (r.experience_id) allExpIds.add(r.experience_id)
-    for (const r of reservationRows || []) if (r.experience_id) allExpIds.add(r.experience_id)
+    for (const r of (reservationRows || []) as any[]) if (r.experience_id) allExpIds.add(r.experience_id)
     for (const b of bookingRows || []) if (b.reservation?.experience_id) allExpIds.add(b.reservation.experience_id)
 
     const expTitleMap = new Map<string, string>()
     if (allExpIds.size > 0) {
-      const { data: exps } = await supabase.from('experiences').select('id, title').in('id', Array.from(allExpIds))
+      const { data: exps } = await supabase.from('experiences').select('id, title').in('id', Array.from(allExpIds)) as { data: { id: string; title: string }[] | null }
       for (const e of exps || []) expTitleMap.set(e.id, e.title)
     }
 
@@ -194,11 +194,11 @@ export async function GET(
   if (hasExperiences) {
     // Views of this supplier's experiences (across all hotels)
     const { data: expViewRows } = await dateFilter(
-      supabase.from('analytics_events')
+      (supabase.from('analytics_events') as any)
         .select('experience_id, hotel_config_id, event_type')
         .in('event_type', ['experience_view', 'experience_details'])
         .in('experience_id', experienceIds)
-    )
+    ) as { data: any[] | null }
 
     // Reservations for this supplier's experiences
     const { data: reservationRows } = await dateFilter(
@@ -217,12 +217,12 @@ export async function GET(
     // Collect hotel_config_ids to fetch names
     const hotelConfigIdsInData = new Set<string>()
     for (const r of expViewRows || []) if (r.hotel_config_id) hotelConfigIdsInData.add(r.hotel_config_id)
-    for (const r of reservationRows || []) if (r.hotel_config_id) hotelConfigIdsInData.add(r.hotel_config_id)
+    for (const r of (reservationRows || []) as any[]) if (r.hotel_config_id) hotelConfigIdsInData.add(r.hotel_config_id)
     for (const b of bookingRows || []) if (b.reservation?.hotel_config_id) hotelConfigIdsInData.add(b.reservation.hotel_config_id)
 
     const hotelNameMap = new Map<string, string>()
     if (hotelConfigIdsInData.size > 0) {
-      const { data: hcs } = await supabase.from('hotel_configs').select('id, display_name').in('id', Array.from(hotelConfigIdsInData))
+      const { data: hcs } = await supabase.from('hotel_configs').select('id, display_name').in('id', Array.from(hotelConfigIdsInData)) as { data: { id: string; display_name: string }[] | null }
       for (const hc of hcs || []) hotelNameMap.set(hc.id, hc.display_name)
     }
 

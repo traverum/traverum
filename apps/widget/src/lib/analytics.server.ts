@@ -19,7 +19,7 @@ export function parseSource(raw: string | undefined | null): string | null {
 export async function logAnalyticsEvent(event: AnalyticsEventInsert) {
   try {
     const supabase = createAdminClient()
-    await supabase.from('analytics_events').insert({
+    await (supabase.from('analytics_events') as any).insert({
       event_type: event.event_type,
       hotel_config_id: event.hotel_config_id || null,
       experience_id: event.experience_id || null,

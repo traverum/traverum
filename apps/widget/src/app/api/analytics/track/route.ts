@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     const supabase = createAdminClient()
-    await supabase.from('analytics_events').insert(validated)
+    await (supabase.from('analytics_events') as any).insert(validated)
 
     return NextResponse.json({ ok: true, count: validated.length }, { headers: CORS_HEADERS })
   } catch {
