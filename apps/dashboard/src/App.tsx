@@ -60,7 +60,7 @@ const App = () => (
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/invite/:token" element={<Invite />} />
               
-              {/* Smart redirect based on capabilities */}
+              {/* General home page */}
               <Route 
                 path="/dashboard" 
                 element={

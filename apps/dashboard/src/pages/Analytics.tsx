@@ -1,26 +1,22 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-const VIEW_STORAGE_KEY = 'traverum_active_view';
+import { useActivePartner } from '@/hooks/useActivePartner';
 
 export default function Analytics() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { capabilities, isLoading } = useActivePartner();
 
   useEffect(() => {
+    if (isLoading) return;
     if (location.pathname !== '/analytics') return;
 
-    let savedView = 'experiences';
-    try {
-      const stored = localStorage.getItem(VIEW_STORAGE_KEY);
-      if (stored === 'experiences' || stored === 'stays') savedView = stored;
-    } catch {}
+    const target = capabilities.isSupplier
+      ? '/supplier/analytics'
+      : '/hotel/analytics';
 
-    navigate(
-      savedView === 'stays' ? '/hotel/analytics' : '/supplier/analytics',
-      { replace: true }
-    );
-  }, [location.pathname, navigate]);
+    navigate(target, { replace: true });
+  }, [location.pathname, navigate, capabilities, isLoading]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
