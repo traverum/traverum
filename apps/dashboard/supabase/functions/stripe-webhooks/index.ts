@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import Stripe from "npm:stripe@14.21.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,22 +31,30 @@ serve(async (req) => {
 
     let event: Stripe.Event;
 
-    // Verify webhook signature if secret is configured
-    if (webhookSecret && signature) {
-      try {
-        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-      } catch (err) {
-        const errMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error('Webhook signature verification failed:', errMessage);
-        return new Response(
-          JSON.stringify({ error: 'Invalid signature' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    } else {
-      // Parse event without verification (for testing)
-      console.warn('No webhook secret configured, skipping signature verification');
-      event = JSON.parse(body);
+    if (!webhookSecret) {
+      console.error('STRIPE_WEBHOOK_SECRET not configured — rejecting request');
+      return new Response(
+        JSON.stringify({ error: 'Webhook secret not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!signature) {
+      return new Response(
+        JSON.stringify({ error: 'Missing stripe-signature header' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    try {
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : 'Unknown error';
+      console.error('Webhook signature verification failed:', errMessage);
+      return new Response(
+        JSON.stringify({ error: 'Invalid signature' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log('Received webhook event:', event.type);
@@ -62,25 +70,22 @@ serve(async (req) => {
         const account = event.data.object as Stripe.Account;
         console.log('Account updated:', account.id);
         
-        // Check if onboarding is complete
-        const chargesEnabled = account.charges_enabled;
-        const payoutsEnabled = account.payouts_enabled;
-        const detailsSubmitted = account.details_submitted;
+        const chargesEnabled = account.charges_enabled || false;
+        const payoutsEnabled = account.payouts_enabled || false;
+        const detailsSubmitted = account.details_submitted || false;
+        const isOnboardingComplete = chargesEnabled && payoutsEnabled && detailsSubmitted;
         
-        console.log('Account status:', { chargesEnabled, payoutsEnabled, detailsSubmitted });
+        console.log('Account status:', { chargesEnabled, payoutsEnabled, detailsSubmitted, isOnboardingComplete });
 
-        if (chargesEnabled && payoutsEnabled && detailsSubmitted) {
-          // Update the partner record to mark onboarding as complete
-          const { error: updateError } = await supabase
-            .from('partners')
-            .update({ stripe_onboarding_complete: true })
-            .eq('stripe_account_id', account.id);
+        const { error: updateError } = await supabase
+          .from('partners')
+          .update({ stripe_onboarding_complete: isOnboardingComplete })
+          .eq('stripe_account_id', account.id);
 
-          if (updateError) {
-            console.error('Failed to update partner onboarding status:', updateError);
-          } else {
-            console.log('Partner onboarding marked as complete for account:', account.id);
-          }
+        if (updateError) {
+          console.error('Failed to update partner onboarding status:', updateError);
+        } else {
+          console.log(`Partner onboarding status set to ${isOnboardingComplete} for account:`, account.id);
         }
         break;
       }

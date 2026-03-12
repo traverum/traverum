@@ -42,7 +42,8 @@ export default function StripeConnect() {
         });
 
         if (response.error) {
-          throw new Error(response.error.message || 'Failed to resume Stripe setup');
+          const message = (response.data as { error?: string })?.error ?? response.error.message ?? 'Failed to resume Stripe setup';
+          throw new Error(message);
         }
 
         const { url } = response.data;

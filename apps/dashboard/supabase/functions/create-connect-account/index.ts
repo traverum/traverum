@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
+import Stripe from "npm:stripe@14.21.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -119,7 +119,14 @@ serve(async (req) => {
 
       if (updateError) {
         console.error('Failed to save Stripe account ID:', updateError);
-        throw new Error('Failed to save Stripe account');
+        // Clean up the orphaned Stripe account so the supplier can retry
+        try {
+          await stripe.accounts.del(stripeAccountId);
+          console.log('Cleaned up orphaned Stripe account:', stripeAccountId);
+        } catch (cleanupError) {
+          console.error('Failed to clean up Stripe account:', stripeAccountId, cleanupError);
+        }
+        throw new Error('Failed to save Stripe account. Please try again.');
       }
 
       console.log('Stripe account created:', stripeAccountId);

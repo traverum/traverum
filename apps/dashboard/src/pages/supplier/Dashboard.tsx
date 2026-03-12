@@ -106,7 +106,8 @@ export default function SupplierDashboard() {
         body: { origin: window.location.origin, partner_id: activePartnerId, country: selectedCountry },
       });
       if (response.error) {
-        throw new Error(response.error.message || 'Failed to create Stripe account');
+        const message = (response.data as { error?: string })?.error ?? response.error.message ?? 'Failed to create Stripe account';
+        throw new Error(message);
       }
       const { url } = response.data;
       if (url) {
@@ -139,7 +140,8 @@ export default function SupplierDashboard() {
         body: { origin: window.location.origin, partner_id: activePartnerId },
       });
       if (response.error) {
-        throw new Error(response.error.message || 'Failed to resume Stripe setup');
+        const message = (response.data as { error?: string })?.error ?? response.error.message ?? 'Failed to resume Stripe setup';
+        throw new Error(message);
       }
       const { url } = response.data;
       if (url) {

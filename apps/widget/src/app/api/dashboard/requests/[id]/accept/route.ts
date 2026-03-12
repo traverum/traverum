@@ -90,6 +90,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Forbidden: you do not own this experience' }, { status: 403 })
     }
 
+    // Check if supplier has completed Stripe onboarding
+    if (!supplier.stripe_onboarding_complete) {
+      return NextResponse.json(
+        { error: 'You need to complete Stripe onboarding before accepting bookings. Go to your dashboard to finish setup.' },
+        { status: 400 }
+      )
+    }
+
     // Check if already processed
     if (reservation.reservation_status !== 'pending') {
       return NextResponse.json(
