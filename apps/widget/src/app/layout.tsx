@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Poppins, Fraunces, DM_Sans } from 'next/font/google'
+import { TranslationProvider } from '@/components/TranslationProvider'
 import './globals.css'
 
 const poppins = Poppins({
@@ -34,7 +35,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.variable} ${fraunces.variable} ${dmSans.variable} font-sans antialiased`} suppressHydrationWarning>
-        {children}
+        <TranslationProvider>
+          {children}
+        </TranslationProvider>
       </body>
     </html>
   )

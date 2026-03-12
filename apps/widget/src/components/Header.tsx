@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import { ContentLanguageSelector } from '@/components/ContentLanguageSelector'
 
 interface HeaderProps {
   hotelName: string
@@ -55,7 +56,7 @@ export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo
 
   return (
     <header className="sticky top-0 z-40 bg-background border-b border-border">
-      <div className="container flex items-center h-14 px-4">
+      <div className="container flex items-center justify-between h-14 px-4">
         <div className="flex items-center gap-2 min-w-0">
           {showBack ? (
             // Detail page: Back button to full experiences list
@@ -92,6 +93,9 @@ export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo
               )}
             </button>
           )}
+        </div>
+        <div className="flex-shrink-0">
+          <ContentLanguageSelector />
         </div>
       </div>
     </header>

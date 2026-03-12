@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import { VeyondHeader } from '@/components/VeyondHeader'
 import { CheckoutForm } from '@/components/CheckoutForm'
-import { BookingSummary } from '@/components/BookingSummary'
+import { TranslatedBookingSummary } from '@/components/TranslatedBookingSummary'
 import type { Experience, ExperienceSession } from '@/lib/supabase/types'
 
 export const dynamic = 'force-dynamic'
@@ -121,7 +121,7 @@ export default async function DirectCheckoutPage({ searchParams }: CheckoutPageP
           </div>
 
           <div className="lg:col-span-2">
-            <BookingSummary
+            <TranslatedBookingSummary
               experience={experience}
               session={session}
               participants={participants}

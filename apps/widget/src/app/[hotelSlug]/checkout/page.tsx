@@ -6,7 +6,7 @@ import { getEmbedMode, cn } from '@/lib/utils'
 import { isDemoHotel } from '@/lib/demo'
 import { Header } from '@/components/Header'
 import { CheckoutForm } from '@/components/CheckoutForm'
-import { BookingSummary } from '@/components/BookingSummary'
+import { TranslatedBookingSummary } from '@/components/TranslatedBookingSummary'
 import type { Experience, ExperienceSession } from '@/lib/supabase/types'
 
 // Force dynamic rendering so hotel config changes take effect immediately
@@ -168,7 +168,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
           
           {/* Summary */}
           <div className="lg:col-span-2">
-            <BookingSummary
+            <TranslatedBookingSummary
               experience={experience}
               session={session}
               participants={participants}

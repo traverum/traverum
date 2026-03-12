@@ -11,7 +11,8 @@ import { EmbedResizer } from '@/components/EmbedResizer'
 import { ImageGallery } from '@/components/ImageGallery'
 import { BookingPanel } from '@/components/BookingPanel'
 import { ExperienceDetailClient } from '@/components/ExperienceDetailClient'
-import { RichText } from '@/components/RichText'
+import { TranslatedText } from '@/components/TranslatedText'
+import { TranslatedRichText } from '@/components/TranslatedRichText'
 import type { Metadata } from 'next'
 
 // Force dynamic rendering so hotel config changes take effect immediately
@@ -98,7 +99,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                 className="font-heading text-heading-foreground"
                 style={{ fontSize: 'var(--font-size-h1)' }}
               >
-                {experience.title}
+                <TranslatedText experienceId={experience.id} field="title" fallback={experience.title} />
               </h1>
               <p 
                 className="text-muted-foreground mt-1"
@@ -109,8 +110,9 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                   <> · {experience.available_languages.map(code => getLanguageName(code)).join(', ')}</>
                 )}
               </p>
-              <RichText
-                text={experience.description}
+              <TranslatedRichText
+                experienceId={experience.id}
+                fallbackText={experience.description}
                 className="text-foreground mt-3 leading-relaxed font-body"
                 style={{ fontSize: 'var(--font-size-body)' }}
               />
@@ -158,7 +160,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                     className="text-muted-foreground mt-0.5"
                     style={{ fontSize: 'var(--font-size-sm)' }}
                   >
-                    {experience.meeting_point}
+                    <TranslatedText experienceId={experience.id} field="meetingPoint" fallback={experience.meeting_point} />
                   </p>
                 </div>
               )}

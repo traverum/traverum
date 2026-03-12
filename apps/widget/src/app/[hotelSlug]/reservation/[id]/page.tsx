@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getHotelBySlug } from '@/lib/hotels'
 import { formatDate, formatTime, formatPrice, cn } from '@/lib/utils'
 import { Header } from '@/components/Header'
+import { TranslatedText } from '@/components/TranslatedText'
 
 // Force dynamic rendering so hotel config changes take effect immediately
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,7 @@ export default async function ReservationPage({ params, searchParams }: Reservat
     .from('reservations')
     .select(`
       *,
-      experience:experiences(title, slug, duration_minutes, meeting_point, currency),
+      experience:experiences(id, title, slug, duration_minutes, meeting_point, currency),
       session:experience_sessions(session_date, start_time)
     `)
     .eq('id', id)
@@ -119,7 +120,7 @@ export default async function ReservationPage({ params, searchParams }: Reservat
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Experience</span>
-                  <span className="font-medium text-foreground">{experience.title}</span>
+                  <span className="font-medium text-foreground"><TranslatedText experienceId={experience.id} field="title" fallback={experience.title} /></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Date</span>

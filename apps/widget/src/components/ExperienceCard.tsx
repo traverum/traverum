@@ -7,6 +7,7 @@ import { Clock, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDuration, formatPrice } from '@/lib/utils'
 import { trackExperienceView } from '@/lib/analytics.client'
+import { useTranslatedExperience } from '@/hooks/useTranslatedExperience'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 
 interface ExperienceCardProps {
@@ -25,6 +26,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
   const [imgError, setImgError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const cardRef = useRef<HTMLAnchorElement>(null)
+  const { title: translatedTitle, isTranslating } = useTranslatedExperience(experience)
 
   useEffect(() => {
     const el = cardRef.current
@@ -80,7 +82,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
             <Image
               key={retryCount}
               src={experience.coverImage}
-              alt={experience.title}
+              alt={translatedTitle}
               fill
               className="object-cover"
               loading="lazy"
@@ -103,7 +105,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           {/* Text overlay at bottom */}
           <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-            <h3 className="text-2xl font-light mb-4">{experience.title}</h3>
+            <h3 className={cn("text-2xl font-light mb-4", isTranslating && "animate-pulse")}>{translatedTitle}</h3>
             <div className="flex items-center justify-between gap-3">
               <span className="flex items-center gap-1.5 text-white/90 text-sm min-w-0">
                 <MapPin className="w-4 h-4 flex-shrink-0" aria-hidden />
@@ -134,7 +136,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
           <Image
             key={retryCount}
             src={experience.coverImage}
-            alt={experience.title}
+            alt={translatedTitle}
             fill
             className="object-cover"
             loading="lazy"
@@ -149,8 +151,8 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <h3 className="absolute bottom-4 left-4 right-4 font-heading text-lg text-white">
-          {experience.title}
+        <h3 className={cn("absolute bottom-4 left-4 right-4 font-heading text-lg text-white", isTranslating && "animate-pulse")}>
+          {translatedTitle}
         </h3>
       </div>
     </Link>

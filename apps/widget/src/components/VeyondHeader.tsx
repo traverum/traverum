@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { ContentLanguageSelector } from '@/components/ContentLanguageSelector'
 
 interface VeyondHeaderProps {
   showBack?: boolean
@@ -43,6 +44,9 @@ export function VeyondHeader({ showBack = false, backTo }: VeyondHeaderProps) {
               <span className="text-lg font-heading" style={{ color: '#5D4631' }}>Veyond</span>
             </Link>
           )}
+        </div>
+        <div className="flex-shrink-0">
+          <ContentLanguageSelector />
         </div>
       </div>
     </header>

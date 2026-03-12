@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import { formatDate, formatTime, formatPrice, cn } from '@/lib/utils'
 import { VeyondHeader } from '@/components/VeyondHeader'
+import { TranslatedText } from '@/components/TranslatedText'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +20,7 @@ export default async function DirectReservationPage({ params }: ReservationPageP
     .from('reservations')
     .select(`
       *,
-      experience:experiences(title, slug, duration_minutes, meeting_point, currency),
+      experience:experiences(id, title, slug, duration_minutes, meeting_point, currency),
       session:experience_sessions(session_date, start_time)
     `)
     .eq('id', id)
@@ -101,7 +102,7 @@ export default async function DirectReservationPage({ params }: ReservationPageP
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Experience</span>
-                  <span className="font-medium text-foreground">{experience.title}</span>
+                  <span className="font-medium text-foreground"><TranslatedText experienceId={experience.id} field="title" fallback={experience.title} /></span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Date</span>

@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import { formatDate, formatTime, formatPrice } from '@/lib/utils'
 import { VeyondHeader } from '@/components/VeyondHeader'
+import { TranslatedText } from '@/components/TranslatedText'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,7 @@ export default async function DirectConfirmationPage({ params }: ConfirmationPag
       *,
       reservation:reservations(
         *,
-        experience:experiences(title, slug, duration_minutes, meeting_point, currency),
+        experience:experiences(id, title, slug, duration_minutes, meeting_point, currency),
         session:experience_sessions(session_date, start_time)
       )
     `)
@@ -39,7 +40,7 @@ export default async function DirectConfirmationPage({ params }: ConfirmationPag
       .from('reservations')
       .select(`
         *,
-        experience:experiences(title, slug, duration_minutes, meeting_point, currency),
+        experience:experiences(id, title, slug, duration_minutes, meeting_point, currency),
         session:experience_sessions(session_date, start_time),
         booking:bookings(*)
       `)
@@ -99,7 +100,7 @@ export default async function DirectConfirmationPage({ params }: ConfirmationPag
             <div className="space-y-3 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Experience</span>
-                <span className="font-medium text-card-foreground">{experience.title}</span>
+                <span className="font-medium text-card-foreground"><TranslatedText experienceId={experience.id} field="title" fallback={experience.title} /></span>
               </div>
 
               <div className="flex justify-between">
@@ -125,7 +126,7 @@ export default async function DirectConfirmationPage({ params }: ConfirmationPag
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Meeting Point</span>
                   <span className="font-medium text-card-foreground text-right max-w-[60%]">
-                    {experience.meeting_point}
+                    <TranslatedText experienceId={experience.id} field="meetingPoint" fallback={experience.meeting_point} />
                   </span>
                 </div>
               )}
