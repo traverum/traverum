@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          id: string
+          event_type: string
+          hotel_config_id: string | null
+          experience_id: string | null
+          source: string | null
+          embed_mode: string | null
+          session_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_type: string
+          hotel_config_id?: string | null
+          experience_id?: string | null
+          source?: string | null
+          embed_mode?: string | null
+          session_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          event_type?: string
+          hotel_config_id?: string | null
+          experience_id?: string | null
+          source?: string | null
+          embed_mode?: string | null
+          session_id?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_hotel_config_id_fkey"
+            columns: ["hotel_config_id"]
+            isOneToOne: false
+            referencedRelation: "hotel_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           amount_cents: number
@@ -645,6 +693,7 @@ export type Database = {
           reservation_status: string
           response_deadline: string
           session_id: string | null
+          source: string | null
           stripe_payment_link_id: string | null
           stripe_payment_link_url: string | null
           time_preference: string | null
@@ -672,6 +721,7 @@ export type Database = {
           reservation_status?: string
           response_deadline: string
           session_id?: string | null
+          source?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
           time_preference?: string | null
@@ -699,6 +749,7 @@ export type Database = {
           reservation_status?: string
           response_deadline?: string
           session_id?: string | null
+          source?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
           time_preference?: string | null
@@ -1948,6 +1999,7 @@ export const Constants = {
 
 
 // Convenience types
+export type AnalyticsEvent = Database['public']['Tables']['analytics_events']['Row']
 export type Booking = Database['public']['Tables']['bookings']['Row']
 export type Distribution = Database['public']['Tables']['distributions']['Row']
 export type ExperienceSession = Database['public']['Tables']['experience_sessions']['Row']

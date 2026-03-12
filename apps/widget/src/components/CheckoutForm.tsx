@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { getAnalyticsSource } from '@/lib/analytics.client'
 import { DemoSuccessOverlay } from './DemoSuccessOverlay'
 
 const checkoutSchema = z.object({
@@ -107,6 +108,7 @@ export function CheckoutForm({
           guestEmail: data.email,
           guestPhone: data.phone,
           preferredLanguage: preferredLanguage || null,
+          source: getAnalyticsSource(),
           ...(rentalDays ? { rentalDays } : {}),
           ...(quantity ? { quantity } : {}),
         }),

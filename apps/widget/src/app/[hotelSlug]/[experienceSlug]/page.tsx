@@ -3,6 +3,7 @@ import { getHotelBySlug, getExperienceForHotel } from '@/lib/hotels'
 import { getAvailableSessions } from '@/lib/sessions'
 import { getExperienceAvailability } from '@/lib/availability.server'
 import { getEmbedMode, formatDuration, cn } from '@/lib/utils'
+import { logAnalyticsEvent, parseSource } from '@/lib/analytics.server'
 import { getCancellationPolicyExperienceIntro } from '@/lib/availability'
 import { getLanguageName } from '@/lib/languages'
 import { Header } from '@/components/Header'
@@ -18,7 +19,7 @@ export const dynamic = 'force-dynamic'
 
 interface ExperiencePageProps {
   params: Promise<{ hotelSlug: string; experienceSlug: string }>
-  searchParams: Promise<{ embed?: string; returnUrl?: string }>
+  searchParams: Promise<{ embed?: string; returnUrl?: string; source?: string }>
 }
 
 export async function generateMetadata({ params }: ExperiencePageProps): Promise<Metadata> {
@@ -50,6 +51,14 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
   if (!hotel || !experience) {
     notFound()
   }
+
+  logAnalyticsEvent({
+    event_type: 'experience_details',
+    hotel_config_id: hotel.id,
+    experience_id: experience.id,
+    source: parseSource(search.source),
+    embed_mode: embedMode === 'section' ? 'section' : 'full',
+  })
   
   const [sessions, availabilityRules] = await Promise.all([
     getAvailableSessions(experience.id),

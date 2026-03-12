@@ -15,9 +15,10 @@ interface ExperienceListClientProps {
   returnUrl?: string | null
   /** Use 'veyond' card style (portrait, duration badge, location, from price) when on /experiences */
   cardStyle?: 'default' | 'veyond'
+  hotelConfigId?: string | null
 }
 
-export function ExperienceListClient({ experiences, hotelSlug, embedMode, returnUrl, cardStyle }: ExperienceListClientProps) {
+export function ExperienceListClient({ experiences, hotelSlug, embedMode, returnUrl, cardStyle, hotelConfigId }: ExperienceListClientProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
 
   // Extract unique categories from all experiences (first tag element is the category)
@@ -113,6 +114,7 @@ export function ExperienceListClient({ experiences, hotelSlug, embedMode, return
                   embedMode={embedMode}
                   returnUrl={returnUrl}
                   cardStyle={cardStyle}
+                  hotelConfigId={hotelConfigId}
                 />
               </motion.div>
             ))

@@ -2,8 +2,10 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { getHotelWithExperiences } from '@/lib/hotels'
 import { getEmbedMode, cn } from '@/lib/utils'
+import { logAnalyticsEvent, parseSource } from '@/lib/analytics.server'
 import { Header } from '@/components/Header'
 import { ExperienceListClient } from '@/components/ExperienceListClient'
+import { AnalyticsSessionInit } from '@/components/AnalyticsSessionInit'
 import { EmbedResizer } from '@/components/EmbedResizer'
 
 // Inherit dynamic from layout - hotel config changes take effect immediately
@@ -11,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 interface HotelPageProps {
   params: Promise<{ hotelSlug: string }>
-  searchParams: Promise<{ embed?: string; returnUrl?: string }>
+  searchParams: Promise<{ embed?: string; returnUrl?: string; source?: string }>
 }
 
 export default async function HotelPage({ params, searchParams }: HotelPageProps) {
@@ -19,6 +21,7 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
   const search = await searchParams
   const embedMode = getEmbedMode(search)
   const returnUrl = search.returnUrl
+  const source = parseSource(search.source)
   
   const data = await getHotelWithExperiences(hotelSlug)
   
@@ -27,6 +30,13 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
   }
   
   const { hotel, experiences } = data
+
+  logAnalyticsEvent({
+    event_type: 'widget_view',
+    hotel_config_id: hotel.id,
+    source,
+    embed_mode: embedMode === 'section' ? 'section' : 'full',
+  })
   const titleEnabled = hotel.widget_title_enabled ?? true
   const widgetTitle = hotel.widget_title || 'Local Experiences'
   const rawSubtitle =
@@ -137,6 +147,7 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
               hotelSlug={hotelSlug}
               embedMode={embedMode}
               returnUrl={returnUrl}
+              hotelConfigId={hotel.id}
             />
             
             {/* View all link - section mode only */}
@@ -168,6 +179,8 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
         </div>
       </main>
       
+      <AnalyticsSessionInit source={source} />
+
       {/* Embed mode resize + body classes (client-only, after hydration) */}
       {embedMode === 'section' && <EmbedResizer />}
     </div>

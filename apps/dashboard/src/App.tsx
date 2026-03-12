@@ -38,6 +38,7 @@ import Analytics from "./pages/Analytics";
 import SupplierAnalytics from "./pages/supplier/Analytics";
 import HotelAnalytics from "./pages/hotel/Analytics";
 import Settings from "./pages/Settings";
+import Support from "./pages/Support";
 import Invite from "./pages/Invite";
 import NotFound from "./pages/NotFound";
 
@@ -242,6 +243,16 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Settings />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Support — for suppliers and hotels */}
+              <Route 
+                path="/support" 
+                element={
+                  <ProtectedRoute>
+                    <Support />
                   </ProtectedRoute>
                 } 
               />

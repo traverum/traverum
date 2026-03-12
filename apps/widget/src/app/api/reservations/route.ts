@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       rentalDays: rentalDaysParam,
       quantity,
       direct,
+      source,
     } = body
 
     const isDirect = direct === true
@@ -237,6 +238,7 @@ export async function POST(request: NextRequest) {
           payment_deadline: paymentDeadline.toISOString(),
           response_deadline: paymentDeadline.toISOString(),
           preferred_language: preferredLanguage || sessionData?.session_language || null,
+          source: source || null,
         })
         .select()
         .single()
@@ -307,6 +309,7 @@ export async function POST(request: NextRequest) {
         reservation_status: 'pending',
         response_deadline: responseDeadline.toISOString(),
         preferred_language: preferredLanguage || null,
+        source: source || null,
         ...(isRental ? {
           rental_start_date: requestDate,
           rental_end_date: rentalEndDate,

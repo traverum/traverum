@@ -1,10 +1,17 @@
 import { getAllActiveExperiences } from '@/lib/hotels'
+import { logAnalyticsEvent } from '@/lib/analytics.server'
 import { ExperienceListClient } from '@/components/ExperienceListClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ExperiencesBrowsePage() {
   const experiences = await getAllActiveExperiences()
+
+  logAnalyticsEvent({
+    event_type: 'widget_view',
+    hotel_config_id: null,
+    embed_mode: 'standalone',
+  })
 
   return (
     <div className="min-h-screen bg-background">

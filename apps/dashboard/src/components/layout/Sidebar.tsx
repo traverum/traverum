@@ -16,7 +16,7 @@ import {
   ChevronLeftIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
-import { PanelLeft } from 'lucide-react';
+import { PanelLeft, HelpCircle } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -38,9 +38,14 @@ export function Sidebar({ children }: SidebarProps) {
   const [creatingExperience, setCreatingExperience] = useState(false);
   const [creatingStay, setCreatingStay] = useState(false);
 
-  // Determine current view context purely from route — no capability gating
-  const isSupplierContext = location.pathname.startsWith('/supplier');
-  const isHotelContext = location.pathname.startsWith('/hotel');
+  // Determine current view context from route; on /support preserve context so sidebar stays full
+  const isSupportPage = location.pathname === '/support';
+  const isSupplierContext =
+    location.pathname.startsWith('/supplier') ||
+    (isSupportPage && (experiences.length > 0 || hotelConfigs.length === 0));
+  const isHotelContext =
+    location.pathname.startsWith('/hotel') ||
+    (isSupportPage && hotelConfigs.length > 0 && experiences.length === 0);
 
   const handleAddExperience = async () => {
     if (creatingExperience || !activePartnerId) return;
@@ -229,6 +234,23 @@ export function Sidebar({ children }: SidebarProps) {
                   )}
                 </NavLink>
 
+                {/* Analytics */}
+                <NavLink
+                  to="/supplier/analytics"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                      'hover:bg-accent',
+                      isActive
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <ChartBarIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>Analytics</span>
+                </NavLink>
+
                 {/* Experiences List */}
                 <div className="flex items-center justify-between px-2 py-1 mt-3">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -288,6 +310,23 @@ export function Sidebar({ children }: SidebarProps) {
             {/* ── Hotel Navigation (Stays view) ── */}
             {isHotelContext && (
               <>
+                {/* Analytics */}
+                <NavLink
+                  to="/hotel/analytics"
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                      'hover:bg-accent',
+                      isActive
+                        ? 'bg-accent text-foreground'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )
+                  }
+                >
+                  <ChartBarIcon className="h-4 w-4 flex-shrink-0" />
+                  <span>Analytics</span>
+                </NavLink>
+
                 {/* Stays List */}
                 <div className="flex items-center justify-between px-2 py-1 mt-3">
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -347,27 +386,27 @@ export function Sidebar({ children }: SidebarProps) {
               </>
             )}
           </div>
-
-          {/* Analytics - Bottom */}
-          <div className="pt-2 border-t border-border mt-auto">
-            <NavLink
-              to={isHotelContext ? '/hotel/analytics' : '/supplier/analytics'}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
-                  'hover:bg-accent',
-                  isActive
-                    ? 'bg-accent text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                )
-              }
-            >
-              <ChartBarIcon className="h-4 w-4 flex-shrink-0" />
-              <span>Analytics</span>
-            </NavLink>
-          </div>
         </nav>
-        
+
+        {/* Bottom: Support — visible for both supplier and hotel */}
+        <div className="border-t border-border px-2 py-2 flex-shrink-0">
+          <NavLink
+            to="/support"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-2 h-7 px-2 rounded-md text-sm font-medium transition-colors',
+                'hover:bg-accent',
+                isActive
+                  ? 'bg-accent text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )
+            }
+          >
+            <HelpCircle className="h-4 w-4 flex-shrink-0" />
+            <span>Support</span>
+          </NavLink>
+        </div>
+
         {children}
       </aside>
     </>

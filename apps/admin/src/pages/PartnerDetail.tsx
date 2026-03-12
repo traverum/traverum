@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, ExternalLink, Pencil, ReceiptText, Search, Wallet } from 'lucide-react';
+import { Building2, ExternalLink, Eye, Hotel, Package, Pencil, ReceiptText, Search, TrendingUp, Wallet } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -92,6 +99,52 @@ interface SummaryResponse {
   partner: Partner;
   summary: PartnerSummary;
   commissionRates: CommissionRate[];
+}
+
+interface BookingPerformance {
+  requests: number;
+  accepted: number;
+  declined: number;
+  expired: number;
+  booked: number;
+  cancelled: number;
+}
+
+interface PropertyAnalytics {
+  hotelConfigId: string;
+  name: string;
+  slug: string;
+  widgetViews: number;
+  viewsBySource: { source: string; count: number }[];
+  viewsByDay: { date: string; count: number }[];
+  experienceViews: { experienceId: string; title: string; listViews: number; detailViews: number; bookings: number }[];
+  bookingPerformance: BookingPerformance;
+  transactionPerformance: {
+    totalRevenueCents: number;
+    averageDealCents: number;
+    paidBookings: number;
+    topExperiences: { experienceId: string; title: string; bookings: number; revenueCents: number }[];
+  };
+}
+
+interface ExperienceAnalytics {
+  experienceId: string;
+  title: string;
+  totalListViews: number;
+  totalDetailViews: number;
+  viewsByHotel: { hotelConfigId: string | null; hotelName: string; listViews: number; detailViews: number }[];
+  bookingPerformance: BookingPerformance;
+  revenue: {
+    totalRevenueCents: number;
+    supplierShareCents: number;
+    averageDealCents: number;
+    revenueByHotel: { hotelConfigId: string | null; hotelName: string; bookings: number; revenueCents: number }[];
+  };
+}
+
+interface PartnerAnalytics {
+  hotelAnalytics: { properties: PropertyAnalytics[] } | null;
+  supplierAnalytics: { experiences: ExperienceAnalytics[] } | null;
 }
 
 interface PayoutRow {
@@ -192,7 +245,16 @@ export default function PartnerDetail() {
     enabled: !!partnerId,
   });
 
+  const { data: analyticsData, isLoading: analyticsLoading } = useQuery({
+    queryKey: ['admin-partner-analytics', partnerId],
+    queryFn: () =>
+      fetchAdminJson<PartnerAnalytics>(`/api/admin/partners/${partnerId}/analytics`),
+    enabled: !!partnerId && activeTab === 'analytics',
+  });
+
   const queryClient = useQueryClient();
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('__all__');
+  const [selectedExperienceId, setSelectedExperienceId] = useState<string>('__all__');
   const [editDistribution, setEditDistribution] = useState<DistributionRow | null>(null);
   const [editSupplier, setEditSupplier] = useState('');
   const [editHotel, setEditHotel] = useState('');
@@ -852,42 +914,439 @@ export default function PartnerDetail() {
       )}
 
       {activeTab === 'analytics' && (
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card className="border border-border">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium">Website analytics</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Traffic source breakdown and visits per page are planned here.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border border-border">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium">Booking analytics</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Request, acceptance, conversion, and cancellation analytics are planned here.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border border-border">
-            <CardContent className="p-4">
-              <p className="text-sm font-medium">Transaction analytics</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Most booked experiences, average order value, and partner ranking are planned here.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+        <div className="space-y-8">
+          {analyticsLoading ? (
+            <div className="grid md:grid-cols-3 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i} className="border border-border">
+                  <CardContent className="p-4 space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-7 w-16" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : analyticsData ? (
+            <>
+              {/* ====================== HOTEL ANALYTICS ====================== */}
+              {analyticsData.hotelAnalytics && (
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Hotel className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm font-semibold">Hotel analytics</p>
+                    </div>
+                    {analyticsData.hotelAnalytics.properties.length > 1 && (
+                      <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                        <SelectTrigger className="w-[220px] h-8 text-xs">
+                          <SelectValue placeholder="Select property" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">All properties</SelectItem>
+                          {analyticsData.hotelAnalytics.properties.map(p => (
+                            <SelectItem key={p.hotelConfigId} value={p.hotelConfigId}>{p.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
 
-      {!isHotel && (
-        <Card className="border border-border">
-          <CardContent className="p-6">
-            <p className="text-sm text-muted-foreground">
-              Supplier-specific commission and analytics sections will be added in a future phase.
-            </p>
-          </CardContent>
-        </Card>
+                  {(() => {
+                    const hotel = analyticsData.hotelAnalytics!;
+                    const properties = selectedPropertyId === '__all__'
+                      ? hotel.properties
+                      : hotel.properties.filter(p => p.hotelConfigId === selectedPropertyId);
+
+                    const agg = {
+                      widgetViews: properties.reduce((s, p) => s + p.widgetViews, 0),
+                      requests: properties.reduce((s, p) => s + p.bookingPerformance.requests, 0),
+                      accepted: properties.reduce((s, p) => s + p.bookingPerformance.accepted, 0),
+                      declined: properties.reduce((s, p) => s + p.bookingPerformance.declined, 0),
+                      expired: properties.reduce((s, p) => s + p.bookingPerformance.expired, 0),
+                      booked: properties.reduce((s, p) => s + p.bookingPerformance.booked, 0),
+                      cancelled: properties.reduce((s, p) => s + p.bookingPerformance.cancelled, 0),
+                      totalRevenueCents: properties.reduce((s, p) => s + p.transactionPerformance.totalRevenueCents, 0),
+                      paidBookings: properties.reduce((s, p) => s + p.transactionPerformance.paidBookings, 0),
+                    };
+                    const avgDeal = agg.paidBookings > 0 ? Math.round(agg.totalRevenueCents / agg.paidBookings) : 0;
+
+                    const mergedSources = new Map<string, number>();
+                    for (const p of properties) {
+                      for (const s of p.viewsBySource) {
+                        mergedSources.set(s.source, (mergedSources.get(s.source) || 0) + s.count);
+                      }
+                    }
+
+                    const mergedExpViews = new Map<string, { title: string; listViews: number; detailViews: number; bookings: number }>();
+                    for (const p of properties) {
+                      for (const ev of p.experienceViews) {
+                        const existing = mergedExpViews.get(ev.experienceId) || { title: ev.title, listViews: 0, detailViews: 0, bookings: 0 };
+                        existing.listViews += ev.listViews;
+                        existing.detailViews += ev.detailViews;
+                        existing.bookings += ev.bookings;
+                        mergedExpViews.set(ev.experienceId, existing);
+                      }
+                    }
+
+                    const mergedTopExp = new Map<string, { title: string; bookings: number; revenueCents: number }>();
+                    for (const p of properties) {
+                      for (const te of p.transactionPerformance.topExperiences) {
+                        const existing = mergedTopExp.get(te.experienceId) || { title: te.title, bookings: 0, revenueCents: 0 };
+                        existing.bookings += te.bookings;
+                        existing.revenueCents += te.revenueCents;
+                        mergedTopExp.set(te.experienceId, existing);
+                      }
+                    }
+
+                    return (
+                      <div className="space-y-5">
+                        {/* Widget views */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                            <p className="text-xs font-medium text-muted-foreground">Widget views</p>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Total views</p>
+                                <p className="text-xl font-semibold">{agg.widgetViews}</p>
+                              </CardContent>
+                            </Card>
+                            {Array.from(mergedSources.entries()).map(([source, count]) => (
+                              <Card key={source} className="border border-border">
+                                <CardContent className="p-4">
+                                  <p className="text-xs text-muted-foreground mb-1 capitalize">{source}</p>
+                                  <p className="text-xl font-semibold">{count}</p>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                          {mergedExpViews.size > 0 && (
+                            <Card className="border border-border mt-3">
+                              <CardContent className="p-0">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Experience</TableHead>
+                                      <TableHead className="text-right">List views</TableHead>
+                                      <TableHead className="text-right">Detail views</TableHead>
+                                      <TableHead className="text-right">Bookings</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from(mergedExpViews.entries()).map(([id, data]) => (
+                                      <TableRow key={id}>
+                                        <TableCell className="text-sm">{data.title}</TableCell>
+                                        <TableCell className="text-sm text-right">{data.listViews}</TableCell>
+                                        <TableCell className="text-sm text-right">{data.detailViews}</TableCell>
+                                        <TableCell className="text-sm text-right">{data.bookings}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+
+                        {/* Booking performance */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            <p className="text-xs font-medium text-muted-foreground">Booking performance</p>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            {[
+                              { label: 'Requests', value: agg.requests },
+                              { label: 'Accepted', value: agg.accepted },
+                              { label: 'Declined', value: agg.declined },
+                              { label: 'Expired', value: agg.expired },
+                              { label: 'Booked', value: agg.booked },
+                              { label: 'Cancelled', value: agg.cancelled },
+                            ].map(item => (
+                              <Card key={item.label} className="border border-border">
+                                <CardContent className="p-4">
+                                  <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                                  <p className="text-xl font-semibold">{item.value}</p>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Transaction performance */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                            <p className="text-xs font-medium text-muted-foreground">Transaction performance</p>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Total revenue</p>
+                                <p className="text-xl font-semibold">{formatPrice(agg.totalRevenueCents)}</p>
+                              </CardContent>
+                            </Card>
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Average deal</p>
+                                <p className="text-xl font-semibold">{formatPrice(avgDeal)}</p>
+                              </CardContent>
+                            </Card>
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Paid bookings</p>
+                                <p className="text-xl font-semibold">{agg.paidBookings}</p>
+                              </CardContent>
+                            </Card>
+                          </div>
+                          {mergedTopExp.size > 0 && (
+                            <Card className="border border-border mt-3">
+                              <CardContent className="p-0">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Experience</TableHead>
+                                      <TableHead className="text-right">Bookings</TableHead>
+                                      <TableHead className="text-right">Revenue</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from(mergedTopExp.entries())
+                                      .sort((a, b) => b[1].revenueCents - a[1].revenueCents)
+                                      .map(([id, data]) => (
+                                        <TableRow key={id}>
+                                          <TableCell className="text-sm">{data.title}</TableCell>
+                                          <TableCell className="text-sm text-right">{data.bookings}</TableCell>
+                                          <TableCell className="text-sm text-right">{formatPrice(data.revenueCents)}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* ====================== SUPPLIER ANALYTICS ====================== */}
+              {analyticsData.supplierAnalytics && (
+                <div className="space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-muted-foreground" />
+                      <p className="text-sm font-semibold">Supplier analytics</p>
+                    </div>
+                    {analyticsData.supplierAnalytics.experiences.length > 1 && (
+                      <Select value={selectedExperienceId} onValueChange={setSelectedExperienceId}>
+                        <SelectTrigger className="w-[220px] h-8 text-xs">
+                          <SelectValue placeholder="Select experience" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__all__">All experiences</SelectItem>
+                          {analyticsData.supplierAnalytics.experiences.map(e => (
+                            <SelectItem key={e.experienceId} value={e.experienceId}>{e.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+
+                  {(() => {
+                    const supplier = analyticsData.supplierAnalytics!;
+                    const exps = selectedExperienceId === '__all__'
+                      ? supplier.experiences
+                      : supplier.experiences.filter(e => e.experienceId === selectedExperienceId);
+
+                    const agg = {
+                      totalListViews: exps.reduce((s, e) => s + e.totalListViews, 0),
+                      totalDetailViews: exps.reduce((s, e) => s + e.totalDetailViews, 0),
+                      requests: exps.reduce((s, e) => s + e.bookingPerformance.requests, 0),
+                      accepted: exps.reduce((s, e) => s + e.bookingPerformance.accepted, 0),
+                      declined: exps.reduce((s, e) => s + e.bookingPerformance.declined, 0),
+                      expired: exps.reduce((s, e) => s + e.bookingPerformance.expired, 0),
+                      booked: exps.reduce((s, e) => s + e.bookingPerformance.booked, 0),
+                      cancelled: exps.reduce((s, e) => s + e.bookingPerformance.cancelled, 0),
+                      totalRevenueCents: exps.reduce((s, e) => s + e.revenue.totalRevenueCents, 0),
+                      supplierShareCents: exps.reduce((s, e) => s + e.revenue.supplierShareCents, 0),
+                    };
+                    const avgDeal = agg.booked > 0 ? Math.round(agg.totalRevenueCents / agg.booked) : 0;
+
+                    // Aggregate views-by-hotel across selected experiences
+                    const hotelViewMap = new Map<string, { hotelName: string; listViews: number; detailViews: number }>();
+                    for (const exp of exps) {
+                      for (const hv of exp.viewsByHotel) {
+                        const key = hv.hotelConfigId || '__direct__';
+                        const existing = hotelViewMap.get(key) || { hotelName: hv.hotelName, listViews: 0, detailViews: 0 };
+                        existing.listViews += hv.listViews;
+                        existing.detailViews += hv.detailViews;
+                        hotelViewMap.set(key, existing);
+                      }
+                    }
+
+                    // Aggregate revenue-by-hotel across selected experiences
+                    const hotelRevMap = new Map<string, { hotelName: string; bookings: number; revenueCents: number }>();
+                    for (const exp of exps) {
+                      for (const hr of exp.revenue.revenueByHotel) {
+                        const key = hr.hotelConfigId || '__direct__';
+                        const existing = hotelRevMap.get(key) || { hotelName: hr.hotelName, bookings: 0, revenueCents: 0 };
+                        existing.bookings += hr.bookings;
+                        existing.revenueCents += hr.revenueCents;
+                        hotelRevMap.set(key, existing);
+                      }
+                    }
+
+                    return (
+                      <div className="space-y-5">
+                        {/* Experience views */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                            <p className="text-xs font-medium text-muted-foreground">Experience views</p>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">List views</p>
+                                <p className="text-xl font-semibold">{agg.totalListViews}</p>
+                              </CardContent>
+                            </Card>
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Detail views</p>
+                                <p className="text-xl font-semibold">{agg.totalDetailViews}</p>
+                              </CardContent>
+                            </Card>
+                          </div>
+                          {hotelViewMap.size > 0 && (
+                            <Card className="border border-border mt-3">
+                              <CardContent className="p-0">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Channel</TableHead>
+                                      <TableHead className="text-right">List views</TableHead>
+                                      <TableHead className="text-right">Detail views</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from(hotelViewMap.entries()).map(([key, data]) => (
+                                      <TableRow key={key}>
+                                        <TableCell className="text-sm">{data.hotelName}</TableCell>
+                                        <TableCell className="text-sm text-right">{data.listViews}</TableCell>
+                                        <TableCell className="text-sm text-right">{data.detailViews}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+
+                        {/* Booking performance */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                            <p className="text-xs font-medium text-muted-foreground">Booking performance</p>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            {[
+                              { label: 'Requests', value: agg.requests },
+                              { label: 'Accepted', value: agg.accepted },
+                              { label: 'Declined', value: agg.declined },
+                              { label: 'Expired', value: agg.expired },
+                              { label: 'Booked', value: agg.booked },
+                              { label: 'Cancelled', value: agg.cancelled },
+                            ].map(item => (
+                              <Card key={item.label} className="border border-border">
+                                <CardContent className="p-4">
+                                  <p className="text-xs text-muted-foreground mb-1">{item.label}</p>
+                                  <p className="text-xl font-semibold">{item.value}</p>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Revenue */}
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
+                            <p className="text-xs font-medium text-muted-foreground">Revenue</p>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Total revenue</p>
+                                <p className="text-xl font-semibold">{formatPrice(agg.totalRevenueCents)}</p>
+                              </CardContent>
+                            </Card>
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Supplier share</p>
+                                <p className="text-xl font-semibold">{formatPrice(agg.supplierShareCents)}</p>
+                              </CardContent>
+                            </Card>
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Average deal</p>
+                                <p className="text-xl font-semibold">{formatPrice(avgDeal)}</p>
+                              </CardContent>
+                            </Card>
+                            <Card className="border border-border">
+                              <CardContent className="p-4">
+                                <p className="text-xs text-muted-foreground mb-1">Paid bookings</p>
+                                <p className="text-xl font-semibold">{agg.booked}</p>
+                              </CardContent>
+                            </Card>
+                          </div>
+                          {hotelRevMap.size > 0 && (
+                            <Card className="border border-border mt-3">
+                              <CardContent className="p-0">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Channel</TableHead>
+                                      <TableHead className="text-right">Bookings</TableHead>
+                                      <TableHead className="text-right">Revenue</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {Array.from(hotelRevMap.entries())
+                                      .sort((a, b) => b[1].revenueCents - a[1].revenueCents)
+                                      .map(([key, data]) => (
+                                        <TableRow key={key}>
+                                          <TableCell className="text-sm">{data.hotelName}</TableCell>
+                                          <TableCell className="text-sm text-right">{data.bookings}</TableCell>
+                                          <TableCell className="text-sm text-right">{formatPrice(data.revenueCents)}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                  </TableBody>
+                                </Table>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {!analyticsData.hotelAnalytics && !analyticsData.supplierAnalytics && (
+                <p className="text-sm text-muted-foreground">This partner has no hotel properties or experiences yet.</p>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">No analytics data available.</p>
+          )}
+        </div>
       )}
 
       {isHotel && (

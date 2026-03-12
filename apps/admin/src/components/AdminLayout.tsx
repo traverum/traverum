@@ -3,18 +3,22 @@ import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
+  BarChart3,
   Building2,
   CreditCard,
   LogOut,
   Shield,
+  MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Overview', end: true },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/payouts', icon: CreditCard, label: 'Payouts' },
   { to: '/partners', icon: Building2, label: 'Partners' },
+  { to: '/support-feedback', icon: MessageSquare, label: 'Support' },
 ];
 
 export function AdminLayout() {

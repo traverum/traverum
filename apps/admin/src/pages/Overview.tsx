@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatPrice } from '@/lib/utils';
 import { fetchAdminJson } from '@/lib/adminApi';
-import { Building2, CreditCard, TrendingUp } from 'lucide-react';
+import { Building2, CreditCard, Eye, TrendingUp } from 'lucide-react';
 
 interface PlatformStats {
   partnerCount: number;
@@ -13,12 +13,19 @@ interface PlatformStats {
   pendingPayoutsCount: number;
   totalBookings: number;
   completedBookings: number;
+  totalWidgetViews?: number;
 }
 
 function usePlatformStats() {
   return useQuery({
     queryKey: ['platform-stats'],
-    queryFn: () => fetchAdminJson<PlatformStats>('/api/admin/stats'),
+    queryFn: async (): Promise<PlatformStats> => {
+      const [stats, analytics] = await Promise.all([
+        fetchAdminJson<PlatformStats>('/api/admin/stats'),
+        fetchAdminJson<{ totalWidgetViews: number }>('/api/admin/analytics').catch(() => ({ totalWidgetViews: 0 })),
+      ]);
+      return { ...stats, totalWidgetViews: analytics.totalWidgetViews };
+    },
     staleTime: 30 * 1000,
   });
 }
@@ -30,6 +37,13 @@ const statCards = [
     icon: Building2,
     getValue: (s: PlatformStats) => s.partnerCount.toString(),
     getSub: (s: PlatformStats) => `${s.supplierCount} suppliers, ${s.hotelCount} hotels`,
+  },
+  {
+    key: 'widgetViews',
+    label: 'Widget views',
+    icon: Eye,
+    getValue: (s: PlatformStats) => (s.totalWidgetViews ?? 0).toString(),
+    getSub: () => 'All-time page views',
   },
   {
     key: 'pendingPayouts',
@@ -60,9 +74,9 @@ export default function Overview() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading
-          ? Array.from({ length: 3 }).map((_, i) => (
+          ? Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="border border-border">
                 <CardContent className="p-5 space-y-2">
                   <Skeleton className="h-4 w-24" />

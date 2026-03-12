@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { getExperienceDirect } from '@/lib/hotels'
 import { getAvailableSessions } from '@/lib/sessions'
 import { getExperienceAvailability } from '@/lib/availability.server'
+import { logAnalyticsEvent } from '@/lib/analytics.server'
 import { formatDuration } from '@/lib/utils'
 import { getCancellationPolicyExperienceIntro } from '@/lib/availability'
 import { getLanguageName } from '@/lib/languages'
@@ -40,6 +41,13 @@ export default async function ExperienceDirectPage({ params }: ExperiencePagePro
   if (!experience) {
     notFound()
   }
+
+  logAnalyticsEvent({
+    event_type: 'experience_details',
+    hotel_config_id: null,
+    experience_id: experience.id,
+    embed_mode: 'standalone',
+  })
 
   const [sessions, availabilityRules] = await Promise.all([
     getAvailableSessions(experience.id),

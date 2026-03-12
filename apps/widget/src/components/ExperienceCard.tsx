@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Clock, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDuration, formatPrice } from '@/lib/utils'
+import { trackExperienceView } from '@/lib/analytics.client'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 
 interface ExperienceCardProps {
@@ -15,13 +16,31 @@ interface ExperienceCardProps {
   returnUrl?: string | null
   /** When 'veyond', uses large portrait card with duration badge, location, and "From X" price (for /experiences) */
   cardStyle?: 'default' | 'veyond'
+  hotelConfigId?: string | null
 }
 
 const MAX_RETRIES = 2
 
-export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', returnUrl, cardStyle = 'default' }: ExperienceCardProps) {
+export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', returnUrl, cardStyle = 'default', hotelConfigId }: ExperienceCardProps) {
   const [imgError, setImgError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  const cardRef = useRef<HTMLAnchorElement>(null)
+
+  useEffect(() => {
+    const el = cardRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          trackExperienceView(experience.id, hotelConfigId)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.5 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [experience.id, hotelConfigId])
   
   const handleImageError = useCallback(() => {
     if (retryCount < MAX_RETRIES) {
@@ -48,6 +67,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
   if (cardStyle === 'veyond') {
     return (
       <Link
+        ref={cardRef}
         href={href}
         {...linkProps}
         className={cn(
@@ -101,6 +121,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
   
   return (
     <Link 
+      ref={cardRef}
       href={href}
       {...linkProps}
       className={cn(
