@@ -58,15 +58,23 @@ export function Sidebar({ children }: SidebarProps) {
     try { localStorage.setItem('sidebar-stays', String(next)); } catch {}
   };
 
-  // When navigating to supplier or hotel area, expand the corresponding sidebar section so the full view is visible
+  // When navigating to supplier or hotel area, expand only that section and collapse the other
   useEffect(() => {
     const path = location.pathname;
     if (path.startsWith('/supplier')) {
       setExperiencesOpen(true);
-      try { localStorage.setItem('sidebar-experiences', 'true'); } catch {}
+      setStaysOpen(false);
+      try {
+        localStorage.setItem('sidebar-experiences', 'true');
+        localStorage.setItem('sidebar-stays', 'false');
+      } catch {}
     } else if (path.startsWith('/hotel')) {
       setStaysOpen(true);
-      try { localStorage.setItem('sidebar-stays', 'true'); } catch {}
+      setExperiencesOpen(false);
+      try {
+        localStorage.setItem('sidebar-stays', 'true');
+        localStorage.setItem('sidebar-experiences', 'false');
+      } catch {}
     }
   }, [location.pathname]);
 
