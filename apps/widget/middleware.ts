@@ -25,13 +25,13 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Only protect /dashboard routes (except /dashboard/login)
-  if (!pathname.startsWith('/dashboard')) {
+  // Only protect /dashboard and /receptionist routes
+  if (!pathname.startsWith('/dashboard') && !pathname.startsWith('/receptionist')) {
     return NextResponse.next()
   }
 
-  // Allow login page without auth
-  if (pathname === '/dashboard/login') {
+  // Allow login pages without auth
+  if (pathname === '/dashboard/login' || pathname === '/receptionist/login') {
     return NextResponse.next()
   }
 
@@ -89,9 +89,10 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // No session - redirect to login
+  // No session - redirect to appropriate login page
   if (!user) {
-    const loginUrl = new URL('/dashboard/login', request.url)
+    const loginPath = pathname.startsWith('/receptionist') ? '/receptionist/login' : '/dashboard/login'
+    const loginUrl = new URL(loginPath, request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
   }
@@ -100,5 +101,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/api/dashboard/:path*', '/api/organizations/:path*', '/api/admin/:path*'],
+  matcher: ['/dashboard/:path*', '/receptionist/:path*', '/api/dashboard/:path*', '/api/organizations/:path*', '/api/admin/:path*'],
 }

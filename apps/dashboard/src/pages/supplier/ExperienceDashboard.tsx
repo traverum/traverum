@@ -119,6 +119,7 @@ function ExperienceDashboardInner() {
   const [locationLat, setLocationLat] = useState<number | null>(null);
   const [locationLng, setLocationLng] = useState<number | null>(null);
   const [meetingPoint, setMeetingPoint] = useState(() => experience?.meeting_point || '');
+  const [hotelNotes, setHotelNotes] = useState(() => exp?.hotel_notes || '');
   const [minParticipants, setMinParticipants] = useState(() => (exp?.min_participants || 1).toString());
   const [maxParticipants, setMaxParticipants] = useState(() => experience?.max_participants?.toString() || '');
   
@@ -160,7 +161,7 @@ function ExperienceDashboardInner() {
     if (!hasInitialized.current) return;
     formValuesRef.current = {
       title, category, description, durationMinutes, locationAddress, locationLat, locationLng,
-      meetingPoint, minParticipants, maxParticipants, pricingType, basePriceCents,
+      meetingPoint, hotelNotes, minParticipants, maxParticipants, pricingType, basePriceCents,
       includedParticipants, extraPersonCents, pricePerDayCents, minDays, maxDays,
       cancellationPolicy, allowsRequests, availableLanguages,
       weekdays, startTime, endTime, validFrom, validUntil,
@@ -208,6 +209,7 @@ function ExperienceDashboardInner() {
         duration_minutes: durationValue,
         ...locationData,
         meeting_point: vals.meetingPoint?.trim() || null,
+        hotel_notes: vals.hotelNotes?.trim() || null,
         max_participants: maxP,
         min_participants: minP,
         ...(legacyPriceCents > 0 ? { price_cents: legacyPriceCents } : {}),
@@ -296,9 +298,9 @@ function ExperienceDashboardInner() {
         }
       }
       
-      // Meeting point
       setMeetingPoint(experience.meeting_point || '');
-      
+      setHotelNotes((experience as any).hotel_notes || '');
+
       setMinParticipants(((experience as any).min_participants || 1).toString());
       setMaxParticipants(experience.max_participants.toString());
       
@@ -372,6 +374,7 @@ function ExperienceDashboardInner() {
   const debouncedLocationLat = useDebounce(locationLat, 2000);
   const debouncedLocationLng = useDebounce(locationLng, 2000);
   const debouncedMeetingPoint = useDebounce(meetingPoint, 2000);
+  const debouncedHotelNotes = useDebounce(hotelNotes, 2000);
   const debouncedDuration = useDebounce(durationMinutes, 2000);
   const debouncedMinParticipants = useDebounce(minParticipants, 2000);
   const debouncedMaxParticipants = useDebounce(maxParticipants, 2000);
@@ -435,6 +438,7 @@ function ExperienceDashboardInner() {
           duration_minutes: durationValue,
           ...locationData,
           meeting_point: debouncedMeetingPoint.trim() || null,
+          hotel_notes: debouncedHotelNotes.trim() || null,
           max_participants: maxP,
           min_participants: minP,
           // Only update price_cents if it's greater than 0 (database constraint requires price_cents > 0)
@@ -1017,6 +1021,20 @@ function ExperienceDashboardInner() {
                   />
                   <p className="text-xs text-muted-foreground">
                     Optional: Free-form description of where to meet
+                  </p>
+                </div>
+
+                <div className="space-y-2 pt-4 border-t">
+                  <Label htmlFor="hotelNotes" className="text-sm">Information for Hotels</Label>
+                  <Textarea
+                    id="hotelNotes"
+                    value={hotelNotes}
+                    onChange={(e) => setHotelNotes(e.target.value)}
+                    rows={4}
+                    placeholder="Operational details for hotel staff: recommended arrival time, dress code, parking, what guests should bring, dietary accommodations, accessibility notes..."
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Visible to hotel staff only, not to guests. Helps receptionists give accurate instructions.
                   </p>
                 </div>
 

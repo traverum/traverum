@@ -464,6 +464,21 @@ export function Sidebar({ children }: SidebarProps) {
                       <PlusIcon className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="flex-1 min-w-0 truncate">{creatingStay ? 'Adding...' : 'New property'}</span>
                     </button>
+
+                    <div className="mt-2.5 pt-2 border-t border-border/40">
+                      <a
+                        href={`${import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu'}/receptionist`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left"
+                      >
+                        <ClockIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="flex-1 min-w-0 truncate">Receptionist Tool</span>
+                        <svg className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    </div>
                   </div>
                 )}
               </div>

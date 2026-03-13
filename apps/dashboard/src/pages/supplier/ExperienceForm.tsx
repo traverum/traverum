@@ -71,6 +71,7 @@ export default function ExperienceForm() {
   const [images, setImages] = useState<MediaItem[]>([]);
   const [durationMinutes, setDurationMinutes] = useState('');
   const [meetingPoint, setMeetingPoint] = useState('');
+  const [hotelNotes, setHotelNotes] = useState('');
   const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
   
   // Location state
@@ -375,6 +376,7 @@ export default function ExperienceForm() {
         duration_minutes: durationValue,
         max_participants: participantsValue,
         meeting_point: meetingPoint.trim() || null,
+        hotel_notes: hotelNotes.trim() || null,
         allows_requests: allowsRequests,
         experience_status: 'draft',
         pricing_type: pricingType,
@@ -612,6 +614,21 @@ export default function ExperienceForm() {
                   onChange={(e) => setMeetingPoint(e.target.value)}
                   disabled={loading}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="hotelNotes">Information for Hotels</Label>
+                <Textarea
+                  id="hotelNotes"
+                  value={hotelNotes}
+                  onChange={(e) => setHotelNotes(e.target.value)}
+                  rows={4}
+                  placeholder="Operational details for hotel staff: recommended arrival time, dress code, parking, what guests should bring..."
+                  disabled={loading}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Visible to hotel staff only, not to guests.
+                </p>
               </div>
 
               {/* Available Languages */}

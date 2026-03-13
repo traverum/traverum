@@ -12,7 +12,7 @@ import { calculatePrice } from '@/lib/pricing'
 import { createPaymentLink } from '@/lib/stripe'
 import { sanitizeGuestText, sanitizeGuestEmail } from '@/lib/sanitize'
 import { reservationLimiter, getClientIp } from '@/lib/rate-limit'
-import { PAYMENT_DEADLINE_HOURS } from '@traverum/shared'
+import { PAYMENT_DEADLINE_HOURS, DEFAULT_COMMISSION } from '@traverum/shared'
 import { addHours } from 'date-fns'
 
 export async function POST(request: NextRequest) {
@@ -48,6 +48,11 @@ export async function POST(request: NextRequest) {
       quantity,
       direct,
       source,
+      guestCompanyName,
+      guestVat,
+      guestBillingAddress,
+      invoiceRequested,
+      bookedByUserId,
     } = body
 
     const isDirect = direct === true
@@ -72,7 +77,11 @@ export async function POST(request: NextRequest) {
       )
     }
     const cleanPhone = guestPhone ? sanitizeGuestText(guestPhone, 30) : null
-    
+    const cleanCompanyName = guestCompanyName ? sanitizeGuestText(guestCompanyName, 200) : null
+    const cleanVat = guestVat ? sanitizeGuestText(guestVat, 50) : null
+    const cleanBillingAddress = guestBillingAddress ? sanitizeGuestText(guestBillingAddress, 500) : null
+    const invoiceRequestedBool = invoiceRequested === true
+
     const supabase = createAdminClient()
     
     // Get hotel config (skip for direct Veyond bookings)
@@ -112,7 +121,33 @@ export async function POST(request: NextRequest) {
     }
     
     const experience = experienceData as any
-    
+
+    // Auto-create distribution for receptionist bookings when no active distribution exists
+    if (!isDirect && hotel && source === 'receptionist') {
+      const { data: existingDist } = await (supabase
+        .from('distributions') as any)
+        .select('id')
+        .eq('experience_id', experienceId)
+        .eq('hotel_id', hotel.partner_id)
+        .eq('hotel_config_id', hotel.id)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle()
+
+      if (!existingDist) {
+        const isSelfOwned = experience.partner_id === hotel.partner_id
+        await (supabase.from('distributions') as any).insert({
+          experience_id: experienceId,
+          hotel_id: hotel.partner_id,
+          hotel_config_id: hotel.id,
+          commission_supplier: isSelfOwned ? 92 : DEFAULT_COMMISSION.supplier,
+          commission_hotel: isSelfOwned ? 0 : DEFAULT_COMMISSION.hotel,
+          commission_platform: DEFAULT_COMMISSION.platform,
+          is_active: true,
+        })
+      }
+    }
+
     // Validate participants against experience limits
     const isRental = experience.pricing_type === 'per_day'
     if (!isRental && (participants < 1 || participants > experience.max_participants)) {
@@ -231,6 +266,10 @@ export async function POST(request: NextRequest) {
           guest_name: cleanName,
           guest_email: cleanEmail,
           guest_phone: cleanPhone,
+          guest_company_name: cleanCompanyName,
+          guest_vat: cleanVat,
+          guest_billing_address: cleanBillingAddress,
+          invoice_requested: invoiceRequestedBool,
           participants,
           total_cents: expectedTotal,
           is_request: false,
@@ -239,6 +278,7 @@ export async function POST(request: NextRequest) {
           response_deadline: paymentDeadline.toISOString(),
           preferred_language: preferredLanguage || sessionData?.session_language || null,
           source: source || null,
+          ...(bookedByUserId ? { booked_by_user_id: bookedByUserId } : {}),
         })
         .select()
         .single()
@@ -300,6 +340,10 @@ export async function POST(request: NextRequest) {
         guest_name: cleanName,
         guest_email: cleanEmail,
         guest_phone: cleanPhone,
+        guest_company_name: cleanCompanyName,
+        guest_vat: cleanVat,
+        guest_billing_address: cleanBillingAddress,
+        invoice_requested: invoiceRequestedBool,
         participants: isRental ? (quantity || 1) : participants,
         total_cents: expectedTotal,
         is_request: true,
@@ -310,6 +354,7 @@ export async function POST(request: NextRequest) {
         response_deadline: responseDeadline.toISOString(),
         preferred_language: preferredLanguage || null,
         source: source || null,
+        ...(bookedByUserId ? { booked_by_user_id: bookedByUserId } : {}),
         ...(isRental ? {
           rental_start_date: requestDate,
           rental_end_date: rentalEndDate,
@@ -348,6 +393,9 @@ export async function POST(request: NextRequest) {
       manageUrl,
       hotelName: channelName,
       dashboardUrl,
+      guestCompanyName: cleanCompanyName,
+      guestVat: cleanVat,
+      invoiceRequested: invoiceRequestedBool,
       ...(isRental ? { rentalEndDate: rentalEndDate || undefined, rentalDays } : {}),
     })
 
