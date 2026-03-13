@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
@@ -57,6 +57,18 @@ export function Sidebar({ children }: SidebarProps) {
     setStaysOpen(next);
     try { localStorage.setItem('sidebar-stays', String(next)); } catch {}
   };
+
+  // When navigating to supplier or hotel area, expand the corresponding sidebar section so the full view is visible
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith('/supplier')) {
+      setExperiencesOpen(true);
+      try { localStorage.setItem('sidebar-experiences', 'true'); } catch {}
+    } else if (path.startsWith('/hotel')) {
+      setStaysOpen(true);
+      try { localStorage.setItem('sidebar-stays', 'true'); } catch {}
+    }
+  }, [location.pathname]);
 
   const handleAddExperience = async () => {
     if (creatingExperience || !activePartnerId) return;
@@ -229,127 +241,113 @@ export function Sidebar({ children }: SidebarProps) {
                   </button>
                 </div>
 
-                {/* Collapsible content */}
+                {/* Collapsible content — one continuous list (Notion-style) */}
                 {experiencesOpen && (
-                  <div className="mt-px space-y-px">
-                    {/* Main tools — prominent, daily use */}
-                    <div className="mt-2 space-y-px">
-                      <NavLink
-                        to="/supplier/sessions"
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center gap-2 h-8 pl-4 pr-2 rounded-md text-sm font-medium transition-colors',
-                            'hover:bg-accent',
-                            isActive
-                              ? 'bg-accent text-foreground'
-                              : 'text-foreground/90 hover:text-foreground'
-                          )
-                        }
-                      >
-                        <CalendarIcon className="h-4 w-4 flex-shrink-0" />
-                        <span className="flex-1">Calendar</span>
-                        {upcomingSessionsCount > 0 && (
-                          <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            {upcomingSessionsCount > 99 ? '99+' : upcomingSessionsCount}
-                          </span>
-                        )}
-                      </NavLink>
+                  <div className="mt-1.5 space-y-px">
+                    <NavLink
+                      to="/supplier/sessions"
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-md text-sm font-medium transition-colors',
+                          'hover:bg-accent',
+                          isActive
+                            ? 'bg-accent text-foreground'
+                            : 'text-foreground/90 hover:text-foreground'
+                        )
+                      }
+                    >
+                      <CalendarIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 truncate">Calendar</span>
+                      {upcomingSessionsCount > 0 && (
+                        <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+                          {upcomingSessionsCount > 99 ? '99+' : upcomingSessionsCount}
+                        </span>
+                      )}
+                    </NavLink>
 
-                      <NavLink
-                        to="/supplier/bookings"
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center gap-2 h-8 pl-4 pr-2 rounded-md text-sm font-medium transition-colors',
-                            'hover:bg-accent',
-                            isActive
-                              ? 'bg-accent text-foreground'
-                              : 'text-foreground/90 hover:text-foreground'
-                          )
-                        }
-                      >
-                        <ClockIcon className="h-4 w-4 flex-shrink-0" />
-                        <span className="flex-1">Bookings</span>
-                        {pendingRequests.length > 0 && (
-                          <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
-                            {pendingRequests.length > 99 ? '99+' : pendingRequests.length}
-                          </span>
-                        )}
-                      </NavLink>
+                    <NavLink
+                      to="/supplier/bookings"
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-md text-sm font-medium transition-colors',
+                          'hover:bg-accent',
+                          isActive
+                            ? 'bg-accent text-foreground'
+                            : 'text-foreground/90 hover:text-foreground'
+                        )
+                      }
+                    >
+                      <ClockIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 truncate">Bookings</span>
+                      {pendingRequests.length > 0 && (
+                        <span className="flex items-center justify-center min-w-[18px] h-4 px-1 rounded-full text-xs font-medium bg-destructive text-destructive-foreground">
+                          {pendingRequests.length > 99 ? '99+' : pendingRequests.length}
+                        </span>
+                      )}
+                    </NavLink>
 
-                      <NavLink
-                        to="/supplier/analytics"
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center gap-2 h-8 pl-4 pr-2 rounded-md text-sm font-medium transition-colors',
-                            'hover:bg-accent',
-                            isActive
-                              ? 'bg-accent text-foreground'
-                              : 'text-foreground/90 hover:text-foreground'
-                          )
-                        }
+                    <NavLink
+                      to="/supplier/analytics"
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-md text-sm font-medium transition-colors',
+                          'hover:bg-accent',
+                          isActive
+                            ? 'bg-accent text-foreground'
+                            : 'text-foreground/90 hover:text-foreground'
+                        )
+                      }
+                    >
+                      <ChartBarIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 truncate">Analytics</span>
+                    </NavLink>
+
+                    {/* Subtle separation + link to See all experiences */}
+                    <div className="mt-2.5 pt-0.5">
+                      <button
+                        onClick={() => navigate('/supplier/experiences')}
+                        className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 hover:text-foreground pl-3 pb-1 text-left transition-colors w-full"
                       >
-                        <ChartBarIcon className="h-4 w-4 flex-shrink-0" />
-                        <span>Analytics</span>
-                      </NavLink>
+                        Your experiences
+                      </button>
                     </div>
-
-                    {/* Your experiences — clickable title + See all, then list */}
-                    <div className="pt-4">
-                      <div className="flex items-center justify-between pl-4 pr-2 py-1.5">
-                        <button
-                          onClick={() => navigate('/supplier/experiences')}
-                          className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors text-left"
-                        >
-                          Your experiences
-                        </button>
-                        <button
-                          onClick={() => navigate('/supplier/experiences')}
-                          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                        >
-                          See all
-                        </button>
-                      </div>
-                      <div className="mx-2 my-1.5 border-t border-border" />
-                      {experiences.length > 0 ? (
-                      <div className="space-y-px pt-0.5">
-                        {experiences.map((experience) => {
-                          const isActive = isExperienceActive(experience.id);
-                          return (
-                            <button
-                              key={experience.id}
-                              onClick={() => navigate(`/supplier/experiences/${experience.id}`)}
-                              className={cn(
-                                'w-full flex items-center gap-2 h-7 pl-7 pr-2 rounded-md text-sm transition-colors text-left',
-                                'hover:bg-accent',
-                                isActive
-                                  ? 'bg-accent text-foreground font-medium'
-                                  : 'text-muted-foreground hover:text-foreground'
-                              )}
-                            >
-                              <span className="flex-1 truncate">{experience.title}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                    {experiences.length > 0 ? (
+                      experiences.map((experience) => {
+                        const isActive = isExperienceActive(experience.id);
+                        return (
+                          <button
+                            key={experience.id}
+                            onClick={() => navigate(`/supplier/experiences/${experience.id}`)}
+                            className={cn(
+                              'w-full flex items-center h-8 pl-3 pr-2 rounded-md text-sm transition-colors text-left',
+                              'hover:bg-accent',
+                              isActive
+                                ? 'bg-accent text-foreground font-medium'
+                                : 'text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            <span className="flex-1 min-w-0 truncate">{experience.title}</span>
+                          </button>
+                        );
+                      })
                     ) : (
-                      <div className="pl-7 pr-2 py-1 text-xs text-muted-foreground">
-                        No experiences yet
-                      </div>
+                      <button
+                        onClick={() => navigate('/supplier/experiences')}
+                        className="w-full flex items-center h-8 pl-3 pr-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left"
+                      >
+                        <span className="flex-1 min-w-0 truncate">No experiences yet</span>
+                      </button>
                     )}
-                    </div>
-
-                    {/* Bottom action */}
                     <button
                       onClick={handleAddExperience}
                       disabled={creatingExperience}
                       className={cn(
-                        'w-full flex items-center gap-2 h-7 pl-7 pr-2 rounded-md text-sm transition-colors text-left',
-                        'text-muted-foreground hover:text-foreground hover:bg-accent',
+                        'w-full flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left',
                         creatingExperience && 'opacity-50 cursor-not-allowed'
                       )}
                     >
-                      <PlusIcon className="h-4 w-4 flex-shrink-0" />
-                      <span>{creatingExperience ? 'Adding...' : 'New experience'}</span>
+                      <PlusIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 truncate">{creatingExperience ? 'Adding...' : 'New experience'}</span>
                     </button>
                   </div>
                 )}
@@ -388,88 +386,75 @@ export function Sidebar({ children }: SidebarProps) {
                   </button>
                 </div>
 
-                {/* Collapsible content */}
+                {/* Collapsible content — one continuous list (Notion-style) */}
                 {staysOpen && (
-                  <div className="mt-px space-y-px">
-                    {/* Main tools — prominent, daily use */}
-                    <div className="mt-2 space-y-px">
-                      <NavLink
-                        to="/hotel/analytics"
-                        className={({ isActive }) =>
-                          cn(
-                            'flex items-center gap-2 h-8 pl-4 pr-2 rounded-md text-sm font-medium transition-colors',
-                            'hover:bg-accent',
-                            isActive
-                              ? 'bg-accent text-foreground'
-                              : 'text-foreground/90 hover:text-foreground'
-                          )
-                        }
+                  <div className="mt-1.5 space-y-px">
+                    <NavLink
+                      to="/hotel/analytics"
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-md text-sm font-medium transition-colors',
+                          'hover:bg-accent',
+                          isActive
+                            ? 'bg-accent text-foreground'
+                            : 'text-foreground/90 hover:text-foreground'
+                        )
+                      }
+                    >
+                      <ChartBarIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 truncate">Analytics</span>
+                    </NavLink>
+
+                    {/* Subtle separation + link to See all properties (same as Experiences) */}
+                    <div className="mt-2.5 pt-0.5">
+                      <button
+                        onClick={() => navigate('/hotel/stays')}
+                        className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60 hover:text-foreground pl-3 pb-1 text-left transition-colors w-full"
                       >
-                        <ChartBarIcon className="h-4 w-4 flex-shrink-0" />
-                        <span>Analytics</span>
-                      </NavLink>
+                        Your properties
+                      </button>
                     </div>
-
-                    {/* Your properties — clickable title + See all, then list */}
-                    <div className="pt-4">
-                      <div className="flex items-center justify-between pl-4 pr-2 py-1.5">
-                        <button
-                          onClick={() => navigate('/hotel/stays')}
-                          className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors text-left"
-                        >
-                          Your properties
-                        </button>
-                        <button
-                          onClick={() => navigate('/hotel/stays')}
-                          className="text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                        >
-                          See all
-                        </button>
-                      </div>
-                      <div className="mx-2 my-1.5 border-t border-border" />
-                      {hotelConfigs.length > 0 ? (
-                      <div className="space-y-px pt-0.5">
-                        {hotelConfigs.map((config) => {
-                          const isActive = location.pathname === `/hotel/stays/${config.id}`;
-                          return (
-                            <button
-                              key={config.id}
-                              onClick={() => {
-                                setActiveHotelConfigId(config.id);
-                                navigate(`/hotel/stays/${config.id}`);
-                              }}
-                              className={cn(
-                                'w-full flex items-center gap-2 h-7 pl-7 pr-2 rounded-md text-sm transition-colors text-left',
-                                'hover:bg-accent',
-                                isActive
-                                  ? 'bg-accent text-foreground font-medium'
-                                  : 'text-muted-foreground hover:text-foreground'
-                              )}
-                            >
-                              <span className="flex-1 truncate">{config.display_name || config.slug}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                    {hotelConfigs.length > 0 ? (
+                      hotelConfigs.map((config) => {
+                        const isActive = location.pathname === `/hotel/stays/${config.id}`;
+                        return (
+                          <button
+                            key={config.id}
+                            onClick={() => {
+                              setActiveHotelConfigId(config.id);
+                              navigate(`/hotel/stays/${config.id}`);
+                            }}
+                            className={cn(
+                              'w-full flex items-center h-8 pl-3 pr-2 rounded-md text-sm transition-colors text-left',
+                              'hover:bg-accent',
+                              isActive
+                                ? 'bg-accent text-foreground font-medium'
+                                : 'text-muted-foreground hover:text-foreground'
+                            )}
+                          >
+                            <span className="flex-1 min-w-0 truncate">{config.display_name || config.slug}</span>
+                          </button>
+                        );
+                      })
                     ) : (
-                      <div className="pl-7 pr-2 py-1 text-xs text-muted-foreground">
-                        No properties yet
-                      </div>
+                      <button
+                        onClick={() => navigate('/hotel/stays')}
+                        className="w-full flex items-center h-8 pl-3 pr-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left"
+                      >
+                        <span className="flex-1 min-w-0 truncate">No properties yet</span>
+                      </button>
                     )}
-                    </div>
 
-                    {/* Bottom action */}
                     <button
                       onClick={handleAddStay}
                       disabled={creatingStay}
                       className={cn(
-                        'w-full flex items-center gap-2 h-7 pl-7 pr-2 rounded-md text-sm transition-colors text-left',
-                        'text-muted-foreground hover:text-foreground hover:bg-accent',
+                        'w-full flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left',
                         creatingStay && 'opacity-50 cursor-not-allowed'
                       )}
                     >
-                      <PlusIcon className="h-4 w-4 flex-shrink-0" />
-                      <span>{creatingStay ? 'Adding...' : 'New property'}</span>
+                      <PlusIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 truncate">{creatingStay ? 'Adding...' : 'New property'}</span>
                     </button>
                   </div>
                 )}

@@ -1,151 +1,27 @@
-import { useMemo, useState, useRef, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActivePartner } from '@/hooks/useActivePartner';
+import { useSidebar } from '@/contexts/SidebarContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { BusinessDetails } from '@/pages/onboarding/BusinessDetails';
 import { useSupplierData } from '@/hooks/useSupplierData';
-import { usePendingRequests } from '@/hooks/usePendingRequests';
 import { useSupplierAnalytics } from '@/hooks/useSupplierAnalytics';
 import { useHotelCommission } from '@/hooks/useHotelCommission';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
-import { cn } from '@/lib/utils';
-import {
-  buildGreeting,
-  getVisiblePrompts,
-  resolveLocaleText,
-  type PromptContext,
-  type AssistantPrompt,
-} from '@/lib/assistant-prompts';
-
-// ---------------------------------------------------------------------------
-// Answer renderer: parses [link text](/path) into navigable elements
-// ---------------------------------------------------------------------------
-
-type AnswerToken = { type: 'text'; value: string } | { type: 'link'; value: string; href: string } | { type: 'bold'; value: string };
-
-function tokenize(text: string): AnswerToken[] {
-  const result: AnswerToken[] = [];
-  const regex = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      result.push({ type: 'text', value: text.slice(lastIndex, match.index) });
-    }
-    if (match[1] !== undefined) {
-      result.push({ type: 'link', value: match[1], href: match[2] });
-    } else if (match[3] !== undefined) {
-      result.push({ type: 'bold', value: match[3] });
-    }
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) {
-    result.push({ type: 'text', value: text.slice(lastIndex) });
-  }
-  return result;
-}
-
-function RenderedAnswer({ text, onNavigate }: { text: string; onNavigate: (path: string) => void }) {
-  const tokens = useMemo(() => tokenize(text), [text]);
-
-  return (
-    <>
-      {tokens.map((token, i) => {
-        if (token.type === 'link') {
-          return (
-            <button
-              key={i}
-              onClick={() => onNavigate(token.href)}
-              className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors font-medium"
-            >
-              {token.value}
-            </button>
-          );
-        }
-        if (token.type === 'bold') {
-          return <strong key={i} className="font-medium">{token.value}</strong>;
-        }
-        const lines = token.value.split('\n');
-        return (
-          <Fragment key={i}>
-            {lines.map((line, li) => (
-              <Fragment key={li}>
-                {li > 0 && <br />}
-                {line}
-              </Fragment>
-            ))}
-          </Fragment>
-        );
-      })}
-    </>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Dashboard page
-// ---------------------------------------------------------------------------
+import { Card, CardContent } from '@/components/ui/card';
+import { Compass, Building2 } from 'lucide-react';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { open: openSidebar } = useSidebar();
   const { isLoading, activePartner, userPartners, capabilities } = useActivePartner();
-  const { experiences, hasStripe, stripeStatus } = useSupplierData();
-  const { requests: pendingRequests } = usePendingRequests();
-  const {
-    guestsServedThisMonth = 0,
-    isLoading: supplierAnalyticsLoading,
-  } = useSupplierAnalytics();
-  const {
-    travelersGuidedThisMonth = 0,
-    isLoading: hotelCommissionLoading,
-  } = useHotelCommission();
-  const { hotelConfigs } = useActiveHotelConfig();
+  const { experiences, isLoading: supplierLoading } = useSupplierData();
+  const { guestsServedCount = 0, isLoading: analyticsLoading } = useSupplierAnalytics();
+  const { travelersGuidedCount = 0, isLoading: commissionLoading } = useHotelCommission();
+  const { hotelConfigs, isLoading: configLoading } = useActiveHotelConfig();
 
-  const [activePromptId, setActivePromptId] = useState<string | null>(null);
-  const answerRef = useRef<HTMLDivElement>(null);
-
-  const locale = useMemo(() => navigator.language?.split('-')[0] || 'en', []);
-
-  const ctx: PromptContext = useMemo(() => ({
-    partnerName: activePartner?.partner.name ?? 'there',
-    isSupplier: capabilities.isSupplier,
-    isHotel: capabilities.isHotel,
-    guestsServedThisMonth,
-    travelersGuidedThisMonth,
-    pendingRequestCount: pendingRequests.length,
-    hasStripe,
-    stripeStatus,
-    experienceCount: experiences.length,
-    hotelConfigCount: hotelConfigs.length,
-  }), [activePartner, capabilities, guestsServedThisMonth, travelersGuidedThisMonth, pendingRequests, hasStripe, stripeStatus, experiences, hotelConfigs]);
-
-  const greeting = useMemo(() => buildGreeting(ctx, locale), [ctx, locale]);
-
-  const visiblePrompts = useMemo(() => getVisiblePrompts(ctx), [ctx]);
-  const topPrompts = visiblePrompts.filter((p) => p.tier === 'top');
-  const highlightPrompts = visiblePrompts.filter((p) => p.tier === 'highlight');
-  const contextualPrompts = visiblePrompts.filter((p) => p.tier === 'contextual');
-  const alwaysPrompts = visiblePrompts.filter((p) => p.tier === 'always');
-
-  const primaryPrompts = [...topPrompts, ...highlightPrompts, ...contextualPrompts, ...alwaysPrompts];
-
-  const activePrompt = activePromptId ? visiblePrompts.find((p) => p.id === activePromptId) ?? null : null;
-
-  useEffect(() => {
-    if (activePrompt && answerRef.current) {
-      answerRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, [activePrompt]);
-
-  const handlePromptClick = (prompt: AssistantPrompt) => {
-    if (prompt.navigateTo) {
-      navigate(prompt.navigateTo);
-      return;
-    }
-    setActivePromptId(prompt.id === activePromptId ? null : prompt.id);
-  };
-
-  const dataLoading = supplierAnalyticsLoading || hotelCommissionLoading;
+  const showExperiences = capabilities.isSupplier;
+  const showStays = capabilities.isHotel;
+  const dataLoading = supplierLoading || configLoading || (showExperiences && analyticsLoading) || (showStays && commissionLoading);
 
   if (isLoading || dataLoading) {
     return (
@@ -165,64 +41,171 @@ export default function Dashboard() {
     );
   }
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const partnerName = activePartner?.partner.name ?? '';
+
+  const goToSection = (path: string) => {
+    openSidebar();
+    navigate(path);
+  };
+
   return (
     <DashboardLayout>
       <div className="min-h-[calc(100vh-2rem)] flex flex-col">
         <div className="flex-1 flex flex-col px-4 py-8">
-          <div className="w-full max-w-2xl mx-auto flex flex-col flex-1">
+          <div className="w-full max-w-3xl mx-auto flex flex-col flex-1">
 
-            {/* Greeting bubble — top of page, big, round, green, warm */}
-            <div className="flex justify-start animate-fade-in pt-2">
-              <div className="max-w-xl bg-primary/15 border border-primary/25 rounded-3xl px-6 py-5 text-base leading-relaxed text-foreground shadow-sm">
-                {greeting.split('\n').map((line, i) => (
-                  <p key={i} className={i > 0 ? 'mt-2.5' : ''}>
-                    {line}
-                  </p>
-                ))}
-              </div>
+            {/* Greeting + stat */}
+            <div className="pt-2 pb-8 animate-fade-in">
+              <h1 className="text-2xl font-semibold text-foreground">
+                {getGreeting()}
+                {partnerName ? `, ${partnerName}` : ''}
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                What do you want to manage today?
+              </p>
+              {(showExperiences || showStays) && (guestsServedCount > 0 || travelersGuidedCount > 0) && (
+                <p className="text-sm text-muted-foreground/80 mt-2">
+                  {showExperiences && guestsServedCount > 0 && (
+                    <span>You&apos;ve served {guestsServedCount} guest{guestsServedCount !== 1 ? 's' : ''}</span>
+                  )}
+                  {showExperiences && showStays && guestsServedCount > 0 && travelersGuidedCount > 0 && ' · '}
+                  {showStays && travelersGuidedCount > 0 && (
+                    <span>You&apos;ve guided {travelersGuidedCount} traveler{travelersGuidedCount !== 1 ? 's' : ''} to local experiences</span>
+                  )}
+                </p>
+              )}
             </div>
 
-            {/* Active Q&A — middle, scrolls if needed */}
-            {activePrompt && activePrompt.answer && (
-              <div ref={answerRef} className="mt-6 space-y-3 animate-fade-in flex-1">
-                <div className="flex justify-end">
-                  <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-md px-4 py-2.5 text-sm max-w-md">
-                    {resolveLocaleText(activePrompt.label, activePrompt.labelByLocale, locale)}
+            {/* ── Experiences section ── */}
+            {showExperiences && (
+              <section className="mb-8 animate-fade-in">
+                <button
+                  type="button"
+                  onClick={() => goToSection('/supplier/dashboard')}
+                  className="flex items-center gap-2 mb-3 text-left transition-ui hover:opacity-80 cursor-pointer"
+                >
+                  <h2 className="text-sm font-semibold text-foreground tracking-wide uppercase">
+                    Experiences
+                  </h2>
+                  <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+                    {experiences.length}
+                  </span>
+                </button>
+
+                {experiences.length === 0 ? (
+                  <Card className="border border-border">
+                    <CardContent className="p-6 text-center">
+                      <p className="text-sm text-muted-foreground">No experiences yet</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="relative -mx-1">
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide px-1">
+                      {experiences.map((experience) => {
+                        const exp = experience as { id: string; title: string; cover_url?: string; image_url?: string | null };
+                        const coverSrc = exp.cover_url || exp.image_url;
+
+                        return (
+                          <Card
+                            key={exp.id}
+                            className="rounded-xl border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[240px] overflow-hidden"
+                            onClick={() => goToSection('/supplier/dashboard')}
+                          >
+                            <CardContent className="p-0">
+                              <div className="relative aspect-[4/3] overflow-hidden bg-muted rounded-b-xl">
+                                {coverSrc ? (
+                                  <img
+                                    src={coverSrc}
+                                    alt=""
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Compass className="h-6 w-6 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
                   </div>
-                </div>
-                <div className="flex justify-start">
-                  <div className="max-w-lg bg-accent rounded-2xl rounded-tl-md px-5 py-4 text-sm leading-relaxed text-foreground whitespace-pre-line">
-                    <RenderedAnswer
-                      text={resolveLocaleText(activePrompt.answer, activePrompt.answerByLocale, locale)}
-                      onNavigate={navigate}
-                    />
-                  </div>
-                </div>
-              </div>
+                )}
+              </section>
             )}
 
-            {/* Prompt pills — bottom of page */}
-            <div className="mt-auto pt-8 pb-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {primaryPrompts.map((prompt) => (
-                  <button
-                    key={prompt.id}
-                    onClick={() => handlePromptClick(prompt)}
-                    className={cn(
-                      'text-left px-4 py-2.5 rounded-full border text-sm transition-all duration-150',
-                      'hover:bg-accent hover:scale-[1.01]',
-                      activePromptId === prompt.id
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : prompt.tier === 'highlight'
-                          ? 'bg-primary/10 border-primary/40 text-foreground font-medium'
-                          : 'bg-background border-border text-foreground'
-                    )}
-                  >
-                    {resolveLocaleText(prompt.label, prompt.labelByLocale, locale)}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* ── Properties section ── */}
+            {showStays && (
+              <section className="mb-8 animate-fade-in" style={showExperiences ? { animationDelay: '75ms' } : undefined}>
+                <button
+                  type="button"
+                  onClick={() => goToSection('/hotel/dashboard')}
+                  className="flex items-center gap-2 mb-3 text-left transition-ui hover:opacity-80 cursor-pointer"
+                >
+                  <h2 className="text-sm font-semibold text-foreground tracking-wide uppercase">
+                    Properties
+                  </h2>
+                  <span className="text-xs text-muted-foreground bg-muted rounded-full px-2 py-0.5">
+                    {hotelConfigs.length}
+                  </span>
+                </button>
+
+                {hotelConfigs.length === 0 ? (
+                  <Card className="border border-border">
+                    <CardContent className="p-6 text-center">
+                      <p className="text-sm text-muted-foreground">No properties yet</p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="relative -mx-1">
+                    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide px-1">
+                      {hotelConfigs.map((config) => {
+                        const cfg = config as { id: string; display_name: string; logo_url?: string | null };
+                        const logoSrc = cfg.logo_url;
+
+                        return (
+                          <Card
+                            key={cfg.id}
+                            className="rounded-xl border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[200px] overflow-hidden"
+                            onClick={() => goToSection('/hotel/dashboard')}
+                          >
+                            <CardContent className="p-0">
+                              <div className="relative aspect-[4/3] overflow-hidden bg-muted/50 flex items-center justify-center p-6 rounded-b-xl">
+                                {logoSrc ? (
+                                  <img
+                                    src={logoSrc}
+                                    alt=""
+                                    className="max-w-full max-h-full object-contain"
+                                  />
+                                ) : (
+                                  <Building2 className="h-6 w-6 text-muted-foreground" />
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                    <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
+                  </div>
+                )}
+              </section>
+            )}
+
+            {!showExperiences && !showStays && (
+              <p className="text-sm text-muted-foreground animate-fade-in">
+                No areas to manage yet. Complete onboarding to get started.
+              </p>
+            )}
           </div>
         </div>
       </div>

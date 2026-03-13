@@ -4,6 +4,7 @@ import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Building2 } from 'lucide-react';
 
 export default function HotelDashboard() {
   const navigate = useNavigate();
@@ -64,37 +65,50 @@ export default function HotelDashboard() {
           ) : (
             <div className="relative">
               <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-                {hotelConfigs.map((config) => (
-                  <Card
-                    key={config.id}
-                    className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[240px]"
-                    onClick={() => handlePropertyClick(config.id)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="text-sm font-medium text-foreground line-clamp-2">
-                          {config.display_name || config.slug}
-                        </h3>
-                        <Badge
-                          className={cn(
-                            'text-xs font-medium flex-shrink-0',
-                            config.is_active ? 'bg-success' : 'bg-muted-foreground'
+                {hotelConfigs.map((config) => {
+                  const logoUrl = (config as { logo_url?: string | null }).logo_url;
+                  return (
+                    <Card
+                      key={config.id}
+                      className="border border-border bg-card cursor-pointer transition-ui hover:bg-accent/50 flex-shrink-0 w-[240px]"
+                      onClick={() => handlePropertyClick(config.id)}
+                    >
+                      <CardContent className="p-0">
+                        {/* Logo / image area */}
+                        <div className="relative aspect-[4/3] overflow-hidden bg-muted/50 flex items-center justify-center p-6">
+                          {logoUrl ? (
+                            <img
+                              src={logoUrl}
+                              alt=""
+                              className="max-w-full max-h-full object-contain"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Building2 className="h-6 w-6 text-muted-foreground" />
+                            </div>
                           )}
-                        >
-                          {config.is_active ? 'Active' : 'Inactive'}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground font-mono">
-                        /{config.slug}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
+                          <Badge
+                            className={cn(
+                              'absolute top-2 right-2 text-xs font-medium',
+                              config.is_active ? 'bg-success' : 'bg-muted-foreground'
+                            )}
+                          >
+                            {config.is_active ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                        {/* Name */}
+                        <div className="p-3">
+                          <h3 className="text-sm font-medium text-foreground line-clamp-2">
+                            {config.display_name || config.slug}
+                          </h3>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
               {/* Fade overlay on right */}
-              {hotelConfigs.length > 3 && (
-                <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
-              )}
+              <div className="absolute right-0 top-0 bottom-2 w-16 bg-gradient-to-l from-background to-transparent pointer-events-none" />
             </div>
           )}
         </div>
