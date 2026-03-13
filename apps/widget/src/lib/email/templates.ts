@@ -414,6 +414,9 @@ export function supplierNewBooking(data: BaseEmailData & {
   guestEmail: string
   guestPhone?: string | null
   hotelName: string
+  guestCompanyName?: string | null
+  guestVat?: string | null
+  invoiceRequested?: boolean
 }) {
   const content = `
     <div class="card">
@@ -439,6 +442,18 @@ export function supplierNewBooking(data: BaseEmailData & {
         <div class="info-row">
           <span class="info-label">Guest Phone</span>
           <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
+        </div>
+        ` : ''}
+        ${data.guestCompanyName ? `
+        <div class="info-row">
+          <span class="info-label">Company</span>
+          <span class="info-value">${escapeHtml(data.guestCompanyName)}${data.guestVat ? ` · VAT ${escapeHtml(data.guestVat)}` : ''}</span>
+        </div>
+        ` : ''}
+        ${data.invoiceRequested ? `
+        <div class="info-row">
+          <span class="info-label">Invoice</span>
+          <span class="info-value">Invoice requested</span>
         </div>
         ` : ''}
         <div class="info-row">
@@ -475,6 +490,9 @@ export function supplierNewRequest(data: BaseEmailData & {
   dashboardUrl?: string
   rentalEndDate?: string
   rentalDays?: number
+  guestCompanyName?: string | null
+  guestVat?: string | null
+  invoiceRequested?: boolean
 }) {
   const isRentalRequest = !!data.rentalEndDate
 
@@ -528,6 +546,18 @@ export function supplierNewRequest(data: BaseEmailData & {
           <span class="info-label">Guest Name</span>
           <span class="info-value">${escapeHtml(data.guestName)}</span>
         </div>
+        ${data.guestCompanyName ? `
+        <div class="info-row">
+          <span class="info-label">Company</span>
+          <span class="info-value">${escapeHtml(data.guestCompanyName)}${data.guestVat ? ` · VAT ${escapeHtml(data.guestVat)}` : ''}</span>
+        </div>
+        ` : ''}
+        ${data.invoiceRequested ? `
+        <div class="info-row">
+          <span class="info-label">Invoice</span>
+          <span class="info-value">Invoice requested</span>
+        </div>
+        ` : ''}
         <div class="info-row">
           <span class="info-label">Request from hotel</span>
           <span class="info-value">${escapeHtml(data.hotelName)}</span>
@@ -557,9 +587,12 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
   guestPhone?: string | null
   bookingId: string
   meetingPoint?: string | null
-  /** If set, treat as rental: show start/end dates, duration, quantity; no time row */
   rentalEndDate?: string
   rentalDays?: number
+  guestCompanyName?: string | null
+  guestVat?: string | null
+  guestBillingAddress?: string | null
+  invoiceRequested?: boolean
 }) {
   const isRental = !!data.rentalEndDate
   const dateTimeRows = isRental
@@ -628,6 +661,30 @@ export function supplierBookingConfirmed(data: BaseEmailData & {
         <div class="info-row">
           <span class="info-label">Guest Phone</span>
           <span class="info-value">${escapeHtml(data.guestPhone || '')}</span>
+        </div>
+        ` : ''}
+        ${data.guestCompanyName ? `
+        <div class="info-row">
+          <span class="info-label">Company</span>
+          <span class="info-value">${escapeHtml(data.guestCompanyName)}</span>
+        </div>
+        ` : ''}
+        ${data.guestVat ? `
+        <div class="info-row">
+          <span class="info-label">VAT Number</span>
+          <span class="info-value">${escapeHtml(data.guestVat)}</span>
+        </div>
+        ` : ''}
+        ${data.guestBillingAddress ? `
+        <div class="info-row">
+          <span class="info-label">Billing Address</span>
+          <span class="info-value">${escapeHtml(data.guestBillingAddress)}</span>
+        </div>
+        ` : ''}
+        ${data.invoiceRequested ? `
+        <div class="info-row">
+          <span class="info-label">Invoice</span>
+          <span class="info-value">Invoice requested by guest</span>
         </div>
         ` : ''}
         ${dateTimeRows}
