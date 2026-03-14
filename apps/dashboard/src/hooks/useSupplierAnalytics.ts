@@ -28,6 +28,8 @@ interface AnalyticsBooking {
     experience_id: string;
     hotel_id: string;
     guest_name: string;
+    guest_company_name: string | null;
+    invoice_requested: boolean | null;
     requested_date: string | null;
     experience: { id: string; title: string };
     hotel: { id: string; name: string };
@@ -53,6 +55,8 @@ export interface MonthlyBooking {
   date: Date;
   experienceTitle: string;
   guestName: string;
+  guestCompanyName: string | null;
+  invoiceRequested: boolean;
   grossCents: number;
   commissionCents: number;
   netCents: number;
@@ -126,6 +130,8 @@ export function useSupplierAnalytics() {
             experience_id,
             hotel_id,
             guest_name,
+            guest_company_name,
+            invoice_requested,
             requested_date,
             experience:experiences!reservations_experience_fk(id, title),
             hotel:partners!reservations_hotel_fk(id, name)
@@ -212,6 +218,8 @@ export function useSupplierAnalytics() {
             date: d,
             experienceTitle: b.reservation?.experience?.title ?? 'Unknown',
             guestName: b.reservation?.guest_name ?? 'Unknown',
+            guestCompanyName: b.reservation?.guest_company_name ?? null,
+            invoiceRequested: b.reservation?.invoice_requested ?? false,
             grossCents: b.amount_cents || 0,
             commissionCents: (b.amount_cents || 0) - (b.supplier_amount_cents || 0),
             netCents: b.supplier_amount_cents || 0,

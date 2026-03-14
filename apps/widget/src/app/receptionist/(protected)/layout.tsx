@@ -15,20 +15,20 @@ export default async function ReceptionistProtectedLayout({
     }
 
     return (
-      <div className="min-h-screen bg-gray-50">
-        <header className="border-b border-gray-200 bg-white">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex h-14 items-center">
-              <span className="text-lg font-bold text-gray-900">Veyond</span>
+      <div className="veyond-theme receptionist-ui min-h-screen bg-background font-sans">
+        <header className="bg-background">
+          <div className="mx-auto max-w-6xl px-5 sm:px-8">
+            <div className="flex h-16 items-center">
+              <span className="text-lg font-light text-foreground tracking-wide">Veyond</span>
             </div>
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">
+        <main className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+          <div className="text-center p-8">
+            <h1 className="text-2xl font-light text-foreground mb-3">
               Access Not Available
             </h1>
-            <p className="text-gray-600 max-w-md mx-auto">
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed">
               {result.error === 'not_receptionist'
                 ? 'Your account does not have receptionist access. Please contact your hotel manager.'
                 : result.error === 'no_hotel_config'
@@ -44,9 +44,9 @@ export default async function ReceptionistProtectedLayout({
   const { hotelConfig, user } = result.data
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="veyond-theme receptionist-ui min-h-screen bg-background font-sans">
       <ReceptionistNav hotelName={hotelConfig.display_name} userName={user.email} />
-      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-6xl px-5 py-6 sm:px-8">
         {children}
       </main>
     </div>

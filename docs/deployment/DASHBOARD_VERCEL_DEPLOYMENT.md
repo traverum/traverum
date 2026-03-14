@@ -39,7 +39,8 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your-anon-key-here
 # Google Maps API (for location autocomplete features)
 VITE_GOOGLE_MAPS_API_KEY=your-google-maps-api-key
 
-# reCAPTCHA v3 (for signup bot protection; get keys at https://www.google.com/recaptcha/admin)
+# reCAPTCHA v3 — REQUIRED in production to prevent mass account creation (get keys at https://www.google.com/recaptcha/admin).
+# Also set RECAPTCHA_SECRET_KEY on the Widget Vercel project.
 VITE_RECAPTCHA_SITE_KEY=your-recaptcha-v3-site-key
 
 # Widget API base URL (default: https://book.veyond.eu; needed for reCAPTCHA verification and invite flows)
@@ -115,7 +116,7 @@ VITE_WIDGET_URL=https://book.veyond.eu
 | `VITE_SUPABASE_URL` | ✅ Yes | Your Supabase project URL |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | ✅ Yes | Your Supabase anon/public key |
 | `VITE_GOOGLE_MAPS_API_KEY` | ⚠️ Optional | For location autocomplete features |
-| `VITE_RECAPTCHA_SITE_KEY` | ⚠️ Optional | reCAPTCHA v3 site key for signup; if unset, signup skips reCAPTCHA |
+| `VITE_RECAPTCHA_SITE_KEY` | ✅ Prod required | reCAPTCHA v3 site key for signup; signup is blocked in production if unset (widget must have `RECAPTCHA_SECRET_KEY` too) |
 | `VITE_WIDGET_URL` | ⚠️ Optional | Widget API base URL (default: https://book.veyond.eu) |
 
 ## Next Steps

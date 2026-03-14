@@ -13,6 +13,10 @@ export interface PendingRequest {
   guest_name: string;
   guest_email: string;
   guest_phone: string | null;
+  guest_company_name: string | null;
+  guest_vat: string | null;
+  guest_billing_address: string | null;
+  invoice_requested: boolean;
   participants: number;
   total_cents: number;
   requested_date: string | null;
@@ -75,6 +79,10 @@ export interface BookingItem {
   guestName: string;
   guestEmail: string;
   guestPhone: string | null;
+  guestCompanyName: string | null;
+  guestVat: string | null;
+  guestBillingAddress: string | null;
+  invoiceRequested: boolean;
   participants: number;
   preferredLanguage: string | null;
   date: string;
@@ -179,6 +187,10 @@ export function useBookingManagement() {
           guest_name: r.guest_name,
           guest_email: r.guest_email,
           guest_phone: r.guest_phone,
+          guest_company_name: (r as any).guest_company_name ?? null,
+          guest_vat: (r as any).guest_vat ?? null,
+          guest_billing_address: (r as any).guest_billing_address ?? null,
+          invoice_requested: (r as any).invoice_requested ?? false,
           participants: r.participants,
           total_cents: r.total_cents,
           requested_date: r.requested_date,
@@ -290,6 +302,10 @@ export function useBookingManagement() {
             guestName: r.guest_name,
             guestEmail: r.guest_email,
             guestPhone: r.guest_phone,
+            guestCompanyName: (r as any).guest_company_name ?? null,
+            guestVat: (r as any).guest_vat ?? null,
+            guestBillingAddress: (r as any).guest_billing_address ?? null,
+            invoiceRequested: (r as any).invoice_requested ?? false,
             participants: r.participants,
             preferredLanguage: r.preferred_language || null,
             date,

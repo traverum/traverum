@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
+import { analyticsLimiter, getClientIp } from '@/lib/rate-limit'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -26,6 +27,14 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
+  if (process.env.KV_REST_API_URL) {
+    const ip = getClientIp(request)
+    const { success } = await analyticsLimiter.limit(ip)
+    if (!success) {
+      return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: CORS_HEADERS })
+    }
+  }
+
   try {
     const body = await request.json()
     const events: TrackEventPayload[] = Array.isArray(body.events) ? body.events : body.event_type ? [body] : []

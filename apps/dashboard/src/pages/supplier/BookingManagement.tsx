@@ -26,6 +26,8 @@ import {
   Copy,
   Check,
   Hourglass,
+  Building2,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatPrice } from '@/lib/pricing';
@@ -125,6 +127,16 @@ function PendingRequestCard({
                 }
               </span>
             </div>
+            {(request.guest_company_name || request.invoice_requested) && (
+              <div className="flex items-center gap-2 text-sm">
+                <Building2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                <span className="text-muted-foreground">
+                  {request.guest_company_name || 'Company booking'}
+                  {request.guest_vat && ` · VAT ${request.guest_vat}`}
+                  {request.invoice_requested && ' · Invoice requested'}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="border-t border-border px-4 py-3 space-y-3">
@@ -415,6 +427,29 @@ function BookingCard({
                 )}
               </button>
             </div>
+
+            {(booking.guestCompanyName || booking.invoiceRequested) && (
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs mt-1.5 pt-1.5 border-t border-border/50">
+                {booking.guestCompanyName && (
+                  <span className="flex items-center gap-1 text-foreground">
+                    <Building2 className="w-3 h-3 text-muted-foreground" />
+                    {booking.guestCompanyName}
+                  </span>
+                )}
+                {booking.guestVat && (
+                  <span className="text-muted-foreground">VAT: {booking.guestVat}</span>
+                )}
+                {booking.guestBillingAddress && (
+                  <span className="text-muted-foreground">{booking.guestBillingAddress}</span>
+                )}
+                {booking.invoiceRequested && (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <FileText className="w-3 h-3" />
+                    Invoice requested
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right side: amount + status + actions */}

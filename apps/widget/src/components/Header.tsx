@@ -83,9 +83,9 @@ export function Header({ hotelName, logoUrl, hotelSlug, showBack = false, backTo
                 <Image
                   src={logoUrl}
                   alt={hotelName}
-                  width={140}
-                  height={40}
-                  className="h-8 w-auto object-contain"
+                  width={200}
+                  height={56}
+                  className="h-11 w-auto max-w-[200px] object-contain"
                   unoptimized={logoUrl.endsWith('.svg') || logoUrl.includes('.svg?')}
                 />
               ) : (

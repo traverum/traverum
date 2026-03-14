@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { ChevronDown, LogOut } from 'lucide-react'
 
 interface ReceptionistNavProps {
   hotelName: string
@@ -32,11 +33,11 @@ export function ReceptionistNav({ hotelName, userName }: ReceptionistNavProps) {
   }
 
   return (
-    <header className="border-b border-gray-200 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center justify-between">
+    <header className="bg-background">
+      <div className="mx-auto max-w-6xl px-5 sm:px-8">
+        <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/receptionist" className="text-lg font-bold text-gray-900">
+            <Link href="/receptionist" className="text-lg font-light text-foreground tracking-wide">
               Veyond
             </Link>
             <nav className="hidden sm:flex items-center gap-1">
@@ -46,10 +47,10 @@ export function ReceptionistNav({ hotelName, userName }: ReceptionistNavProps) {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-xl text-sm transition-colors ${
                       isActive
-                        ? 'bg-gray-100 text-gray-900'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        ? 'bg-accent/10 text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/5'
                     }`}
                   >
                     {item.label}
@@ -62,48 +63,44 @@ export function ReceptionistNav({ hotelName, userName }: ReceptionistNavProps) {
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-700 hover:text-gray-900 rounded-md hover:bg-gray-50"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground rounded-xl hover:bg-accent/5 transition-colors"
             >
-              <span className="hidden sm:inline text-gray-500">{hotelName}</span>
-              {userName && <span className="hidden lg:inline text-gray-400">·</span>}
-              {userName && <span className="hidden lg:inline">{userName}</span>}
+              <span className="hidden sm:inline">{hotelName}</span>
               <span className="sm:hidden">Menu</span>
-              <svg
-                className={`h-4 w-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown className={`h-4 w-4 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
             </button>
 
             {showDropdown && (
               <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowDropdown(false)}
-                />
-                <div className="absolute right-0 z-20 mt-2 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
-                  <div className="sm:hidden border-b border-gray-100 pb-1 mb-1">
+                <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
+                <div className="absolute right-0 z-20 mt-2 w-52 rounded-2xl bg-card border border-border/50 py-2 shadow-lg">
+                  {userName && (
+                    <div className="px-4 py-2 text-xs text-muted-foreground">
+                      {userName}
+                    </div>
+                  )}
+                  <div className="sm:hidden border-t border-border/50 mt-1 pt-1">
                     {navItems.map((item) => (
                       <Link
                         key={item.href}
                         href={item.href}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-4 py-2.5 text-sm text-foreground hover:bg-accent/5 transition-colors"
                         onClick={() => setShowDropdown(false)}
                       >
                         {item.label}
                       </Link>
                     ))}
                   </div>
-                  <button
-                    onClick={handleLogout}
-                    disabled={loggingOut}
-                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-                  >
-                    {loggingOut ? 'Signing out...' : 'Sign out'}
-                  </button>
+                  <div className="border-t border-border/50 mt-1 pt-1">
+                    <button
+                      onClick={handleLogout}
+                      disabled={loggingOut}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm text-muted-foreground hover:text-foreground hover:bg-accent/5 transition-colors disabled:opacity-50"
+                    >
+                      <LogOut className="w-3.5 h-3.5" />
+                      {loggingOut ? 'Signing out...' : 'Sign out'}
+                    </button>
+                  </div>
                 </div>
               </>
             )}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { formatPrice, formatDate, formatTime } from '@/lib/utils'
+import { ChevronDown, Copy, ExternalLink } from 'lucide-react'
 
 interface Booking {
   id: string
@@ -25,13 +26,13 @@ interface BookingsClientProps {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  confirmed: { label: 'Confirmed', className: 'bg-green-100 text-green-800' },
-  completed: { label: 'Completed', className: 'bg-green-50 text-green-700 border border-green-200' },
-  awaiting_payment: { label: 'Awaiting payment', className: 'bg-yellow-100 text-yellow-800' },
-  request_pending: { label: 'Request pending', className: 'bg-blue-100 text-blue-800' },
-  declined: { label: 'Declined', className: 'bg-red-100 text-red-800' },
-  expired: { label: 'Expired', className: 'bg-gray-100 text-gray-600' },
-  cancelled: { label: 'Cancelled', className: 'bg-gray-100 text-gray-600' },
+  confirmed: { label: 'Confirmed', className: 'bg-success/10 text-success' },
+  completed: { label: 'Completed', className: 'bg-success/10 text-success' },
+  awaiting_payment: { label: 'Waiting for payment', className: 'bg-warning/10 text-warning' },
+  request_pending: { label: 'Request pending', className: 'bg-info/10 text-foreground' },
+  declined: { label: 'Declined', className: 'bg-destructive/10 text-destructive' },
+  expired: { label: 'Expired', className: 'bg-muted text-muted-foreground' },
+  cancelled: { label: 'Cancelled', className: 'bg-muted text-muted-foreground' },
 }
 
 type FilterKey = 'all' | 'active' | 'completed' | 'expired'
@@ -70,17 +71,11 @@ export function BookingsClient({ bookings }: BookingsClientProps) {
   }
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">My Bookings</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Bookings you created for guests
-        </p>
-      </div>
+    <div className="space-y-5">
+      <h1 className="text-2xl font-light text-foreground">My Bookings</h1>
 
-      {/* Filters + Search */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="flex bg-gray-100 rounded-lg p-0.5">
+        <div className="flex bg-muted rounded-2xl p-1">
           {([
             ['all', 'All'],
             ['active', 'Active'],
@@ -90,10 +85,10 @@ export function BookingsClient({ bookings }: BookingsClientProps) {
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              className={`px-4 py-2 rounded-xl text-sm transition-all ${
                 filter === key
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-card text-foreground font-medium shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {label}
@@ -104,112 +99,92 @@ export function BookingsClient({ bookings }: BookingsClientProps) {
         <div className="flex-1 sm:max-w-xs">
           <input
             type="text"
-            placeholder="Search by guest or experience..."
+            placeholder="Search..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-10 px-4 text-sm rounded-xl border border-border/50 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
           />
         </div>
       </div>
 
-      {/* Bookings list */}
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-500">
-          {bookings.length === 0
-            ? 'No bookings yet. Create your first booking from the Book page.'
-            : 'No bookings match your filter.'}
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          {bookings.length === 0 ? 'No bookings yet.' : 'No bookings match your filter.'}
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+        <div className="space-y-3">
           {filtered.map(b => {
             const statusConfig = STATUS_CONFIG[b.status] || STATUS_CONFIG.expired
             const isExpanded = expandedId === b.id
 
             return (
-              <div key={b.id}>
+              <div key={b.id} className="bg-card rounded-2xl shadow-sm overflow-hidden">
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : b.id)}
-                  className="w-full flex items-center gap-4 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                  className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-accent/3 transition-colors"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-gray-900 truncate">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-sm font-medium text-foreground truncate">
                         {b.guestName}
                       </span>
-                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${statusConfig.className}`}>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${statusConfig.className}`}>
                         {statusConfig.label}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    <p className="text-xs text-muted-foreground mt-1 truncate">
                       {b.experienceTitle}
                       {b.date && ` · ${formatDate(b.date, { short: true })}`}
                       {b.time && ` ${formatTime(b.time)}`}
                     </p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-foreground">
                       {formatPrice(b.totalCents, b.currency)}
                     </span>
-                    <p className="text-[10px] text-gray-400">
+                    <p className="text-[11px] text-muted-foreground">
                       {b.participants} {b.participants === 1 ? 'guest' : 'guests'}
                     </p>
                   </div>
-                  <svg
-                    className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-180' : ''}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <ChevronDown
+                    className={`w-4 h-4 text-muted-foreground flex-shrink-0 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+                  />
                 </button>
 
                 {isExpanded && (
-                  <div className="px-4 pb-3 space-y-2">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <span className="text-gray-500">Email:</span>{' '}
-                        <a href={`mailto:${b.guestEmail}`} className="text-blue-600 hover:underline">
-                          {b.guestEmail}
-                        </a>
-                      </div>
+                  <div className="px-5 pb-4 pt-1 border-t border-border/50">
+                    <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm pt-2">
+                      <a href={`mailto:${b.guestEmail}`} className="text-foreground underline hover:no-underline">
+                        {b.guestEmail}
+                      </a>
                       {b.guestPhone && (
-                        <div>
-                          <span className="text-gray-500">Phone:</span>{' '}
-                          <a href={`tel:${b.guestPhone}`} className="text-blue-600 hover:underline">
-                            {b.guestPhone}
-                          </a>
-                        </div>
+                        <a href={`tel:${b.guestPhone}`} className="text-foreground underline hover:no-underline">
+                          {b.guestPhone}
+                        </a>
                       )}
-                      {b.date && (
-                        <div>
-                          <span className="text-gray-500">Date:</span>{' '}
-                          <span className="text-gray-900">{formatDate(b.date)}</span>
-                          {b.time && ` at ${formatTime(b.time)}`}
-                        </div>
-                      )}
-                      <div>
-                        <span className="text-gray-500">Booked:</span>{' '}
-                        <span className="text-gray-900">{formatDate(b.createdAt)}</span>
-                      </div>
+                      <span className="text-muted-foreground">
+                        Booked {formatDate(b.createdAt)}
+                      </span>
                     </div>
 
                     {b.paymentUrl && b.status === 'awaiting_payment' && (
-                      <div className="flex gap-2 pt-1">
+                      <div className="flex gap-2 mt-3">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleCopy(b.id, b.paymentUrl!) }}
-                          className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-xl bg-muted text-foreground hover:bg-accent/10 transition-colors"
                         >
-                          {copiedId === b.id ? 'Copied!' : 'Copy Payment Link'}
+                          <Copy className="w-3.5 h-3.5" />
+                          {copiedId === b.id ? 'Copied!' : 'Copy Link'}
                         </button>
                         <a
                           href={b.paymentUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={e => e.stopPropagation()}
-                          className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-xl bg-muted text-foreground hover:bg-accent/10 transition-colors"
                         >
-                          Open Payment Page
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          Open
                         </a>
                       </div>
                     )}

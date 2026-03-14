@@ -1,7 +1,7 @@
 -- Add location fields to experiences table
 ALTER TABLE public.experiences
-ADD COLUMN location_address text,
-ADD COLUMN location geography(POINT, 4326);
+ADD COLUMN IF NOT EXISTS location_address text,
+ADD COLUMN IF NOT EXISTS location geography(POINT, 4326);
 
 -- Add GIST index on location for performance
 CREATE INDEX IF NOT EXISTS experiences_location_idx ON public.experiences USING GIST (location);

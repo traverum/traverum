@@ -20,12 +20,10 @@ BEGIN
   WHERE TRIM(name) ILIKE '%Lago Maggiore Bay%'
   LIMIT 1;
 
-  IF target_partner_id IS NULL THEN
-    RAISE EXCEPTION 'Partner "Aurum - Casabella" not found. Check partners.name.';
-  END IF;
-
-  IF source_partner_id IS NULL THEN
-    RAISE EXCEPTION 'Partner "Lago Maggiore Bay" not found. Check partners.name.';
+  -- Skip on fresh DB (e.g. preview branch) where these partners do not exist
+  IF target_partner_id IS NULL OR source_partner_id IS NULL THEN
+    RAISE NOTICE 'Move Lago Maggiore Bay: one or both partners not found; skipping (ok on fresh DB).';
+    RETURN;
   END IF;
 
   IF source_partner_id = target_partner_id THEN

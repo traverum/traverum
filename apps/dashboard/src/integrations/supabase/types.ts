@@ -630,6 +630,10 @@ export type Database = {
           guest_email: string
           guest_name: string
           guest_phone: string | null
+          guest_company_name: string | null
+          guest_vat: string | null
+          guest_billing_address: string | null
+          invoice_requested: boolean | null
           hotel_config_id: string | null
           hotel_id: string
           id: string
@@ -657,6 +661,10 @@ export type Database = {
           guest_email: string
           guest_name: string
           guest_phone?: string | null
+          guest_company_name?: string | null
+          guest_vat?: string | null
+          guest_billing_address?: string | null
+          invoice_requested?: boolean | null
           hotel_config_id?: string | null
           hotel_id: string
           id?: string
@@ -684,6 +692,10 @@ export type Database = {
           guest_email?: string
           guest_name?: string
           guest_phone?: string | null
+          guest_company_name?: string | null
+          guest_vat?: string | null
+          guest_billing_address?: string | null
+          invoice_requested?: boolean | null
           hotel_config_id?: string | null
           hotel_id?: string
           id?: string

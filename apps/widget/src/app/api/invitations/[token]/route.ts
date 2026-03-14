@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { inviteAcceptLimiter, getClientIp } from '@/lib/rate-limit'
 
 export const dynamic = 'force-dynamic'
 
@@ -62,6 +63,17 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  if (process.env.KV_REST_API_URL) {
+    const ip = getClientIp(request)
+    const { success } = await inviteAcceptLimiter.limit(ip)
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Please try again later.' },
+        { status: 429 }
+      )
+    }
+  }
+
   try {
     const { token } = await params
     const adminClient = createAdminClient()

@@ -230,7 +230,7 @@
 
 | Scenario | Expected Handling |
 |----------|-------------------|
-| Rate limiting on public API | `/api/reservations` and `/api/embed/{slug}` should have rate limiting |
+| Rate limiting on public API | Implemented: reservations, embed, signup (verify-recaptcha), invite accept, translate, analytics track |
 | XSS in guest name/email | Input sanitization before storing and rendering in emails |
 | Very long experience titles | Truncation in email templates, widget cards |
 | Timezone handling | Session dates stored as date strings (no timezone); times as `HH:MM:SS` — consistent for single-region (Finland) |
@@ -243,7 +243,7 @@
 |---|-----|------|----------------|
 | 1 | **Hotel commission payout** | Hotels see recorded commission but no mechanism pays them | Implement monthly batch payout or Stripe Connect for hotels |
 | 2 | **Cron job overlap** | `expire-reservations` and `expire-unpaid` have overlapping logic | Consolidate into a single cron or ensure idempotency across both |
-| 3 | **No rate limiting** | Public endpoints (`/api/reservations`, `/api/embed/`) have no rate limiting | Add rate limiting middleware or Vercel Edge config |
+| 3 | ~~No rate limiting~~ | Public endpoints now rate limited (reservations, embed, signup, invite accept, translate, analytics) via Upstash in widget | Ensure `KV_REST_API_URL` and KV credentials set on Widget Vercel project |
 | 4 | **Manual booking recovery** | `/api/bookings/manual-create` has no authentication | Add admin auth or restrict to internal use only |
 | 5 | **Token expiry** | Accept/decline tokens have long expiry (14 days) but reservation deadline is 48h | Tokens should validate deadline in addition to expiry |
 | 6 | **No webhook event logging** | Failed webhooks are logged to console only | Add persistent webhook event log table for debugging |

@@ -1,7 +1,8 @@
 'use client'
 
 import type { ReceptionistExperience } from '@/lib/receptionist/experiences'
-import { formatPrice, formatDuration } from '@/lib/utils'
+import { formatPrice, formatDuration, formatDate, formatTime } from '@/lib/utils'
+import { CalendarDays } from 'lucide-react'
 
 interface ExperienceCardProps {
   experience: ReceptionistExperience
@@ -25,38 +26,51 @@ function getPriceLabel(exp: ReceptionistExperience): string {
   }
 }
 
+function getAvailabilityLabel(exp: ReceptionistExperience): string | null {
+  if (!exp.nextSession) return null
+  const today = new Date().toISOString().slice(0, 10)
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+
+  if (exp.nextSession.date === today) return `Today ${formatTime(exp.nextSession.time)}`
+  if (exp.nextSession.date === tomorrow) return `Tomorrow ${formatTime(exp.nextSession.time)}`
+  return `${formatDate(exp.nextSession.date, { short: true })} ${formatTime(exp.nextSession.time)}`
+}
+
 export function ExperienceCard({ experience, isActive, compact, onClick }: ExperienceCardProps) {
   const priceLabel = getPriceLabel(experience)
+  const availabilityLabel = getAvailabilityLabel(experience)
 
   if (compact) {
     return (
       <button
         onClick={onClick}
-        className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${
+        className={`w-full flex items-center gap-3.5 p-3 rounded-2xl text-left transition-all ${
           isActive
-            ? 'border-blue-500 bg-blue-50'
-            : 'border-gray-200 bg-white hover:border-gray-300'
+            ? 'bg-accent/8 ring-2 ring-accent/25'
+            : 'hover:bg-card/80'
         }`}
       >
-        {experience.coverImage && (
+        {experience.coverImage ? (
           <img
             src={experience.coverImage}
             alt=""
-            className="w-12 h-12 rounded-md object-cover flex-shrink-0"
+            className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
           />
+        ) : (
+          <div className="w-14 h-14 rounded-xl bg-muted flex-shrink-0" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-gray-900 truncate">{experience.title}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm font-medium text-foreground truncate">{experience.title}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
             {priceLabel} · {formatDuration(experience.duration_minutes)}
-            {experience.distance_km != null && ` · ${experience.distance_km.toFixed(1)} km`}
           </p>
+          {availabilityLabel && (
+            <p className="text-[11px] text-success flex items-center gap-1 mt-1">
+              <CalendarDays className="w-3 h-3" />
+              {availabilityLabel}
+            </p>
+          )}
         </div>
-        {experience.isSelected && (
-          <span className="flex-shrink-0 text-[10px] font-medium bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
-            REC
-          </span>
-        )}
       </button>
     )
   }
@@ -64,53 +78,38 @@ export function ExperienceCard({ experience, isActive, compact, onClick }: Exper
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left rounded-lg border overflow-hidden transition-all ${
+      className={`w-full text-left rounded-2xl overflow-hidden transition-all ${
         isActive
-          ? 'border-blue-500 ring-2 ring-blue-200'
-          : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+          ? 'ring-2 ring-accent/30 shadow-md'
+          : 'shadow-sm hover:shadow-md'
       }`}
     >
-      {experience.coverImage && (
-        <div className="aspect-[16/9] overflow-hidden bg-gray-100">
+      {experience.coverImage ? (
+        <div className="aspect-[4/3] overflow-hidden bg-muted">
           <img
             src={experience.coverImage}
             alt=""
             className="w-full h-full object-cover"
           />
         </div>
+      ) : (
+        <div className="aspect-[4/3] bg-muted" />
       )}
-      <div className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-semibold text-gray-900 line-clamp-2">{experience.title}</h3>
-          {experience.isSelected && (
-            <span className="flex-shrink-0 text-[10px] font-medium bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded mt-0.5">
-              REC
-            </span>
-          )}
-        </div>
-        <p className="text-xs text-gray-500 mt-1">
+      <div className="p-4 bg-card">
+        <h3 className="text-sm font-medium text-foreground line-clamp-1">{experience.title}</h3>
+        <p className="text-xs text-muted-foreground mt-1">
           {experience.supplier.name}
           {experience.distance_km != null && ` · ${experience.distance_km.toFixed(1)} km`}
         </p>
-        <div className="flex items-center gap-3 mt-2 text-xs text-gray-700">
-          <span className="font-medium">{priceLabel}</span>
-          <span className="text-gray-400">·</span>
-          <span>{formatDuration(experience.duration_minutes)}</span>
-          {experience.max_participants > 0 && (
-            <>
-              <span className="text-gray-400">·</span>
-              <span>{experience.min_participants}–{experience.max_participants} guests</span>
-            </>
-          )}
+        <div className="flex items-center justify-between mt-2.5">
+          <span className="text-sm font-medium text-foreground">{priceLabel}</span>
+          <span className="text-xs text-muted-foreground">{formatDuration(experience.duration_minutes)}</span>
         </div>
-        {experience.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {experience.tags.slice(0, 3).map(tag => (
-              <span key={tag} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
-                {tag}
-              </span>
-            ))}
-          </div>
+        {availabilityLabel && (
+          <p className="text-[11px] text-success flex items-center gap-1 mt-2">
+            <CalendarDays className="w-3 h-3" />
+            Next: {availabilityLabel}
+          </p>
         )}
       </div>
     </button>

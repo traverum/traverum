@@ -1,6 +1,13 @@
 -- Set all experiences to have Lake Maggiore, Italy as their location
 -- Lake Maggiore coordinates: approximately 45.95°N, 8.65°E
 
+-- PostGIS required for geography (enable before adding location column)
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+-- Ensure location columns exist (bootstrap or add_experience_location may not have run yet)
+ALTER TABLE experiences ADD COLUMN IF NOT EXISTS location_address text;
+ALTER TABLE experiences ADD COLUMN IF NOT EXISTS location geography(POINT, 4326);
+
 UPDATE experiences
 SET 
   location_address = 'Lake Maggiore, Italy',

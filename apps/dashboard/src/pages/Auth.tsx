@@ -145,6 +145,18 @@ export default function Auth() {
     setErrors({});
 
     try {
+      // In production, reCAPTCHA is required to prevent mass account creation
+      if (import.meta.env.PROD && !RECAPTCHA_SITE_KEY) {
+        toast({
+          title: 'Signup unavailable',
+          description: 'Signup is not configured. Please contact support.',
+          variant: 'destructive',
+          action: <SupportToastAction />,
+        });
+        setLoading(false);
+        return;
+      }
+
       if (RECAPTCHA_SITE_KEY) {
         const token = await getRecaptchaToken(RECAPTCHA_SITE_KEY, 'signup');
         const verifyRes = await fetch(`${WIDGET_BASE_URL}/api/auth/verify-recaptcha`, {

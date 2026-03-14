@@ -11,65 +11,92 @@ interface BookClientProps {
   hotelSlug: string
   hotelName: string
   userId: string
+  appUrl: string
 }
 
 type TabKey = 'recommended' | 'nearby'
 
-export function BookClient({ selected, nearby, hotelSlug, hotelName, userId }: BookClientProps) {
+export function BookClient({ selected, nearby, hotelSlug, hotelName, userId, appUrl }: BookClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('recommended')
   const [search, setSearch] = useState('')
+  const [activeTag, setActiveTag] = useState<string | null>(null)
   const [selectedExperience, setSelectedExperience] = useState<ReceptionistExperience | null>(null)
+
+  const [guestName, setGuestName] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+  const [guestPhone, setGuestPhone] = useState('')
+
+  const allExperiences = useMemo(() => [...selected, ...nearby], [selected, nearby])
+
+  const topTags = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const exp of allExperiences) {
+      for (const tag of exp.tags) {
+        counts.set(tag, (counts.get(tag) || 0) + 1)
+      }
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([tag]) => tag)
+  }, [allExperiences])
 
   const experiences = activeTab === 'recommended' ? selected : nearby
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return experiences
-    const q = search.toLowerCase()
-    return experiences.filter(
-      e =>
-        e.title.toLowerCase().includes(q) ||
-        e.supplier.name.toLowerCase().includes(q) ||
-        e.tags.some(t => t.toLowerCase().includes(q))
-    )
-  }, [experiences, search])
+    let list = experiences
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(
+        e =>
+          e.title.toLowerCase().includes(q) ||
+          e.supplier.name.toLowerCase().includes(q) ||
+          e.tags.some(t => t.toLowerCase().includes(q))
+      )
+    }
+    if (activeTag) {
+      list = list.filter(e => e.tags.some(t => t.toLowerCase() === activeTag.toLowerCase()))
+    }
+    return list
+  }, [experiences, search, activeTag])
 
   const handleSelect = useCallback((exp: ReceptionistExperience) => {
     setSelectedExperience(prev => (prev?.id === exp.id ? null : exp))
   }, [])
 
-  const handleBookingComplete = useCallback(() => {
+  const handleBookingComplete = useCallback((details: { name: string; email: string; phone: string }) => {
+    setGuestName(details.name)
+    setGuestEmail(details.email)
+    setGuestPhone(details.phone)
     setSelectedExperience(null)
   }, [])
 
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Book for Guest</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Select an experience, pick a time, and send a payment link
-        </p>
-      </div>
+  const handleTagClick = useCallback((tag: string) => {
+    setActiveTag(prev => (prev === tag ? null : tag))
+  }, [])
 
-      {/* Tabs + Search */}
+  return (
+    <div className="space-y-5">
+      <h1 className="text-2xl font-light text-foreground">Book for Guest</h1>
+
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="flex bg-gray-100 rounded-lg p-0.5">
+        <div className="flex bg-muted rounded-2xl p-1">
           <button
             onClick={() => { setActiveTab('recommended'); setSelectedExperience(null) }}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`px-5 py-2 rounded-xl text-sm transition-all ${
               activeTab === 'recommended'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-card text-foreground font-medium shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Recommended ({selected.length})
           </button>
           <button
             onClick={() => { setActiveTab('nearby'); setSelectedExperience(null) }}
-            className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            className={`px-5 py-2 rounded-xl text-sm transition-all ${
               activeTab === 'nearby'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-card text-foreground font-medium shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             All Nearby ({nearby.length})
@@ -79,28 +106,44 @@ export function BookClient({ selected, nearby, hotelSlug, hotelName, userId }: B
         <div className="flex-1 sm:max-w-xs">
           <input
             type="text"
-            placeholder="Search experiences..."
+            placeholder="Search..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full h-10 px-4 text-sm rounded-xl border border-border/50 bg-card text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
           />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Experience List */}
-        <div className={`space-y-3 ${selectedExperience ? 'lg:col-span-1' : 'lg:col-span-3'}`}>
+      {topTags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {topTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => handleTagClick(tag)}
+              className={`px-3.5 py-1.5 text-xs rounded-full transition-all ${
+                activeTag === tag
+                  ? 'bg-accent text-accent-foreground font-medium shadow-sm'
+                  : 'bg-card text-muted-foreground shadow-sm hover:text-foreground hover:shadow'
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className={`${selectedExperience ? 'lg:col-span-1' : 'lg:col-span-3'}`}>
           {filtered.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              {search.trim()
-                ? 'No experiences match your search.'
+            <div className="py-16 text-center text-sm text-muted-foreground">
+              {search.trim() || activeTag
+                ? 'No experiences match your filter.'
                 : activeTab === 'recommended'
-                  ? 'No recommended experiences yet. Check "All Nearby" for available options.'
-                  : 'No experiences found within your hotel\'s radius.'}
+                  ? 'No recommended experiences yet.'
+                  : 'No experiences found nearby.'}
             </div>
           ) : (
-            <div className={selectedExperience ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3'}>
+            <div className={selectedExperience ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4'}>
               {filtered.map(exp => (
                 <ExperienceCard
                   key={exp.id}
@@ -114,7 +157,6 @@ export function BookClient({ selected, nearby, hotelSlug, hotelName, userId }: B
           )}
         </div>
 
-        {/* Booking Panel */}
         {selectedExperience && (
           <div className="lg:col-span-2">
             <BookingPanel
@@ -122,6 +164,10 @@ export function BookClient({ selected, nearby, hotelSlug, hotelName, userId }: B
               hotelSlug={hotelSlug}
               hotelName={hotelName}
               userId={userId}
+              appUrl={appUrl}
+              initialGuestName={guestName}
+              initialGuestEmail={guestEmail}
+              initialGuestPhone={guestPhone}
               onClose={() => setSelectedExperience(null)}
               onComplete={handleBookingComplete}
             />

@@ -60,7 +60,7 @@
   }
 }
 
-/* Veyond direct booking theme — docs/design/brand-essence.md */
+/* Veyond direct booking + receptionist — docs/design/brand-essence.md */
 .veyond-theme {
   --font-sans: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
   --font-heading: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
@@ -80,9 +80,17 @@
   --success: 120 15% 48%;
   --warning: 43 45% 58%;
   --destructive: 25 42% 62%;
+  --info: 210 35% 60%;
   --ring: 95 16% 36%;
   --input: 40 9% 20% / 0.09;
   --link-color: 28 31% 28%;
+}
+
+/* Receptionist-specific: softer, rounder, more generous */
+.receptionist-ui {
+  --radius: 0.75rem;
+  --radius-card: 1rem;
+  --radius-button: 0.625rem;
 }
 
 /* Override Tailwind font weights to use CSS variables (for hotel theming) */

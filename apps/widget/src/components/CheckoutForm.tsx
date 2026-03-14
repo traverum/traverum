@@ -15,6 +15,11 @@ const checkoutSchema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Please enter a valid email'),
   phone: z.string().min(6, 'Phone number is required'),
+  isCompany: z.boolean().default(false),
+  companyName: z.string().max(200).optional(),
+  vat: z.string().max(50).optional(),
+  billingAddress: z.string().max(500).optional(),
+  invoiceRequested: z.boolean().default(false),
 })
 
 type CheckoutFormData = z.infer<typeof checkoutSchema>
@@ -67,10 +72,14 @@ export function CheckoutForm({
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm<CheckoutFormData>({
     resolver: zodResolver(checkoutSchema),
+    defaultValues: { isCompany: false, invoiceRequested: false },
   })
+
+  const isCompany = watch('isCompany')
   
   // Get the date and time for display
   const displayDate = sessionDate || requestDate || ''
@@ -109,6 +118,14 @@ export function CheckoutForm({
           guestPhone: data.phone,
           preferredLanguage: preferredLanguage || null,
           source: getAnalyticsSource(),
+          invoiceRequested: data.invoiceRequested ?? false,
+          ...(data.isCompany
+            ? {
+                guestCompanyName: data.companyName?.trim() || null,
+                guestVat: data.vat?.trim() || null,
+                guestBillingAddress: data.billingAddress?.trim() || null,
+              }
+            : {}),
           ...(rentalDays ? { rentalDays } : {}),
           ...(quantity ? { quantity } : {}),
         }),
@@ -228,6 +245,79 @@ export function CheckoutForm({
           <p className="mt-1.5 text-xs text-muted-foreground">
             The provider may contact you about your booking
           </p>
+        </div>
+
+        <div className="space-y-2 pt-1">
+          <label className="flex cursor-pointer items-center gap-2.5">
+            <input
+              type="checkbox"
+              {...register('isCompany')}
+              className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0"
+              disabled={isSubmitting}
+            />
+            <span className="text-xs text-muted-foreground">Booking for a company or business</span>
+          </label>
+          {isCompany && (
+            <div className="ml-5 mt-2 space-y-2">
+              <div>
+                <label htmlFor="companyName" className="block text-xs text-muted-foreground mb-1">
+                  Company name
+                </label>
+                <input
+                  {...register('companyName')}
+                  type="text"
+                  id="companyName"
+                  placeholder="Company or organisation"
+                  className={cn(
+                    'w-full px-3 py-2 text-sm border rounded-button bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors',
+                    'border-border'
+                  )}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div>
+                <label htmlFor="vat" className="block text-xs text-muted-foreground mb-1">
+                  VAT number
+                </label>
+                <input
+                  {...register('vat')}
+                  type="text"
+                  id="vat"
+                  placeholder="e.g. FI12345678"
+                  className={cn(
+                    'w-full px-3 py-2 text-sm border rounded-button bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors',
+                    'border-border'
+                  )}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div>
+                <label htmlFor="billingAddress" className="block text-xs text-muted-foreground mb-1">
+                  Billing address
+                </label>
+                <textarea
+                  {...register('billingAddress')}
+                  id="billingAddress"
+                  rows={2}
+                  placeholder="Street, postal code, city, country"
+                  className={cn(
+                    'w-full px-3 py-2 text-sm border rounded-button bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-colors resize-y',
+                    'border-border'
+                  )}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+          )}
+          <label className="flex cursor-pointer items-center gap-2.5">
+            <input
+              type="checkbox"
+              {...register('invoiceRequested')}
+              className="h-3.5 w-3.5 rounded border-border text-accent focus:ring-2 focus:ring-accent focus:ring-offset-0"
+              disabled={isSubmitting}
+            />
+            <span className="text-xs text-muted-foreground">I need an invoice</span>
+          </label>
         </div>
         
         <button

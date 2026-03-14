@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { signupLimiter, getClientIp } from '@/lib/rate-limit'
 
 const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify'
 const MIN_SCORE = 0.5
@@ -29,9 +30,28 @@ interface GoogleVerifyResponse {
 }
 
 export async function POST(request: Request) {
+  // Rate limit signup attempts per IP (skip when KV not configured, e.g. local dev)
+  if (process.env.KV_REST_API_URL) {
+    const ip = getClientIp(request)
+    const { success } = await signupLimiter.limit(ip)
+    if (!success) {
+      return NextResponse.json(
+        { success: false, error: 'Too many signup attempts. Please try again later.' },
+        { status: 429, headers: corsHeaders }
+      )
+    }
+  }
+
   const secret = process.env.RECAPTCHA_SECRET_KEY
   if (!secret) {
     console.warn('RECAPTCHA_SECRET_KEY is not set; signup reCAPTCHA verification is disabled')
+    // In production, require reCAPTCHA so mass signup is not possible without keys
+    if (process.env.VERCEL) {
+      return NextResponse.json(
+        { success: false, error: 'Signup is not available. Please contact support.' },
+        { status: 503, headers: corsHeaders }
+      )
+    }
     return NextResponse.json({ success: true }, { headers: corsHeaders })
   }
 

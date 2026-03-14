@@ -25,10 +25,13 @@ const TranslationContext = createContext<TranslationContextValue | null>(null)
 const STORAGE_KEY = 'veyond-content-language'
 
 export function TranslationProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null
-    return localStorage.getItem(STORAGE_KEY)
-  })
+  const [language, setLanguageState] = useState<string | null>(null)
+
+  // Sync from localStorage after mount so SSR and client first paint match (avoids hydration mismatch)
+  useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored !== null) setLanguageState(stored)
+  }, [])
 
   const [cache, setCache] = useState<Map<string, TranslationCacheEntry>>(new Map())
   const [loadingSet, setLoadingSet] = useState<Set<string>>(new Set())

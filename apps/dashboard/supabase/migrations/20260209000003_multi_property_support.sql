@@ -7,7 +7,8 @@
 -- (keep the FK relationship, just allow multiple rows per partner)
 -- ============================================================
 ALTER TABLE public.hotel_configs
-  DROP CONSTRAINT hotel_configs_partner_unique;
+  DROP CONSTRAINT IF EXISTS hotel_configs_partner_unique;
+DROP INDEX IF EXISTS public.hotel_configs_partner_unique;
 
 -- ============================================================
 -- Step 2: Add hotel_config_id to distributions

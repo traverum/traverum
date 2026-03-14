@@ -3,6 +3,20 @@
 -- with policies that use the user_partners junction table.
 -- Also enables RLS on 5 previously unprotected tables.
 
+-- Ensure user_partners exists (created in 20260210000000; this migration runs first)
+CREATE TABLE IF NOT EXISTS public.user_partners (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  partner_id uuid NOT NULL REFERENCES public.partners(id) ON DELETE CASCADE,
+  role text NOT NULL DEFAULT 'owner' CHECK (role IN ('owner', 'admin', 'member')),
+  is_default boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_id, partner_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_partners_user_id ON public.user_partners(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_partners_partner_id ON public.user_partners(partner_id);
+
 -- ============================================================
 -- Step 1: Helper function to avoid repeating the subquery
 -- ============================================================

@@ -1,5 +1,10 @@
 project_id = "vwbxkkzzpacqzqvqxqvf"
 
+# Seed runs on `supabase db reset` (local). For branches, run seed.sql manually in SQL Editor.
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
 [functions.create-connect-account]
 verify_jwt = false
 

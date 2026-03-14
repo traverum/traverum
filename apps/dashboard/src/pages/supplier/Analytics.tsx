@@ -89,12 +89,14 @@ function formatCentsForCSV(cents: number): string {
 
 function downloadMonthlyCSV(bookings: MonthlyBooking[], year: number, month: number) {
   const BOM = '\uFEFF';
-  const header = 'Data;Esperienza;Cliente;Lordo (\u20AC);Commissione (\u20AC);Netto (\u20AC);Stato';
+  const header = 'Data;Esperienza;Cliente;Azienda;Fattura;Lordo (\u20AC);Commissione (\u20AC);Netto (\u20AC);Stato';
   const rows = bookings.map((b) =>
     [
       format(b.date, 'dd.MM.yyyy'),
       b.experienceTitle,
       b.guestName,
+      b.guestCompanyName || '',
+      b.invoiceRequested ? 'S\u00EC' : '',
       formatCentsForCSV(b.grossCents),
       formatCentsForCSV(b.commissionCents),
       formatCentsForCSV(b.netCents),
@@ -279,7 +281,13 @@ export default function SupplierAnalytics() {
                             {b.experienceTitle}
                           </TableCell>
                           <TableCell className="text-sm whitespace-nowrap">
-                            {b.guestName}
+                            <span>{b.guestName}</span>
+                            {b.guestCompanyName && (
+                              <span className="block text-xs text-muted-foreground">{b.guestCompanyName}</span>
+                            )}
+                            {b.invoiceRequested && (
+                              <span className="text-[10px] text-muted-foreground">Invoice</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-sm text-right whitespace-nowrap">
                             <span className="tabular-nums">{formatFinanceAmount(b.grossCents)}</span>

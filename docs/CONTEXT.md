@@ -111,6 +111,12 @@ Full reference specs. `@mention` these when doing deep implementation work.
 | `rls-multi-org-verification.md` | Row-level security verification |
 | `production-readiness-checklist.md` | Pre-launch verification of all scenarios |
 
+### Integrations (plans / specs)
+
+| Doc | When to use |
+|-----|-------------|
+| `integrations/divinea-integration.md` | Divinea Wine Suite (OCTO API): availability sync, holds, booking lifecycle. Phased plan — Phase 1 read-only, Phase 2 hold/confirm/release. |
+
 ---
 
 ## Design Docs (`docs/design/`)
@@ -128,4 +134,4 @@ Full reference specs. `@mention` these when doing deep implementation work.
 | Folder | What it contains |
 |--------|-----------------|
 | `docs/deployment/` | **Start here:** [VERCEL_DEPLOYMENTS.md](deployment/VERCEL_DEPLOYMENTS.md) — three-app overview. Then per-app: Dashboard, Widget, Admin deployment guides; cron job scheduling. |
-| `docs/planning/` | Future features not yet implemented |
+| `docs/planning/` | Planning and purpose+implementation docs. **Receptionist:** [receptionist-tool.md](planning/receptionist-tool.md) — purpose, user stories, implementation notes, branch testing. |

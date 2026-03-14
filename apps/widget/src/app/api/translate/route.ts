@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { translateExperienceContent } from '@/lib/translate'
+import { translateLimiter, getClientIp } from '@/lib/rate-limit'
 
 interface ExperienceFields {
   id: string
@@ -18,6 +19,17 @@ interface CachedTranslation {
 }
 
 export async function POST(request: NextRequest) {
+  if (process.env.KV_REST_API_URL) {
+    const ip = getClientIp(request)
+    const { success } = await translateLimiter.limit(ip)
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many translation requests. Please try again later.' },
+        { status: 429 }
+      )
+    }
+  }
+
   try {
     const { experienceId, targetLanguage } = await request.json()
 

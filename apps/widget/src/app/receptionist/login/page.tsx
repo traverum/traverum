@@ -24,12 +24,7 @@ function LoginForm() {
 
     try {
       const supabase = createClient()
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setMessage({ type: 'error', text: error.message })
       } else {
@@ -43,30 +38,25 @@ function LoginForm() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-        Sign in to your account
-      </h2>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="bg-card rounded-2xl p-6 sm:p-8 shadow-sm">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email address
+          <label htmlFor="email" className="block text-sm text-muted-foreground mb-1.5">
+            Email
           </label>
           <input
             id="email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="reception@hotel.com"
             required
             autoFocus
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full h-11 px-4 text-sm rounded-xl border border-border/50 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="password" className="block text-sm text-muted-foreground mb-1.5">
             Password
           </label>
           <input
@@ -74,29 +64,26 @@ function LoginForm() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full h-11 px-4 text-sm rounded-xl border border-border/50 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading || !email || !password}
-          className="w-full py-2.5 px-4 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="w-full h-11 text-sm font-medium rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
 
       {message && (
-        <div
-          className={`mt-4 p-3 rounded-md text-sm ${
-            message.type === 'success'
-              ? 'bg-green-50 text-green-800 border border-green-200'
-              : 'bg-red-50 text-red-800 border border-red-200'
-          }`}
-        >
+        <div className={`mt-5 p-3.5 rounded-xl text-sm ${
+          message.type === 'success'
+            ? 'bg-success/10 text-success'
+            : 'bg-destructive/10 text-destructive'
+        }`}>
           {message.text}
         </div>
       )}
@@ -106,14 +93,11 @@ function LoginForm() {
 
 function LoginFormFallback() {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
-        Sign in to your account
-      </h2>
-      <div className="space-y-4">
-        <div className="h-10 bg-gray-200 rounded animate-pulse" />
-        <div className="h-10 bg-gray-200 rounded animate-pulse" />
-        <div className="h-10 bg-gray-200 rounded animate-pulse" />
+    <div className="bg-card rounded-2xl p-6 sm:p-8 shadow-sm">
+      <div className="space-y-5">
+        <div className="h-11 bg-muted rounded-xl animate-pulse" />
+        <div className="h-11 bg-muted rounded-xl animate-pulse" />
+        <div className="h-11 bg-muted rounded-xl animate-pulse" />
       </div>
     </div>
   )
@@ -121,20 +105,20 @@ function LoginFormFallback() {
 
 export default function ReceptionistLoginPage() {
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+    <div className="veyond-theme receptionist-ui min-h-screen bg-background flex flex-col items-center justify-center px-5 font-sans">
       <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Veyond</h1>
-          <p className="mt-2 text-gray-600">Receptionist Portal</p>
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-light text-foreground tracking-wide">Veyond</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Receptionist</p>
         </div>
 
         <Suspense fallback={<LoginFormFallback />}>
           <LoginForm />
         </Suspense>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-8 text-center text-xs text-muted-foreground">
           Need an account? Ask your hotel manager or{' '}
-          <a href="mailto:support@veyond.eu" className="text-blue-600 hover:underline">
+          <a href="mailto:support@veyond.eu" className="underline hover:no-underline">
             contact Veyond
           </a>
         </p>

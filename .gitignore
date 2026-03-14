@@ -34,3 +34,9 @@ coverage
 
 # Misc
 *.tsbuildinfo
+
+# Supabase scripts: production dump (never commit)
+apps/dashboard/supabase/scripts/.production_data_dump.sql
+
+# Supabase CLI local state (link, versions)
+apps/dashboard/supabase/.temp/
