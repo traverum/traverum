@@ -78,9 +78,10 @@ async function main() {
     .in('role', ['receptionist', 'owner', 'admin'])
 
   const alreadyHasAccess = new Set((existingReceptionists || []).map((r) => r.user_id))
-  let candidate: { id: string; email: string }
+  type UserCandidate = { id: string; email: string }
+  let candidate: UserCandidate
   if (emailArg) {
-    let byEmail = allUsers.find((u) => u.email?.toLowerCase() === emailArg.toLowerCase())
+    let byEmail: UserCandidate | undefined = allUsers.find((u) => u.email?.toLowerCase() === emailArg.toLowerCase())
     if (!byEmail && !dryRun) {
       const { data: authUsers } = await supabase.auth.admin.listUsers()
       const authUser = authUsers?.users?.find((u) => u.email?.toLowerCase() === emailArg.toLowerCase())
