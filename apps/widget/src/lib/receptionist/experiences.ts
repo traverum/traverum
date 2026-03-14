@@ -196,7 +196,7 @@ export async function getNearbyExperiences(hotelConfig: HotelConfig): Promise<Re
     } else {
       try {
         const parsed = JSON.parse(s) as { type?: string; coordinates?: [number, number] }
-        if (parsed?.coordinates?.length >= 2) {
+        if (parsed?.coordinates && parsed.coordinates.length >= 2) {
           lng = parsed.coordinates[0]
           lat = parsed.coordinates[1]
         }
@@ -220,7 +220,7 @@ export async function getNearbyExperiences(hotelConfig: HotelConfig): Promise<Re
     }
   } else if (config.location && typeof config.location === 'object') {
     const loc = config.location as { coordinates?: [number, number] }
-    if (loc.coordinates?.length >= 2) {
+    if (loc.coordinates && loc.coordinates.length >= 2) {
       lng = loc.coordinates[0]
       lat = loc.coordinates[1]
     }
