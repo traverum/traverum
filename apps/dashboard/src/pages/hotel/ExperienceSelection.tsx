@@ -328,7 +328,7 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
         const radiusMeters = debouncedRadiusKm * 1000;
 
         const { data, error } = await supabase.rpc('get_experiences_within_radius', {
-          hotel_location: locationWkt,
+          hotel_location_wkt: locationWkt,
           radius_meters: radiusMeters,
         });
 

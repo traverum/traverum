@@ -171,24 +171,15 @@ export async function getSelectedExperiences(
 }
 
 /**
- * Fetch all active experiences within the hotel's radius using PostGIS RPC
+ * Parse lat/lng from Supabase geography (GeoJSON object, WKT string, or coordinates array).
+ * Returns [lat, lng] or null if unparseable. GeoJSON and WKT use (lng, lat) order; we return (lat, lng).
  */
-export async function getNearbyExperiences(hotelConfig: HotelConfig): Promise<ReceptionistExperience[]> {
-  const supabase = createAdminClient()
-
-  const config = hotelConfig as any
-  if (!config.location) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[receptionist] getNearbyExperiences: no location on hotel config')
-    }
-    return []
-  }
-
+function parseLatLng(location: unknown): { lat: number; lng: number } | null {
+  if (location == null) return null
   let lat: number | null = null
   let lng: number | null = null
-
-  if (typeof config.location === 'string') {
-    const s = config.location.trim()
+  if (typeof location === 'string') {
+    const s = location.trim()
     const wktMatch = s.match(/POINT\s*\(\s*([^\s,)]+)\s+([^\s,)]+)\s*\)/i)
     if (wktMatch) {
       lng = parseFloat(wktMatch[1])
@@ -218,25 +209,99 @@ export async function getNearbyExperiences(hotelConfig: HotelConfig): Promise<Re
         }
       }
     }
-  } else if (config.location && typeof config.location === 'object') {
-    const loc = config.location as { coordinates?: [number, number] }
+  } else if (typeof location === 'object' && location !== null) {
+    const loc = location as { coordinates?: [number, number] }
     if (loc.coordinates && loc.coordinates.length >= 2) {
       lng = loc.coordinates[0]
       lat = loc.coordinates[1]
     }
   }
+  if (lat === null || lng === null) return null
+  return { lat, lng }
+}
 
-  if (lat === null || lng === null) {
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('[receptionist] getNearbyExperiences: could not parse location', { type: typeof config.location })
+/**
+ * Fetch all active experiences excluding a partner (e.g. hotel's own).
+ * Used when hotel has no location set — matches dashboard "fetch all" behavior.
+ */
+async function fetchAllActiveExperiencesExcludingPartner(
+  supabase: ReturnType<typeof createAdminClient>,
+  excludePartnerId: string
+): Promise<ReceptionistExperience[]> {
+  const { data: rows, error } = await (supabase as any)
+    .from('experiences')
+    .select(`
+      id, title, slug, description, image_url, price_cents, duration_minutes,
+      max_participants, meeting_point, tags, partner_id
+    `)
+    .eq('experience_status', 'active')
+    .neq('partner_id', excludePartnerId)
+
+  if (error || !rows?.length) return []
+
+  const experienceIds = (rows as any[]).map((r: any) => r.id)
+  const supplierIds = Array.from(new Set((rows as any[]).map((r: any) => r.partner_id)))
+
+  const [{ data: partnersData }, { data: mediaList }] = await Promise.all([
+    supabase.from('partners').select('id, name, email, phone').in('id', supplierIds),
+    supabase.from('media').select('experience_id, url, sort_order').in('experience_id', experienceIds).order('sort_order', { ascending: true }),
+  ])
+
+  const partnersMap = new Map(((partnersData || []) as any[]).map(p => [p.id, p]))
+  const mediaData = (mediaList || []) as any[]
+
+  return (rows as any[]).map(exp => {
+    const supplier = partnersMap.get(exp.partner_id) || { id: exp.partner_id, name: '', email: '', phone: null }
+    const expMedia = mediaData.filter((m: any) => m.experience_id === exp.id)
+    return {
+      id: exp.id,
+      title: exp.title,
+      slug: exp.slug,
+      description: exp.description || '',
+      image_url: exp.image_url,
+      coverImage: expMedia[0]?.url ?? exp.image_url ?? null,
+      price_cents: exp.price_cents,
+      pricing_type: 'per_person',
+      base_price_cents: 0,
+      extra_person_cents: exp.price_cents,
+      included_participants: 0,
+      price_per_day_cents: 0,
+      min_days: 1,
+      max_days: null,
+      duration_minutes: exp.duration_minutes ?? 60,
+      min_participants: 1,
+      max_participants: exp.max_participants ?? 10,
+      meeting_point: exp.meeting_point,
+      location_address: null,
+      location: null,
+      tags: exp.tags || [],
+      cancellation_policy: null,
+      available_languages: [],
+      allows_requests: null,
+      hotel_notes: null,
+      currency: 'EUR',
+      supplier: {
+        id: supplier.id,
+        name: supplier.name,
+        email: supplier.email,
+        phone: supplier.phone ?? null,
+      },
+      distance_km: null,
+      isSelected: false,
+      nextSession: null,
     }
-    return []
-  }
+  })
+}
 
-  const radiusKm = config.location_radius_km || 25
-  const radiusMeters = radiusKm * 1000
-  const locationWkt = `POINT(${lng} ${lat})`
+/**
+ * Fetch all active experiences within the hotel's radius using PostGIS RPC.
+ * Uses hotel_config.location; if missing, falls back to partner.location (when present).
+ * When no location at all, returns all active experiences (excluding hotel's own), matching dashboard behavior.
+ */
+export async function getNearbyExperiences(hotelConfig: HotelConfig): Promise<ReceptionistExperience[]> {
+  const supabase = createAdminClient()
 
+  const config = hotelConfig as any
   const excludePartnerId = config.partner_id ?? null
   if (excludePartnerId === null) {
     if (process.env.NODE_ENV === 'development') {
@@ -245,8 +310,37 @@ export async function getNearbyExperiences(hotelConfig: HotelConfig): Promise<Re
     return []
   }
 
+  let coords = parseLatLng(config.location)
+
+  if (!coords && config.partner_id) {
+    const { data: partnerRow } = await supabase
+      .from('partners')
+      .select('location')
+      .eq('id', config.partner_id)
+      .maybeSingle()
+    const partnerLocation = (partnerRow as any)?.location
+    coords = parseLatLng(partnerLocation)
+    if (coords && process.env.NODE_ENV === 'development') {
+      console.warn('[receptionist] getNearbyExperiences: using partner location (hotel_config.location was empty)')
+    }
+  }
+
+  // No location: same as dashboard — return all active experiences (excluding hotel's partner)
+  if (!coords) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[receptionist] getNearbyExperiences: no location; fetching all active experiences')
+    }
+    return fetchAllActiveExperiencesExcludingPartner(supabase, excludePartnerId)
+  }
+
+  const { lat, lng } = coords
+
+  const radiusKm = config.location_radius_km || 25
+  const radiusMeters = radiusKm * 1000
+  const locationWkt = `POINT(${lng} ${lat})`
+
   const { data, error } = await (supabase as any).rpc('get_experiences_within_radius', {
-    hotel_location: locationWkt,
+    hotel_location_wkt: locationWkt,
     radius_meters: radiusMeters,
     exclude_partner_id: excludePartnerId,
   })

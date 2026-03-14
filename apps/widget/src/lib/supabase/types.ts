@@ -1211,7 +1211,7 @@ export type Database = {
       get_experiences_within_radius: {
         Args: {
           exclude_partner_id?: string
-          hotel_location: string
+          hotel_location_wkt: string
           radius_meters: number
         }
         Returns: {
