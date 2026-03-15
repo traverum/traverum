@@ -232,7 +232,7 @@ async function fetchAllActiveExperiencesExcludingPartner(
     .from('experiences')
     .select(`
       id, title, slug, description, image_url, price_cents, duration_minutes,
-      max_participants, meeting_point, tags, partner_id
+      max_participants, meeting_point, tags, partner_id, hotel_notes
     `)
     .eq('experience_status', 'active')
     .neq('partner_id', excludePartnerId)
@@ -278,7 +278,7 @@ async function fetchAllActiveExperiencesExcludingPartner(
       cancellation_policy: null,
       available_languages: [],
       allows_requests: null,
-      hotel_notes: null,
+      hotel_notes: exp.hotel_notes ?? null,
       currency: 'EUR',
       supplier: {
         id: supplier.id,
@@ -402,7 +402,7 @@ export async function getNearbyExperiences(hotelConfig: HotelConfig): Promise<Re
       cancellation_policy: null,
       available_languages: [],
       allows_requests: null,
-      hotel_notes: null,
+      hotel_notes: exp.hotel_notes ?? null,
       currency: 'EUR',
       supplier: {
         id: supplier.id,

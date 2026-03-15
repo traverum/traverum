@@ -272,7 +272,7 @@ export function BookingPanel({
   }
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm overflow-hidden sticky top-6">
+    <div className="bg-card rounded-2xl shadow-sm overflow-hidden">
       {experience.coverImage && (
         <div className="aspect-[5/2] overflow-hidden bg-muted">
           <img src={experience.coverImage} alt="" className="w-full h-full object-cover" />
@@ -289,11 +289,11 @@ export function BookingPanel({
         </button>
       </div>
 
-      <div className="px-5 pb-5 space-y-6 max-h-[calc(100vh-10rem)] overflow-y-auto">
+      <div className="px-5 pb-5 space-y-6">
         {/* Experience info — same visual language as date picker (labels, bordered blocks) */}
         <section className="space-y-3">
           <p className="text-xs font-medium text-muted-foreground">Details</p>
-          <p className="text-sm text-foreground leading-relaxed line-clamp-3">{experience.description}</p>
+          <p className="text-sm text-foreground leading-relaxed">{experience.description}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span>{formatDuration(experience.duration_minutes)}</span>
             <span>{experience.min_participants}–{experience.max_participants} guests</span>
@@ -305,6 +305,13 @@ export function BookingPanel({
             )}
           </div>
         </section>
+
+        {experience.hotel_notes && (
+          <section className="bg-accent/5 border border-accent/15 rounded-xl p-4 space-y-1.5">
+            <p className="text-xs font-medium text-accent">Message from supplier</p>
+            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{experience.hotel_notes}</p>
+          </section>
+        )}
 
         {/* View on booking site — one clear button */}
         {bookingSiteUrl && (
@@ -412,13 +419,6 @@ export function BookingPanel({
             )}
           </div>
         </section>
-
-        {experience.hotel_notes && (
-          <section className="bg-warning/8 rounded-xl p-4">
-            <p className="text-xs font-medium text-foreground mb-1">Notes for your hotel</p>
-            <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{experience.hotel_notes}</p>
-          </section>
-        )}
 
         {/* Date & time — same calendar + sessions / request flow as guest widget */}
         <section className="space-y-3">

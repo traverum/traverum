@@ -133,7 +133,7 @@ export function BookClient({ selected, nearby, hotelSlug, hotelName, userId, app
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className={`${selectedExperience ? 'lg:col-span-1' : 'lg:col-span-3'}`}>
+        <div className={`${selectedExperience ? 'lg:col-span-1 lg:sticky lg:top-6 lg:self-start' : 'lg:col-span-3'}`}>
           {filtered.length === 0 ? (
             <div className="py-16 text-center text-sm text-muted-foreground">
               {search.trim() || activeTag
@@ -142,14 +142,28 @@ export function BookClient({ selected, nearby, hotelSlug, hotelName, userId, app
                   ? 'No recommended experiences yet.'
                   : 'No experiences found nearby.'}
             </div>
+          ) : selectedExperience ? (
+            <div className="space-y-1">
+              <div className="max-h-[calc(100vh-8rem)] overflow-y-auto space-y-2 pr-1">
+                {filtered.map(exp => (
+                  <ExperienceCard
+                    key={exp.id}
+                    experience={exp}
+                    isActive={selectedExperience?.id === exp.id}
+                    compact
+                    onClick={() => handleSelect(exp)}
+                  />
+                ))}
+              </div>
+            </div>
           ) : (
-            <div className={selectedExperience ? 'space-y-2' : 'grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4'}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map(exp => (
                 <ExperienceCard
                   key={exp.id}
                   experience={exp}
-                  isActive={selectedExperience?.id === exp.id}
-                  compact={!!selectedExperience}
+                  isActive={false}
+                  compact={false}
                   onClick={() => handleSelect(exp)}
                 />
               ))}
