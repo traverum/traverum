@@ -21,6 +21,8 @@ const config: Config = {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         heading: ['var(--font-heading)', 'Georgia', 'serif'],
         body: ['var(--font-body)', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['var(--font-fraunces)', 'Georgia', 'serif'],
+        newyork: ['var(--font-newyork)', 'Georgia', 'serif'],
       },
       colors: {
         border: 'hsl(var(--border))',

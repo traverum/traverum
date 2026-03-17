@@ -1,7 +1,14 @@
 import type { Metadata } from 'next'
 import { Poppins, Fraunces, DM_Sans } from 'next/font/google'
+import localFont from 'next/font/local'
 import { TranslationProvider } from '@/components/TranslationProvider'
 import './globals.css'
+
+const newYork = localFont({
+  src: '../../../../newyork/NewYork PERSONAL USE.otf',
+  variable: '--font-newyork',
+  display: 'swap',
+})
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -34,7 +41,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${poppins.variable} ${fraunces.variable} ${dmSans.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${poppins.variable} ${fraunces.variable} ${dmSans.variable} ${newYork.variable} font-sans antialiased`} suppressHydrationWarning>
         <TranslationProvider>
           {children}
         </TranslationProvider>

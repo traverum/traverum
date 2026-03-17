@@ -44,52 +44,91 @@ export function ExperienceListClient({ experiences, hotelSlug, embedMode, return
 
   return (
     <>
-      {/* Category tabs - only show in full mode when there are categories */}
+      {/* Category filter - editorial style on /experiences (veyond), else pill tabs */}
       {embedMode === 'full' && uniqueCategories.length > 0 && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className="mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className={cardStyle === 'veyond' ? 'mb-10' : 'mb-6'}
         >
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
-            {/* "All" tab */}
-            <button
-              onClick={() => setActiveCategory(null)}
-              className={cn(
-                'flex-shrink-0 px-4 py-2 rounded-full font-medium text-sm transition-colors whitespace-nowrap',
-                activeCategory === null
-                  ? 'bg-accent text-accent-foreground shadow-sm'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              )}
-            >
-              All
-            </button>
-            {/* Category tabs */}
-            {uniqueCategories.map(categoryId => (
+          {cardStyle === 'veyond' ? (
+            <div className="flex flex-nowrap sm:flex-wrap items-center justify-center sm:justify-center gap-2 overflow-x-auto scrollbar-hide py-1 -mx-2 px-2 sm:mx-0 sm:px-0">
               <button
-                key={categoryId}
-                onClick={() => setActiveCategory(categoryId)}
+                onClick={() => setActiveCategory(null)}
                 className={cn(
-                  'flex-shrink-0 px-4 py-2 rounded-full font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-1.5',
-                  activeCategory === categoryId
-                    ? 'bg-accent text-accent-foreground shadow-sm'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  'relative flex-shrink-0 min-h-[44px] py-2.5 px-5 text-[13px] font-body font-light tracking-[0.08em] rounded-full transition-colors whitespace-nowrap inline-flex items-center justify-center',
+                  activeCategory === null ? 'text-heading-foreground' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <span>{getCategoryIcon(categoryId)}</span>
-                <span>{getCategoryLabel(categoryId)}</span>
+                {activeCategory === null && (
+                  <motion.span
+                    layoutId="category-bubble"
+                    className="absolute inset-0 rounded-full bg-heading-foreground/12 border border-heading-foreground/20"
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                  />
+                )}
+                <span className="relative z-10">All</span>
               </button>
-            ))}
-          </div>
+              {uniqueCategories.map(categoryId => (
+                <button
+                  key={categoryId}
+                  onClick={() => setActiveCategory(categoryId)}
+                  className={cn(
+                    'relative flex-shrink-0 min-h-[44px] py-2.5 px-5 text-[13px] font-body font-light tracking-[0.08em] rounded-full transition-colors whitespace-nowrap inline-flex items-center justify-center gap-2',
+                    activeCategory === categoryId ? 'text-heading-foreground' : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {activeCategory === categoryId && (
+                    <motion.span
+                      layoutId="category-bubble"
+                      className="absolute inset-0 rounded-full bg-heading-foreground/12 border border-heading-foreground/20"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                    />
+                  )}
+                  <span className="relative z-10 opacity-80">{getCategoryIcon(categoryId)}</span>
+                  <span className="relative z-10">{getCategoryLabel(categoryId)}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex bg-muted rounded-2xl p-1 gap-0 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setActiveCategory(null)}
+                className={cn(
+                  'flex-shrink-0 px-5 py-2 rounded-xl text-sm transition-all whitespace-nowrap',
+                  activeCategory === null
+                    ? 'bg-card text-foreground font-medium shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                All
+              </button>
+              {uniqueCategories.map(categoryId => (
+                <button
+                  key={categoryId}
+                  onClick={() => setActiveCategory(categoryId)}
+                  className={cn(
+                    'flex-shrink-0 px-5 py-2 rounded-xl text-sm transition-all whitespace-nowrap flex items-center gap-1.5',
+                    activeCategory === categoryId
+                      ? 'bg-card text-foreground font-medium shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  <span>{getCategoryIcon(categoryId)}</span>
+                  <span>{getCategoryLabel(categoryId)}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </motion.div>
       )}
 
-      {/* Experience grid with animated transitions */}
+      {/* Experience grid - visible on first paint to avoid stuck opacity:0 */}
       <AnimatePresence mode="wait">
         <motion.div
           key={activeCategory || 'all'}
-          initial={{ opacity: 0 }}
+          initial={false}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}

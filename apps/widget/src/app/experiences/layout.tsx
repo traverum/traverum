@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { ExperiencesLayoutHeader } from '@/components/ExperiencesLayoutHeader'
 
 export const metadata: Metadata = {
   title: {
@@ -14,8 +15,11 @@ export default function ExperiencesLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="veyond-theme font-sans min-h-screen">
-      {children}
+    <div className="veyond-theme receptionist-ui min-h-screen bg-background font-sans">
+      <ExperiencesLayoutHeader />
+      <main className="mx-auto max-w-6xl px-5 py-6 sm:px-8">
+        {children}
+      </main>
     </div>
   )
 }
