@@ -19,9 +19,11 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:pull": "turbo run test",
-    "test:watch": "turbo run test:watch"
+    "test:watch": "turbo run test:watch",
+    "prepare": "husky"
   },
   "devDependencies": {
+    "husky": "^9.1.7",
     "turbo": "^2.0.0",
     "vitest": "^4.1.0"
   }
