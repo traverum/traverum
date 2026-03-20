@@ -16,9 +16,13 @@
     "build:widget": "pnpm --filter @traverum/widget build",
     "build:dashboard": "pnpm --filter @traverum/dashboard build",
     "build:admin": "pnpm --filter @traverum/admin build",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:pull": "turbo run test",
+    "test:watch": "turbo run test:watch"
   },
   "devDependencies": {
-    "turbo": "^2.0.0"
+    "turbo": "^2.0.0",
+    "vitest": "^4.1.0"
   }
 }

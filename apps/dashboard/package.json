@@ -10,6 +10,8 @@
     "db:copy-production-to-branch": "bash supabase/scripts/copy-production-to-branch.sh",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview",
     "optimize-images": "tsx scripts/optimize-existing-images.ts"
   },
