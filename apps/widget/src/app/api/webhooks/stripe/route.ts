@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { verifyWebhookSignature, stripe } from '@/lib/stripe'
 import { calculateCommissionSplit } from '@/lib/commission'
-import { SELF_OWNED_COMMISSION } from '@traverum/shared'
 import { sendEmail, sendBatchEmails, getAppUrl } from '@/lib/email/index'
 import { 
   guestPaymentConfirmed, 
@@ -15,6 +14,7 @@ import {
 } from '@/lib/email/templates'
 import { generateCancelToken } from '@/lib/tokens'
 import { getCancellationPolicyText, CANCELLATION_POLICIES } from '@/lib/availability'
+import { resolveCommissionRates, resolveExperienceDate, computeRentalDaysFromDates, buildBookingRecord } from '@/lib/booking-rules'
 import type Stripe from 'stripe'
 
 export async function POST(request: NextRequest) {
@@ -529,45 +529,39 @@ async function createBookingFromPayment(
   
   // Calculate commission split
   const isDirect = !reservation.hotel_id
-  let split
-  if (isDirect) {
-    split = calculateCommissionSplit(reservation.total_cents, {
-      commission_supplier: SELF_OWNED_COMMISSION.supplier,
-      commission_hotel: SELF_OWNED_COMMISSION.hotel,
-      commission_platform: SELF_OWNED_COMMISSION.platform,
-    })
-  } else {
-    const { data: distributionData } = await supabase
+  let distributionData = null
+  if (!isDirect) {
+    const { data } = await supabase
       .from('distributions')
       .select('*')
       .eq('experience_id', experience.id)
       .eq('hotel_id', reservation.hotel_id)
       .eq('is_active', true)
       .single()
-    
-    if (!distributionData) {
-      console.error(`Distribution not found for experience ${experience.id} and hotel ${reservation.hotel_id}`)
-      return
-    }
-    
-    split = calculateCommissionSplit(reservation.total_cents, distributionData as any)
+    distributionData = data as any
   }
+
+  const { rates, error: ratesError } = resolveCommissionRates({ isDirect, distribution: distributionData })
+  if (!rates) {
+    console.error(`${ratesError} for experience ${experience.id} and hotel ${reservation.hotel_id}`)
+    return
+  }
+
+  const split = calculateCommissionSplit(reservation.total_cents, rates)
   
   // Create booking
+  const bookingRecord = buildBookingRecord({
+    reservationId,
+    sessionId: reservation.session_id || session?.id,
+    totalCents: reservation.total_cents,
+    split,
+    paymentIntentId,
+    chargeId,
+  })
+
   const { data: booking, error: bookingError } = await (supabase
     .from('bookings') as any)
-    .insert({
-      reservation_id: reservationId,
-      session_id: reservation.session_id || session?.id,
-      amount_cents: reservation.total_cents,
-      supplier_amount_cents: split.supplierAmount,
-      hotel_amount_cents: split.hotelAmount,
-      platform_amount_cents: split.platformAmount,
-      stripe_payment_intent_id: paymentIntentId,
-      stripe_charge_id: chargeId,
-      booking_status: 'confirmed',
-      paid_at: new Date().toISOString(),
-    })
+    .insert(bookingRecord)
     .select()
     .single()
   
@@ -614,15 +608,15 @@ async function createBookingFromPayment(
     hotelSlug = (hotelConfig as any)?.slug || 'default'
   }
   const isRental = experience.pricing_type === 'per_day'
-  const date = isRental && reservation.rental_start_date
-    ? reservation.rental_start_date
-    : (session?.session_date || reservation.requested_date || '')
+  const date = resolveExperienceDate({
+    isRental,
+    rentalStartDate: reservation.rental_start_date,
+    sessionDate: session?.session_date,
+    requestedDate: reservation.requested_date,
+  })
   const time = session?.start_time || reservation.requested_time || ''
   const rentalEndDate = isRental ? (reservation.rental_end_date || '') : undefined
-  // rental_end_date is inclusive (last day). Duration = diff + 1.
-  const rentalDays = rentalEndDate && date
-    ? Math.max(1, Math.round((new Date(rentalEndDate + 'T12:00:00').getTime() - new Date(date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)) + 1)
-    : undefined
+  const rentalDays = computeRentalDaysFromDates(date || null, rentalEndDate || null)
   
   // Generate cancel token; link goes to confirmation page first ("are you sure?")
   const cancelToken = generateCancelToken(booking.id, new Date(date))

@@ -110,6 +110,7 @@ Full reference specs. `@mention` these when doing deep implementation work.
 | `systems/stripe/PRICING.md` | Stripe-specific pricing details |
 | `rls-multi-org-verification.md` | Row-level security verification |
 | `production-readiness-checklist.md` | Pre-launch verification of all scenarios |
+| `widget-hotel-404-database-sync.md` | Why hotel pages 404 when DB is out of sync; FK names and `partners` columns to fix |
 
 ### Integrations (plans / specs)
 

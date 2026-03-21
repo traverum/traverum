@@ -12,8 +12,17 @@ import { calculatePrice } from '@/lib/pricing'
 import { createPaymentLink } from '@/lib/stripe'
 import { sanitizeGuestText, sanitizeGuestEmail } from '@/lib/sanitize'
 import { reservationLimiter, getClientIp } from '@/lib/rate-limit'
-import { PAYMENT_DEADLINE_HOURS, DEFAULT_COMMISSION } from '@traverum/shared'
+import { PAYMENT_DEADLINE_HOURS } from '@traverum/shared'
 import { addHours } from 'date-fns'
+import {
+  validateRequiredFields,
+  validateParticipants,
+  validateRentalRequest,
+  validatePriceMatch,
+  computeRentalEndDate,
+  normalizeRequestTime,
+  resolveAutoDistributionRates,
+} from '@/lib/reservation-rules'
 
 export async function POST(request: NextRequest) {
   // Rate limiting — skip in development if KV is not configured
@@ -57,12 +66,9 @@ export async function POST(request: NextRequest) {
 
     const isDirect = direct === true
     
-    // Validate required fields
-    if ((!hotelSlug && !isDirect) || !experienceId || !participants || !totalCents || !guestName || !guestEmail) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    const fieldCheck = validateRequiredFields({ hotelSlug, experienceId, participants, totalCents, guestName, guestEmail, isDirect })
+    if (!fieldCheck.valid) {
+      return NextResponse.json({ error: fieldCheck.error }, { status: 400 })
     }
     
     // Sanitize guest input to prevent XSS / HTML injection
@@ -136,13 +142,12 @@ export async function POST(request: NextRequest) {
 
       if (!existingDist) {
         const isSelfOwned = experience.partner_id === hotel.partner_id
+        const rates = resolveAutoDistributionRates(isSelfOwned)
         await (supabase.from('distributions') as any).insert({
           experience_id: experienceId,
           hotel_id: hotel.partner_id,
           hotel_config_id: hotel.id,
-          commission_supplier: isSelfOwned ? 92 : DEFAULT_COMMISSION.supplier,
-          commission_hotel: isSelfOwned ? 0 : DEFAULT_COMMISSION.hotel,
-          commission_platform: DEFAULT_COMMISSION.platform,
+          ...rates,
           is_active: true,
         })
       }
@@ -150,41 +155,22 @@ export async function POST(request: NextRequest) {
 
     // Validate participants against experience limits
     const isRental = experience.pricing_type === 'per_day'
-    if (!isRental && (participants < 1 || participants > experience.max_participants)) {
-      return NextResponse.json(
-        { error: `Participants must be between 1 and ${experience.max_participants}` },
-        { status: 400 }
-      )
+    const participantCheck = validateParticipants(participants, experience.max_participants, isRental)
+    if (!participantCheck.valid) {
+      return NextResponse.json({ error: participantCheck.error }, { status: 400 })
     }
 
     // Per-day rental validation
     const rentalDays = isRental ? (Number(rentalDaysParam) || 0) : 0
     if (isRental) {
-      if (!requestDate) {
-        return NextResponse.json(
-          { error: 'Rental start date is required' },
-          { status: 400 }
-        )
-      }
-      if (rentalDays < 1) {
-        return NextResponse.json(
-          { error: 'Number of rental days is required' },
-          { status: 400 }
-        )
-      }
-      const minDays = experience.min_days || 1
-      const maxDays = experience.max_days || null
-      if (rentalDays < minDays) {
-        return NextResponse.json(
-          { error: `Minimum rental period is ${minDays} days` },
-          { status: 400 }
-        )
-      }
-      if (maxDays && rentalDays > maxDays) {
-        return NextResponse.json(
-          { error: `Maximum rental period is ${maxDays} days` },
-          { status: 400 }
-        )
+      const rentalCheck = validateRentalRequest({
+        requestDate,
+        rentalDays,
+        minDays: experience.min_days || 1,
+        maxDays: experience.max_days || null,
+      })
+      if (!rentalCheck.valid) {
+        return NextResponse.json({ error: rentalCheck.error }, { status: 400 })
       }
     }
     
@@ -228,12 +214,9 @@ export async function POST(request: NextRequest) {
       : calculatePrice(experience, participants, sessionData)
     const expectedTotal = calculatedPrice.totalPrice
     
-    // Verify the total matches (allow small rounding differences)
-    if (Math.abs(totalCents - expectedTotal) > 1) {
-      return NextResponse.json(
-        { error: 'Price mismatch. Please refresh and try again.' },
-        { status: 400 }
-      )
+    const priceCheck = validatePriceMatch(totalCents, expectedTotal)
+    if (!priceCheck.valid) {
+      return NextResponse.json({ error: priceCheck.error }, { status: 400 })
     }
     
     const appUrl = getAppUrl()
@@ -242,9 +225,7 @@ export async function POST(request: NextRequest) {
     // See docs/technical/rental-date-convention.md
     let rentalEndDate: string | null = null
     if (isRental && requestDate && rentalDays > 0) {
-      const startDate = new Date(requestDate + 'T12:00:00')
-      startDate.setDate(startDate.getDate() + rentalDays - 1)
-      rentalEndDate = startDate.toISOString().slice(0, 10)
+      rentalEndDate = computeRentalEndDate(requestDate, rentalDays)
     }
 
     // =========================================================================
@@ -348,7 +329,7 @@ export async function POST(request: NextRequest) {
         total_cents: expectedTotal,
         is_request: true,
         requested_date: requestDate || null,
-        requested_time: isRental ? null : (requestTime ? (requestTime.length === 5 ? `${requestTime}:00` : requestTime) : null),
+        requested_time: isRental ? null : (requestTime ? normalizeRequestTime(requestTime) : null),
         time_preference: null,
         reservation_status: 'pending',
         response_deadline: responseDeadline.toISOString(),

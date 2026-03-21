@@ -15,6 +15,9 @@ export interface HotelWithExperiences {
 export interface ExperienceWithMedia extends Experience {
   media: Media[]
   coverImage: string | null
+  location_city?: string | null
+  location_region?: string | null
+  location_country?: string | null
   supplier: {
     id: string
     name: string

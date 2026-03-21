@@ -5,6 +5,7 @@ import { sendEmail } from '@/lib/email/index'
 import { baseTemplate } from '@/lib/email/templates'
 import { escapeHtml } from '@/lib/sanitize'
 import { format, subDays } from 'date-fns'
+import { shouldAutoComplete, resolveBookingExperienceDate } from '@/lib/cron-rules'
 
 function verifyCronSecret(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
@@ -54,10 +55,9 @@ export async function POST(request: NextRequest) {
     try {
       const reservation = booking.reservation
       const session = reservation?.session
-      const experienceDate = session?.session_date || reservation?.requested_date
+      const experienceDate = resolveBookingExperienceDate(session?.session_date, reservation?.requested_date)
       
-      // Check if experience was 7+ days ago
-      if (!experienceDate || experienceDate > sevenDaysAgo) {
+      if (!shouldAutoComplete(experienceDate, sevenDaysAgo)) {
         continue
       }
       

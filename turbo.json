@@ -14,6 +14,10 @@
     },
     "test": {
       "dependsOn": []
+    },
+    "test:e2e": {
+      "cache": false,
+      "dependsOn": ["^build"]
     }
   }
 }

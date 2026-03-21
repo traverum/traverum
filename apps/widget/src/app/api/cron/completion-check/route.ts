@@ -4,6 +4,7 @@ import { sendEmail, getAppUrl } from '@/lib/email/index'
 import { supplierCompletionCheck } from '@/lib/email/templates'
 import { generateCompleteToken, generateNoExperienceToken } from '@/lib/tokens'
 import { format, subDays } from 'date-fns'
+import { isCompletionCheckDue, resolveBookingExperienceDate } from '@/lib/cron-rules'
 
 function verifyCronSecret(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
@@ -54,10 +55,9 @@ export async function POST(request: NextRequest) {
     try {
       const reservation = booking.reservation
       const session = reservation?.session
-      const experienceDate = session?.session_date || reservation?.requested_date
+      const experienceDate = resolveBookingExperienceDate(session?.session_date, reservation?.requested_date)
       
-      // Check if experience was yesterday
-      if (experienceDate !== yesterday) {
+      if (!isCompletionCheckDue(experienceDate, yesterday)) {
         continue
       }
       
