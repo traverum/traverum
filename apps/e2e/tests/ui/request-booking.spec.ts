@@ -15,10 +15,11 @@ test.describe('Request booking golden path', () => {
   test('guest submits a request and is redirected to the reservation page', async ({ page }) => {
     // 1. Land on the hotel widget page
     await page.goto(`/${HOTEL_SLUG}`)
-    await expect(page.getByRole('heading', { name: EXPERIENCE_TITLE }).first()).toBeVisible()
+    const experienceLink = page.getByRole('link', { name: EXPERIENCE_TITLE }).first()
+    await expect(experienceLink).toBeVisible({ timeout: 15_000 })
 
     // 2. Click the experience card
-    await page.getByRole('heading', { name: EXPERIENCE_TITLE }).first().click()
+    await experienceLink.click()
     await page.waitForURL(`**/${HOTEL_SLUG}/${EXPERIENCE_SLUG}`)
 
     // 3. Navigate to checkout in request mode (simulates choosing a custom date/time)

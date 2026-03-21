@@ -16,10 +16,12 @@ test.describe('Session booking golden path', () => {
   test('guest browses, reaches checkout, and is redirected to Stripe', async ({ page }) => {
     // 1. Land on the hotel widget page
     await page.goto(`/${HOTEL_SLUG}`)
-    await expect(page.getByRole('heading', { name: EXPERIENCE_TITLE }).first()).toBeVisible()
+    // Card is a link wrapping the title (h3); link role survives SSR/hydration more reliably than heading alone.
+    const experienceLink = page.getByRole('link', { name: EXPERIENCE_TITLE }).first()
+    await expect(experienceLink).toBeVisible({ timeout: 15_000 })
 
     // 2. Click the experience card
-    await page.getByRole('heading', { name: EXPERIENCE_TITLE }).first().click()
+    await experienceLink.click()
     await page.waitForURL(`**/${HOTEL_SLUG}/${EXPERIENCE_SLUG}`)
 
     // 3. Verify the experience detail page loaded with the booking section (desktop)

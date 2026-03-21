@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
       const reservation = booking.reservation
       const session = reservation?.session
       const experienceDate = resolveBookingExperienceDate(session?.session_date, reservation?.requested_date)
-      
-      if (!isCompletionCheckDue(experienceDate, yesterday)) {
+
+      if (!experienceDate || !isCompletionCheckDue(experienceDate, yesterday)) {
         continue
       }
       
