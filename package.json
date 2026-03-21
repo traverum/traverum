@@ -19,6 +19,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:pull": "turbo run test",
+    "test:unit": "turbo run test --filter=!@traverum/e2e",
     "test:watch": "turbo run test:watch",
     "test:e2e": "pnpm --filter @traverum/e2e test",
     "prepare": "husky"

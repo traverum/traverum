@@ -36,9 +36,9 @@ Last updated: 2026-03-21 (system setup)
 
 ## GitHub Actions
 
-The **Test** workflow (`.github/workflows/test.yml`) runs `pnpm test:pull`, which includes Playwright. Configure the same repository secrets as **E2E** (`E2E_SUPABASE_URL`, `E2E_SUPABASE_ANON_KEY`, `E2E_SUPABASE_SERVICE_ROLE_KEY`, `E2E_STRIPE_SECRET_KEY`). The job installs Chromium before tests; Playwright uses `http://localhost:3110` for the widget (see `apps/e2e/constants.ts`).
+The **Test** workflow (`.github/workflows/test.yml`) runs `pnpm test:unit` (Vitest only, no Playwright) on every push/PR to `main`. No secrets are required — unit tests are pure logic with no external dependencies.
 
-Turborepo strips undeclared env vars from tasks unless they are listed in `globalPassThroughEnv` in `turbo.json`; those variables are included so GitHub Actions secrets reach Vitest and Playwright.
+Playwright E2E tests run locally via the `/test` command before deploying. They require a live Supabase instance and Stripe key, which are configured in `apps/e2e/.env`.
 
 ## E2E Tests (Playwright) — 6 tests
 
