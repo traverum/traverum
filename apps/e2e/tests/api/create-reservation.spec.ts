@@ -4,11 +4,12 @@ import {
   EXPERIENCE_ID,
   EXPERIENCE_PRICE_CENTS,
   TEST_GUEST_PHONE,
+  WIDGET_E2E_BASE_URL,
   testGuestEmail,
 } from '../../constants'
 import { cleanupTestReservations, getReservation } from '../../helpers/api-client'
 
-const BASE_URL = 'http://localhost:3000'
+const BASE_URL = WIDGET_E2E_BASE_URL
 
 test.describe('POST /api/reservations', () => {
   test.beforeAll(async () => {

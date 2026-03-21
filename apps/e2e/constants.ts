@@ -5,6 +5,10 @@
  * If you change the seed, update these to match.
  */
 
+/** Dedicated port so Playwright never collides with a normal `next dev` on 3000. */
+export const WIDGET_E2E_PORT = 3110
+export const WIDGET_E2E_BASE_URL = `http://localhost:${WIDGET_E2E_PORT}`
+
 // Partners
 export const HOTEL_PARTNER_ID = '11111111-1111-1111-1111-111111111101'
 export const SUPPLIER_PARTNER_ID = '11111111-1111-1111-1111-111111111102'

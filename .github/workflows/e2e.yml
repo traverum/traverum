@@ -20,7 +20,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
       STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
       TOKEN_SECRET: e2e-test-token-secret
-      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3110
 
     steps:
       - uses: actions/checkout@v4

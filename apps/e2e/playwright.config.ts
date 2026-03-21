@@ -1,12 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
 import path from 'path'
 import { config as dotenvConfig } from 'dotenv'
+import { WIDGET_E2E_BASE_URL, WIDGET_E2E_PORT } from './constants'
 
 // Load staging env vars from apps/e2e/.env
 dotenvConfig({ path: path.resolve(__dirname, '.env') })
 
-const WIDGET_PORT = 3000
-const WIDGET_URL = `http://localhost:${WIDGET_PORT}`
+const WIDGET_URL = WIDGET_E2E_BASE_URL
 
 export default defineConfig({
   testDir: '.',
@@ -39,8 +39,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'pnpm --filter @traverum/widget dev',
-    port: WIDGET_PORT,
+    command: `pnpm --filter @traverum/widget exec next dev -p ${WIDGET_E2E_PORT}`,
+    port: WIDGET_E2E_PORT,
     reuseExistingServer: !process.env.CI,
     cwd: path.resolve(__dirname, '../..'),
     env: {

@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 
-const BASE_URL = 'http://localhost:3000'
+import { WIDGET_E2E_BASE_URL } from '../../constants'
+
+const BASE_URL = WIDGET_E2E_BASE_URL
 const FAKE_RESERVATION_ID = '00000000-0000-0000-0000-000000000000'
 
 test.describe('Dashboard auth guard', () => {
