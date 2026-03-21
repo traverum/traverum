@@ -23,7 +23,7 @@ test.describe('Session booking golden path', () => {
     await page.waitForURL(`**/${HOTEL_SLUG}/${EXPERIENCE_SLUG}`)
 
     // 3. Verify the experience detail page loaded with the booking section (desktop)
-    await expect(page.getByRole('heading', { name: 'Book this experience' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Booking' })).toBeVisible()
 
     // 4. Navigate to checkout (simulates clicking "Book Now" after selecting a session)
     const participants = 2

@@ -77,25 +77,37 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
 
   // Fetch distributions for this hotel config with experiences
   // Scope by hotel_config_id for multi-property support
-  const { data: distributionsData, error: distError } = await (supabase
-    .from('distributions') as any)
-    .select(`
+  const distSelect = `
+    *,
+    experience:experiences!distributions_experience_fk (
       *,
-      experience:experiences!distributions_experience_fk (
-        *,
-        supplier:partners!experiences_partner_fk (
-          id,
-          name,
-          email,
-          stripe_account_id,
-          stripe_onboarding_complete
-        )
+      supplier:partners!experiences_partner_fk (
+        id,
+        name,
+        email,
+        stripe_account_id,
+        stripe_onboarding_complete
       )
-    `)
+    )
+  `
+
+  let { data: distributionsData, error: distError } = await (supabase
+    .from('distributions') as any)
+    .select(distSelect)
     .eq('hotel_config_id', hotel.id)
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
-  
+
+  // Fallback: sort_order may not exist on older schemas (e.g. staging)
+  if (distError?.code === '42703') {
+    ;({ data: distributionsData, error: distError } = await (supabase
+      .from('distributions') as any)
+      .select(distSelect)
+      .eq('hotel_config_id', hotel.id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: true }))
+  }
+
   if (distError || !distributionsData) {
     return null
   }

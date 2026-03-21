@@ -1,0 +1,66 @@
+---
+description: How we build — intent, principles, and where to read details
+globs: "**/*.ts, **/*.tsx"
+alwaysApply: false
+---
+
+# How we build
+
+This rule states **intent**. For tables, formulas, and step-by-step flows, read the linked docs **before** changing related code.
+
+## When to read which doc
+
+- **Booking lifecycle, statuses, timing, privacy, commission, payments** → `docs/product/system/booking-flow.md`
+- **Pricing models, cents, overrides** → `docs/product/system/pricing.md`
+- **Channels (hotel vs direct)** → `docs/product/system/channels.md`
+- **Emails & notifications** → `docs/product/system/communication.md` and `docs/design/email-design.md`
+- **Embed / widget on hotel sites** → `docs/product/system/embed.md`
+- **Dashboard & Admin UI layout and components** → `docs/design/dashboard-design-principles.md` and `docs/design/brand-essence.md`
+- **Banned patterns** → `docs/forbidden.md` (check before proposing alternatives)
+- **Past architecture choices** → `docs/decisions.md`
+- **Entity relationships overview** → `docs/product/README.md` (Data model)
+- **Deploy, env, crons, migrations** → `docs/deployment/DEPLOYMENT.md`
+
+## European-first product
+
+We serve European hospitality (EU-style expectations). Use euros, European date and time conventions, Monday-start weeks. Never American formats (no MM/dd/yyyy, no AM/PM, no $). Guests and suppliers may be in different timezones: calendar dates are plain `YYYY-MM-DD` strings; timestamps are UTC — see `docs/forbidden.md` for date pitfalls.
+
+Reuse existing helpers (`formatPrice`, `formatDate`, `parseLocalDate`, etc. in widget and dashboard `lib`) instead of inventing new formatters.
+
+## Money and pricing
+
+Integer cents, `_cents` fields, no floats for money. `Math.round()` for commission splits. Default display currency EUR. Details and formulas: `docs/product/system/pricing.md`.
+
+## Statuses and flows
+
+Reservation and booking statuses only move forward — never backwards. Full state machines and rules: `docs/product/system/booking-flow.md`.
+
+## Dashboard and Admin UI
+
+Warm minimalism: unified surface, borders not shadows, Lucide icons not emojis, no gradients. Before adding UI: what must this person do *right now*, and what can be removed? Full patterns and spacing: `docs/design/dashboard-design-principles.md`.
+
+Admin is internal-only (superadmin). Env and deploy: `docs/deployment/DEPLOYMENT.md`.
+
+## Widget is the API layer
+
+Next.js App Router. All API routes under `apps/widget/src/app/api/`. Dashboard and Admin **mutate only through** these routes (reads via Supabase client are OK).
+
+Guest-facing: sanitize with `sanitizeGuestText`, `sanitizeGuestEmail`; in email HTML use `escapeHtml` for user content. Cron routes: verify `Authorization: Bearer` with `CRON_SECRET`. Rate-limit guest reservation endpoints where already wired.
+
+## Emails
+
+Resend, `baseTemplate`, **inline CSS only** (no layout via flexbox for critical structure). Tone: warm, direct, no emojis. Specs: `docs/design/email-design.md`, product rules: `docs/product/system/communication.md`.
+
+## Stripe and payouts
+
+Payment Links for both booking paths (stable URLs for email). Webhook creates booking on success. Connect, transfers, refunds: follow existing code in `apps/widget/src/lib/stripe.ts` and `docs/product/system/booking-flow.md` / `docs/product/supplier/get-paid.md`.
+
+## Critical gotchas
+
+- Never `toISOString().split('T')[0]` or `new Date("yyyy-mm-dd")` for calendar dates — see `docs/forbidden.md`.
+- Generated Supabase types may not list every table — use explicit assertions so `next build` does not get `never` on `.data`. Auth user id ≠ `users.id` — resolve via `auth_id` first.
+- **Three separate Vercel projects** — never mix app roots. Table and domains: `docs/deployment/DEPLOYMENT.md`.
+
+## API JSON shape (widget routes)
+
+Success: `NextResponse.json({ success: true, data: ... })`. Errors: `NextResponse.json({ error: 'message' }, { status })`. Keep consistent with existing routes unless migrating intentionally.

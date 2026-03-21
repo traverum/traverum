@@ -21,6 +21,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'vwbxkkzzpacqzqvqxqvf.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
     ],
   },
   async headers() {

@@ -40,3 +40,9 @@ apps/dashboard/supabase/scripts/.production_data_dump.sql
 
 # Supabase CLI local state (link, versions)
 apps/dashboard/supabase/.temp/
+
+# Claude Code local worktrees (machine-specific)
+.claude/worktrees/
+
+# Obsidian vault metadata (local editor state)
+docs/.obsidian/

@@ -1,0 +1,40 @@
+---
+description: Capture product knowledge, decisions, and corrections during conversation
+alwaysApply: true
+---
+
+# Knowledge Capture
+
+Listen for moments where the user shares knowledge that should persist beyond this chat.
+
+## Triggers
+
+1. **Correction** — "No, that's wrong", "actually it works like...", "don't do X"
+2. **New product context** — user explains how something works, why it exists, who uses what
+3. **Decision** — user chooses between options, sets a rule, defines behavior
+4. **Constraint** — "we can't", "we should never", "always do X"
+
+## Routing
+
+When you detect a trigger, route the knowledge to the right file:
+
+- **"Never do X"** → `docs/forbidden.md`
+- **How a feature or flow works or what users need to achieve (user journeys)** → relevant `docs/product/` doc (Design Decisions section)
+- **How code should be written** → relevant `.cursor/rules/` file
+- **Choice, tradeoff, or constraint** → `docs/decisions.md` under today's date heading
+- **Not sure where it belongs** → ask: *"Should I add this to [file]?"*
+
+## After routing
+
+Briefly confirm in one line: *"Logged to decisions.md: cancellation is free within 24h."*
+
+If the knowledge **contradicts** an existing entry in `decisions.md` or `forbidden.md`, flag it before updating: *"This contradicts [existing rule]. Should I update it?"*
+
+If the knowledge **alters a user flow**, ask: *"This changes the [journey] flow. Should I update the product doc?"*
+
+## Do NOT log
+
+- Temporary debugging choices ("let's add a console.log")
+- Implementation details specific to the current task
+- Things already documented (check before appending)
+- Code style preferences unless they should become a rule
