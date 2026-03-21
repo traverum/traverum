@@ -34,6 +34,10 @@ Last updated: 2026-03-21 (system setup)
 |--------|------|-------|--------|
 | Constants | `constants.test.ts` | 21 | Commission constants, currency, `formatPrice`, booking statuses, payment deadline, experience categories |
 
+## GitHub Actions
+
+The **Test** workflow (`.github/workflows/test.yml`) runs `pnpm test:pull`, which includes Playwright. Configure the same repository secrets as **E2E** (`E2E_SUPABASE_URL`, `E2E_SUPABASE_ANON_KEY`, `E2E_SUPABASE_SERVICE_ROLE_KEY`, `E2E_STRIPE_SECRET_KEY`). The job installs Chromium before tests; Playwright uses `http://localhost:3110` for the widget (see `apps/e2e/constants.ts`).
+
 ## E2E Tests (Playwright) — 6 tests
 
 | Test | Type | Journey covered |
