@@ -1,9 +1,9 @@
 ---
-description: Product vision, architecture invariants, and where deploy details live
+description: Product vision — what Traverum is and why it exists
 alwaysApply: true
 ---
 
-# Traverum — Vision & Architecture
+# Traverum — Vision
 
 ## Traverum & Veyond
 
@@ -11,56 +11,18 @@ Traverum is the company that builds technology for hospitality. Veyond is our cu
 
 ## What we're building
 
-Booking infrastructure that makes local experiences bookable — through hotels (white-label) and directly through Veyond. Three parties, two channels, one platform:
+Booking infrastructure that makes local experiences bookable — through hotels (white-label) and directly through Veyond. Three parties, two channels, one platform.
 
-- **Suppliers** create experiences and manage bookings. They gain customers without marketing costs.
-- **Hotels** embed a branded widget. They earn commission without operating experiences.
-- **Guests** browse and book — through a hotel's website or directly through Veyond.
+## Goal
 
-## What must always be true
+Traverum exists to solve a problem no one has solved well:
 
-1. **Two channels, one engine.** Hotel widget (white-label, 80/12/8 split) and Veyond direct (92/8 split). Same code. `hotel_id = null` → direct Veyond booking.
-2. **Two booking paths.** Session-based (instant) and request-based (approval). Both end in payment. Both work identically across channels.
-3. **Supplier is protected.** Guest contact info hidden until payment. Deadlines create urgency. Auto-complete ensures suppliers get paid.
-4. **Every flow ends in a commission split.** This is the business model.
-5. **Design = effortlessly warm, quietly precise.** Nordic structure + Italian warmth. Never cold, never ornate.
+**Hotels** want to offer local experiences to their guests — it enhances the stay, drives revenue, and differentiates the property. But building and operating an experience program is expensive, complex, and outside their expertise.
 
-## North star change detection
+**Suppliers** (tour operators, guides, rental companies) have great experiences but struggle to reach tourists. Marketing is expensive, and being discovered by the right travelers at the right time is hard. Hotels are a natural distribution channel.
 
-When implementing changes that affect any of these, STOP and tell the user:
-- Booking flow behavior (status transitions, timing windows, payment flow)
-- Commission split logic or revenue distribution
-- Channel logic (how `hotel_id` null/present changes behavior)
-- Privacy rules (when guest info is revealed)
-- Core entity relationships (partners, experiences, sessions, reservations, bookings)
+**Guests** want authentic local experiences but don't know what's available, don't trust random booking platforms, and would rather book through their hotel — a source they already trust.
 
-Say: *"This change affects a north star. Should I update the relevant product doc in `docs/product/`?"*
+Traverum is the infrastructure that connects all three. Hotels embed a branded widget on their website, in confirmation emails, and in lobbies via QR-code stands. Suppliers manage availability. Guests book and pay — through the hotel or directly through Veyond. Everyone earns their share.
 
-## Product docs contract
-
-Product docs live in `docs/product/`. Each has a **Goal** section (human-owned) and **Design decisions** section.
-
-- **Before editing a page or system**, check for a matching product doc. Read it.
-- **Never modify the Goal section** without explicit user approval.
-- **Design decisions** can be updated as implementation evolves, but flag changes that contradict the Goal.
-- **After significant changes**, ask: *"Should I update the Design Decisions in [doc]?"*
-
-## Session continuity
-
-- At the start of every session, read `docs/active-state.md` for current open items and context.
-- Use `/plan` before building, `/wrap-up` when done or switching chats, `/test` for deploy confidence.
-
-## Conventions
-
-- All API routes live in `apps/widget/src/app/api/`
-- Dashboard/Admin call widget API routes (not Supabase directly for mutations)
-- Supabase types: `apps/widget/src/lib/supabase/types.ts` (generated)
-- RLS uses `get_user_partner_ids()` helper for multi-org access
-- UUIDs for primary keys
-- **Never** use actual place names as placeholders
-
-## Deployment and embed
-
-**Three separate Vercel projects** — one per app; never mix Root Directory or you deploy the wrong app. Full table, env vars, crons, migrations: `docs/deployment/DEPLOYMENT.md`.
-
-Hotel embed snippet and theming: `docs/product/system/embed.md`.
+Through the hotel channel, the guest never knows Traverum exists — the hotel looks like they run the experience program. Through Veyond, guests discover and book experiences directly under the Veyond brand.

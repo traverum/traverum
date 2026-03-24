@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { SessionPicker } from '@/components/SessionPicker'
 import { ParticipantSelector } from '@/components/ParticipantSelector'
 import type { ExperienceSession } from '@/lib/supabase/types'
-import { Check, X, MapPin, Phone, Mail, ExternalLink, MessageCircle, Copy } from 'lucide-react'
+import { Check, X, MapPin, Phone, Mail, ExternalLink, MessageCircle, Copy, ChevronRight } from 'lucide-react'
 
 interface BookingPanelProps {
   experience: ReceptionistExperience
@@ -38,6 +38,12 @@ const CANCELLATION_LABELS: Record<string, string> = {
   flexible: 'Free cancellation up to 24h before',
   moderate: 'Free cancellation up to 7 days before',
 }
+
+/** Receptionist panel: one rhythm for section titles + field labels */
+const formEyebrow = 'text-xs font-medium text-muted-foreground'
+const insetCard = 'rounded-xl border border-border bg-muted/20'
+const formInput =
+  'w-full h-11 px-4 text-sm rounded-xl border border-border/50 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors'
 
 export function BookingPanel({
   experience,
@@ -223,16 +229,12 @@ export function BookingPanel({
     return `https://wa.me/${phone}?text=${msg}`
   }, [experience.supplier.phone, hotelName, experience.title])
 
-  // Link to the experience as guests see it: hotel widget if recommended, Veyond direct otherwise
+  // Always Veyond direct URL: hotel widget may omit experiences not on their curated list
   const bookingSiteUrl = useMemo(() => {
     const base = appUrl.replace(/\/$/, '')
     const slug = experience.slug || experience.id
-    return experience.isSelected
-      ? `${base}/${hotelSlug}/${slug}`
-      : `${base}/experiences/${slug}`
-  }, [appUrl, experience.id, experience.isSelected, experience.slug, hotelSlug])
-
-  const inputClass = 'w-full h-11 px-4 text-sm rounded-xl border border-border/50 bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition-colors'
+    return `${base}/experiences/${slug}`
+  }, [appUrl, experience.id, experience.slug])
 
   if (bookingState === 'success') {
     return (
@@ -253,8 +255,9 @@ export function BookingPanel({
 
         {paymentUrl && (
           <button
+            type="button"
             onClick={() => copyToClipboard(paymentUrl)}
-            className="w-full mt-6 h-11 text-sm font-medium rounded-xl border border-border/50 text-foreground hover:bg-accent/5 transition-colors inline-flex items-center justify-center gap-2"
+            className="w-full mt-6 h-12 text-sm font-medium rounded-xl border border-border/50 text-foreground hover:bg-accent/5 transition-colors inline-flex items-center justify-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             <Copy className="w-4 h-4" />
             {copied ? 'Copied!' : 'Copy Link'}
@@ -262,8 +265,9 @@ export function BookingPanel({
         )}
 
         <button
+          type="button"
           onClick={() => onComplete({ name: guestName, email: guestEmail, phone: guestPhone })}
-          className="w-full mt-3 h-11 text-sm font-medium rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover transition-colors"
+          className="w-full mt-3 h-12 text-sm font-medium rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
           Book Another
         </button>
@@ -279,152 +283,166 @@ export function BookingPanel({
         </div>
       )}
 
-      <div className="p-5 flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-medium text-foreground">{experience.title}</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">{experience.supplier.name}</p>
+      <div className="p-5 flex items-start justify-between gap-4 border-b border-foreground/[0.06]">
+        <div className="min-w-0">
+          <h2 className="text-lg font-light text-foreground leading-snug">{experience.title}</h2>
+          <p className="text-sm text-muted-foreground mt-1">{experience.supplier.name}</p>
         </div>
-        <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1.5 -mr-1.5 rounded-xl hover:bg-accent/5 transition-colors">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="text-muted-foreground hover:text-foreground p-1.5 -mr-1.5 rounded-xl hover:bg-accent/5 transition-colors shrink-0"
+        >
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="px-5 pb-5 space-y-6">
-        {/* Experience info — same visual language as date picker (labels, bordered blocks) */}
+      <div className="px-5 pb-5 pt-5 space-y-6">
+        {/* Reference — context before booking */}
+        <div className="space-y-6">
+        {/* Details — prose + structured facts (same card language as contact / preview) */}
         <section className="space-y-3">
-          <p className="text-xs font-medium text-muted-foreground">Details</p>
+          <p className={formEyebrow}>Details</p>
           <p className="text-sm text-foreground leading-relaxed">{experience.description}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            <span>{formatDuration(experience.duration_minutes)}</span>
-            <span>{experience.min_participants}–{experience.max_participants} guests</span>
-            {experience.available_languages.length > 0 && (
-              <span>{experience.available_languages.join(', ')}</span>
-            )}
-            {experience.cancellation_policy && (
-              <span>{CANCELLATION_LABELS[experience.cancellation_policy] || experience.cancellation_policy}</span>
-            )}
-          </div>
+          <dl className={`${insetCard} divide-y divide-border`}>
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,7.75rem)_1fr] gap-x-6 gap-y-0.5 px-4 py-3 sm:items-baseline">
+              <dt className={formEyebrow}>Duration</dt>
+              <dd className="text-sm text-foreground">{formatDuration(experience.duration_minutes)}</dd>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,7.75rem)_1fr] gap-x-6 gap-y-0.5 px-4 py-3 sm:items-baseline">
+              <dt className={formEyebrow}>Group size</dt>
+              <dd className="text-sm text-foreground">
+                {experience.min_participants}–{experience.max_participants} guests
+              </dd>
+            </div>
+            {experience.available_languages.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,7.75rem)_1fr] gap-x-6 gap-y-0.5 px-4 py-3 sm:items-baseline">
+                <dt className={formEyebrow}>Languages</dt>
+                <dd className="text-sm text-foreground">{experience.available_languages.join(', ')}</dd>
+              </div>
+            ) : null}
+            {experience.cancellation_policy ? (
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,7.75rem)_1fr] gap-x-6 gap-y-0.5 px-4 py-3 sm:items-baseline">
+                <dt className={formEyebrow}>Cancellation</dt>
+                <dd className="text-sm text-foreground leading-snug">
+                  {CANCELLATION_LABELS[experience.cancellation_policy] || experience.cancellation_policy}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
         </section>
 
         {experience.hotel_notes && (
-          <section className="bg-accent/5 border border-accent/15 rounded-xl p-4 space-y-1.5">
+          <section className="bg-accent/5 border border-accent/15 rounded-xl p-4 space-y-2">
             <p className="text-xs font-medium text-accent">Message from supplier</p>
             <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{experience.hotel_notes}</p>
           </section>
         )}
 
-        {/* View on booking site — one clear button */}
-        {bookingSiteUrl && (
+        {/* Guest preview — same quiet row/card style as location + contact */}
+        {bookingSiteUrl ? (
           <section className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Guest view</p>
-            <a
-              href={bookingSiteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg border border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-sm font-medium text-foreground transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
-            >
-              <ExternalLink className="w-4 h-4" />
-              {experience.isSelected
-                ? 'View on your hotel\'s booking page'
-                : 'View on Veyond booking platform'}
-            </a>
+            <p className={formEyebrow}>Guest preview</p>
+            <div className={`${insetCard} px-4`}>
+              <a
+                href={bookingSiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 py-3 min-h-[44px] w-full text-left text-sm text-foreground hover:text-accent transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
+              >
+                <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden />
+                <span className="min-w-0 flex-1">Open guest view</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/60 flex-shrink-0" aria-hidden />
+              </a>
+            </div>
           </section>
-        )}
+        ) : null}
 
-        {/* Meeting point — bordered block */}
-        {(experience.meeting_point || experience.location_address) && (
+        {(experience.meeting_point || experience.location_address) ? (
           <section className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Meeting point</p>
-            <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3">
-              <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm text-foreground">{experience.meeting_point || experience.location_address}</p>
-                {mapsUrl && (
-                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 mt-1 text-sm font-medium text-accent hover:text-accent/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded">
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    Open in Maps
+            <p className={formEyebrow}>Experience location</p>
+            <div className={`${insetCard} px-4`}>
+              <div className="flex items-center gap-3 py-3 min-h-[44px]">
+                <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" aria-hidden />
+                <span className="text-sm text-foreground min-w-0 flex-1 truncate">
+                  {experience.meeting_point || experience.location_address}
+                </span>
+                {mapsUrl ? (
+                  <a
+                    href={mapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent/80 transition-colors flex-shrink-0 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded py-1 -my-1"
+                  >
+                    Maps
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/50" aria-hidden />
                   </a>
-                )}
+                ) : null}
               </div>
             </div>
           </section>
-        )}
+        ) : null}
 
-        {/* Contact supplier — always same three actions for consistent layout */}
+        {/* Contact supplier — phone + WhatsApp share one number; email row fixed below */}
         <section className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Contact supplier</p>
-          <div className="grid grid-cols-3 gap-2">
-            {whatsappUrl ? (
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-lg border border-border bg-background hover:border-success/50 hover:bg-success/5 text-success transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
-              >
-                <MessageCircle className="w-5 h-5" />
-                <span className="text-xs font-medium">WhatsApp</span>
-              </a>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-lg border border-border bg-muted/20 text-muted-foreground" aria-hidden="true">
-                <MessageCircle className="w-5 h-5 opacity-50" />
-                <span className="text-xs font-medium">WhatsApp</span>
-                <span className="text-[10px]">—</span>
+          <p className={formEyebrow}>Contact supplier</p>
+          <div className={`${insetCard} px-4 divide-y divide-border`}>
+            <div className="flex items-center gap-3 py-3 min-h-[44px]">
+              <Phone className={`w-4 h-4 flex-shrink-0 ${experience.supplier.phone ? 'text-muted-foreground' : 'text-muted-foreground opacity-50'}`} />
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                {experience.supplier.phone ? (
+                  <a
+                    href={`tel:${experience.supplier.phone}`}
+                    className="text-sm text-foreground hover:text-accent transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded min-w-0 truncate"
+                  >
+                    {experience.supplier.phone}
+                  </a>
+                ) : (
+                  <span className="text-sm text-muted-foreground tabular-nums" aria-label="No phone number">
+                    —
+                  </span>
+                )}
+                {whatsappUrl ? (
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 flex-shrink-0 text-sm text-success hover:text-success/90 transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded py-1 -my-1"
+                    aria-label="Open WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                ) : null}
               </div>
-            )}
-            {experience.supplier.phone ? (
-              <a
-                href={`tel:${experience.supplier.phone}`}
-                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-lg border border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
-              >
-                <Phone className="w-5 h-5" />
-                <span className="text-xs font-medium">Call</span>
-              </a>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-lg border border-border bg-muted/20 text-muted-foreground" aria-hidden="true">
-                <Phone className="w-5 h-5 opacity-50" />
-                <span className="text-xs font-medium">Call</span>
-                <span className="text-[10px]">—</span>
-              </div>
-            )}
-            {experience.supplier.email ? (
-              <a
-                href={`mailto:${experience.supplier.email}?subject=${encodeURIComponent(`Guest inquiry: ${experience.title}`)}`}
-                className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-lg border border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-foreground transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
-              >
-                <Mail className="w-5 h-5" />
-                <span className="text-xs font-medium">Email</span>
-              </a>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-lg border border-border bg-muted/20 text-muted-foreground" aria-hidden="true">
-                <Mail className="w-5 h-5 opacity-50" />
-                <span className="text-xs font-medium">Email</span>
-                <span className="text-[10px]">—</span>
-              </div>
-            )}
-          </div>
-          {/* Email address visible next to contact row */}
-          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 px-4 py-2.5">
-            <span className="text-xs text-muted-foreground flex-shrink-0">Email</span>
-            <span className="text-sm text-foreground truncate min-w-0">
-              {experience.supplier.email || '—'}
-            </span>
-            {experience.supplier.email && (
-              <a
-                href={`mailto:${experience.supplier.email}?subject=${encodeURIComponent(`Guest inquiry: ${experience.title}`)}`}
-                className="flex-shrink-0 inline-flex items-center gap-1.5 py-1.5 px-3 rounded-lg border border-border bg-background hover:border-accent/50 hover:bg-muted/30 text-xs font-medium text-foreground transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
-              >
-                <Mail className="w-3.5 h-3.5" />
-                Open
-              </a>
-            )}
+            </div>
+            <div className="flex items-center gap-3 py-3 min-h-[44px]">
+              <Mail className={`w-4 h-4 flex-shrink-0 ${experience.supplier.email ? 'text-muted-foreground' : 'text-muted-foreground opacity-50'}`} />
+              {experience.supplier.email ? (
+                <a
+                  href={`mailto:${experience.supplier.email}?subject=${encodeURIComponent(`Guest inquiry: ${experience.title}`)}`}
+                  className="text-sm text-foreground hover:text-accent transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded min-w-0 truncate"
+                >
+                  {experience.supplier.email}
+                </a>
+              ) : (
+                <span className="text-sm text-muted-foreground tabular-nums" aria-label="No email">
+                  —
+                </span>
+              )}
+            </div>
           </div>
         </section>
+        </div>
 
+        {/* Booking — date, party, guest, submit */}
+        <div className="space-y-6 pt-6 border-t border-border">
         {/* Date & time — same calendar + sessions / request flow as guest widget */}
-        <section className="space-y-3">
-          <p className="text-xs font-medium text-muted-foreground">When</p>
+        <section className="space-y-2">
+          <p className={formEyebrow}>When</p>
           {sessionsLoading ? (
-            <div className="h-[320px] w-full rounded-lg border border-border animate-pulse bg-muted/30" />
+            <div className="h-[320px] w-full rounded-xl border border-border bg-muted/40 animate-pulse" />
           ) : (
             <SessionPicker
               sessions={sessions as ExperienceSession[]}
@@ -447,7 +465,7 @@ export function BookingPanel({
         </section>
 
         {/* Participants / quantity — same selector as guest widget */}
-        <section className="pt-2 border-t border-border">
+        <section className="space-y-2">
           {isRental ? (
             <ParticipantSelector
               value={quantity}
@@ -455,6 +473,7 @@ export function BookingPanel({
               min={1}
               max={experience.max_participants}
               label="Quantity"
+              labelClassName={formEyebrow}
             />
           ) : (
             <ParticipantSelector
@@ -462,48 +481,56 @@ export function BookingPanel({
               onChange={setParticipants}
               min={experience.min_participants || 1}
               max={experience.max_participants}
+              labelClassName={formEyebrow}
             />
           )}
-          <p className="text-sm text-muted-foreground mt-2 tabular-nums">
+          <p className="text-sm font-medium text-foreground tabular-nums pt-0.5">
             Total {formatPrice(priceCalc.totalPrice, experience.currency)}
           </p>
         </section>
 
-        {/* Guest info */}
-        <section className="space-y-3">
-          <input
-            type="text"
-            placeholder="Guest name"
-            value={guestName}
-            onChange={e => setGuestName(e.target.value)}
-            className={inputClass}
-          />
-          <input
-            type="email"
-            placeholder="Guest email"
-            value={guestEmail}
-            onChange={e => setGuestEmail(e.target.value)}
-            className={inputClass}
-          />
-          <input
-            type="tel"
-            placeholder="Guest phone (optional)"
-            value={guestPhone}
-            onChange={e => setGuestPhone(e.target.value)}
-            className={inputClass}
-          />
+        {/* Guest details */}
+        <section className="space-y-2">
+          <p className={formEyebrow}>Guest details</p>
+          <div className="space-y-3">
+            <input
+              type="text"
+              placeholder="Guest name"
+              value={guestName}
+              onChange={e => setGuestName(e.target.value)}
+              className={formInput}
+              autoComplete="name"
+            />
+            <input
+              type="email"
+              placeholder="Guest email"
+              value={guestEmail}
+              onChange={e => setGuestEmail(e.target.value)}
+              className={formInput}
+              autoComplete="email"
+            />
+            <input
+              type="tel"
+              placeholder="Guest phone (optional)"
+              value={guestPhone}
+              onChange={e => setGuestPhone(e.target.value)}
+              className={formInput}
+              autoComplete="tel"
+            />
+          </div>
         </section>
 
         {error && (
-          <div className="p-4 rounded-xl bg-destructive/10 text-sm text-destructive">
+          <div className="p-4 rounded-xl border border-destructive/25 bg-destructive/10 text-sm text-destructive">
             {error}
           </div>
         )}
 
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={!canSubmit || bookingState === 'submitting'}
-          className="w-full h-12 text-sm font-medium rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="w-full h-12 text-sm font-medium rounded-xl bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
           {bookingState === 'submitting'
             ? 'Sending...'
@@ -511,6 +538,7 @@ export function BookingPanel({
               ? 'Send Request'
               : `Book · ${formatPrice(priceCalc.totalPrice, experience.currency)}`}
         </button>
+        </div>
       </div>
     </div>
   )

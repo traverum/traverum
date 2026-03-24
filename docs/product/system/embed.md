@@ -56,6 +56,6 @@ The old `<div id="traverum-widget">` embed pattern still works and auto-converts
 
 ## References
 
-- Cursor rule: `.cursor/rules/widget-conventions.mdc`
+- Cursor rule: `.cursor/rules/technical.mdc`
 - Channels: `docs/product/system/channels.md`
 - Code: `apps/widget/public/embed.js`, `apps/widget/src/app/api/embed/[hotelSlug]/route.ts`

@@ -51,5 +51,5 @@ When creating/editing sessions (via calendar), suppliers can set a custom price.
 ## References
 
 - Pricing logic: `docs/product/system/pricing.md`
-- Cursor rule: `.cursor/rules/conventions.mdc` (dashboard UI intent; full spec in `docs/design/dashboard-design-principles.md`)
+- Cursor rule: `.cursor/rules/technical.mdc` (dashboard UI intent; full spec in `docs/design/dashboard-design-principles.md`)
 - Code: `apps/dashboard/src/pages/supplier/ExperienceForm.tsx`

@@ -48,4 +48,4 @@ At booking creation, `supplier_amount_cents` is calculated and stored. The settl
 - Booking flow: `docs/product/system/booking-flow.md`
 - Pricing: `docs/product/system/pricing.md`
 - Commission code: `apps/widget/src/lib/commission.ts`
-- Cursor rule: `.cursor/rules/conventions.mdc` (Stripe intent; flow in `system/booking-flow.md`, settlement in this doc)
+- Cursor rule: `.cursor/rules/technical.mdc` (Stripe intent; flow in `system/booking-flow.md`, settlement in this doc)

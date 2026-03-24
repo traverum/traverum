@@ -18,17 +18,15 @@ Listen for moments where the user shares knowledge that should persist beyond th
 
 When you detect a trigger, route the knowledge to the right file:
 
-- **"Never do X"** → `docs/forbidden.md`
-- **How a feature or flow works or what users need to achieve (user journeys)** → relevant `docs/product/` doc (Design Decisions section)
-- **How code should be written** → relevant `.cursor/rules/` file
-- **Choice, tradeoff, or constraint** → `docs/decisions.md` under today's date heading
+- **Product knowledge** (business rules, user flows, UX rules, how the product should behave) → `docs/memory/product-context.md`
+- **Technical decisions** (architecture choices, implementation patterns, code conventions, pitfalls) → `docs/memory/tech-context.md`
 - **Not sure where it belongs** → ask: *"Should I add this to [file]?"*
 
 ## After routing
 
-Briefly confirm in one line: *"Logged to decisions.md: cancellation is free within 24h."*
+Briefly confirm in one line: *"Logged to product-context.md: cancellation is free within 24h."*
 
-If the knowledge **contradicts** an existing entry in `decisions.md` or `forbidden.md`, flag it before updating: *"This contradicts [existing rule]. Should I update it?"*
+If the knowledge **contradicts** an existing entry in either context file, flag it before updating: *"This contradicts [existing entry]. Should I update it?"*
 
 If the knowledge **alters a user flow**, ask: *"This changes the [journey] flow. Should I update the product doc?"*
 

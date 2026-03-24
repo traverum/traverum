@@ -6,11 +6,11 @@ Technical implementation reference for building dashboard interfaces. For brand 
 
 ## Guiding Rules
 
-1. **Nothing unnecessary.** Every element must serve a function. Hide complexity until needed. Progressive disclosure over information overload.
+1. **Nothing unnecessary.** Think what user must see.
 2. **Visual over text.** Badges, icons, status dots, and color communicate state. Text appears only when essential or on hover.
 3. **Unified background.** One warm white surface everywhere — cards, sidebar, header, page. Borders create distinction, never shadows or background color variation.
 4. **Icons only.** Lucide (`lucide-react`) for all icons. No emojis, ever.
-5. **Compact and precise.** Small components, tight spacing, fast feedback. Respect the user's screen and time.
+5. **Never show same thing twice** No badge saying active if there already is green status signal.
 
 ---
 

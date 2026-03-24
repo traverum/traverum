@@ -48,9 +48,10 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
         <BrowserRouter>
+          {/* Toaster must live inside Router: SupportToastAction uses <Link>. */}
+          <Toaster />
+          <Sonner />
           <ActivePartnerProvider>
             <ActiveHotelConfigProvider>
             <SidebarProvider>

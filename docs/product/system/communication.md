@@ -42,5 +42,5 @@ All email action links use HMAC tokens with expiry. One-click, idempotent. Click
 
 - Email design spec: `docs/design/email-design.md`
 - Brand identity: `docs/design/brand-essence.md`
-- Cursor rule: `.cursor/rules/conventions.mdc` (email intent; template spec in `docs/design/email-design.md`)
+- Cursor rule: `.cursor/rules/technical.mdc` (email intent; template spec in `docs/design/email-design.md`)
 - Code: `apps/widget/src/lib/email/templates.ts`, `apps/widget/src/lib/email/index.ts`

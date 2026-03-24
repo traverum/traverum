@@ -30,5 +30,5 @@ Guests arriving through a hotel's website or the Veyond direct platform. They're
 
 ## References
 
-- Cursor rule: `.cursor/rules/widget-conventions.mdc`
+- Cursor rule: `.cursor/rules/technical.mdc`
 - Code: `apps/widget/src/app/[hotelSlug]/page.tsx`

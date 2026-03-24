@@ -54,5 +54,5 @@ Name, participants, time, amount: always visible in all tabs. Email and phone: o
 ## References
 
 - Booking flow: `docs/product/system/booking-flow.md`
-- Cursor rule: `.cursor/rules/conventions.mdc` (dashboard UI intent; full spec in `docs/design/dashboard-design-principles.md`)
+- Cursor rule: `.cursor/rules/technical.mdc` (dashboard UI intent; full spec in `docs/design/dashboard-design-principles.md`)
 - Code: `apps/dashboard/src/pages/supplier/BookingManagement.tsx`, `apps/dashboard/src/hooks/useBookingManagement.ts`

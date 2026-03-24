@@ -1,0 +1,74 @@
+---
+description: Architecture, conventions, and development workflow
+alwaysApply: true
+---
+
+Understand the intent of our chat and only read further context from our `docs/` if needed.
+
+Always before deployment read `docs/deployment`. Be causious when pushing to production. We do not want to break our product.
+
+# Rules for building
+
+## Planning — blast radius first
+
+Before building any feature or significant change, STOP. Keep this in your mind all the time: 
+
+**We want our product to work for all users:** A change in one place must never break anything elsewhere. If the plan involves database or schema changes, think how we can make sure it does not cause errors or break anything in any of our apps.
+
+## Planning - Understand who we build for and why
+
+**Understand the people and the purpose beyond all of our decisions:** In your best way try to understand what our users (hoteliers, receptionists, suppliers, guests) want from our product and read `docs/product/` docs for context. Think about the pain points separately for each user type and think how are we solving them with our decisions.
+
+### Product docs contract
+
+Product docs live in `docs/product/`. Goal sections are human-owned — never modify without approval.
+
+## Design
+
+Nordic clean design meets Italian effortless elegance. Show only what's relevant now. Every element, every word, every pixel must justify its existence. 
+
+Even an Italian nonna understands what our pages are for.
+Even a Finnish top designer loves how they look. For further context read `docs/design/`.
+
+## Most important user flows
+
+How guests can book through our platform. Things we must NEVER break.
+
+1. **Two channels, one engine.** Hotel widget (white-label) and Veyond direct. Same code. `hotel_id = null` → direct Veyond booking.
+2. **Two booking paths.** Session-based (instant) and request-based (approval). Both end in payment.
+3. **Supplier is protected.** Guest contact info hidden until payment. Deadlines create urgency.
+4. **Every flow ends in a commission split.** This is the business model.
+
+Most important flow is our booking flow.
+
+## Architecture
+
+- **Monorepo:** `apps/widget` (Next.js 14), `apps/dashboard` (Vite + React), `apps/admin` (Vite + React), `packages/shared`
+- **Widget is the API layer.** All routes under `apps/widget/src/app/api/`. Dashboard and Admin mutate only through these routes.
+- **Three separate Vercel projects** — one per app. Never mix Root Directory.
+- Supabase types: `apps/widget/src/lib/supabase/types.ts` (generated). Auth user id ≠ `users.id` — resolve via `auth_id` first.
+
+## Technical decisions
+
+**For understanding your past decisions, read:** `docs/memory/active-state.md`, `docs/memory/product-context.md`, `docs/memory/tech-context.md`. These are decisions we have made in the past together. Not set in stone but useful for keeping the product working and our users happy.
+
+## Code Philosophy — Optimize for Future AI Context
+
+Your primary objective is to write code that is incredibly easy for *future AI sessions* to read, debug, and modify. You have the freedom to choose the exact methods, but you must strictly adhere to this architectural intent:
+
+* **Boring is Beautiful:** Prioritize flat, predictable, and highly descriptive code over "clever" or highly abstracted logic. Future AIs need high signal-to-noise ratios. If a human or AI has to think hard to understand a function, rewrite it to be simpler.
+* **Hyper-Local Context:** Structure the code so that a future AI can understand a specific function or component without needing to load 10 other files into its context window. Keep logic isolated and boundaries clear.
+* **Strict Scope Lock:** You are an execution engine. Do exactly what is requested and stop. Never add unprompted features, and never "tidy up" or refactor unrelated code. Touching unrequested code introduces stealth bugs.
+* **Defensive and Loud:** Assume all external input is malicious and internal systems will eventually fail. Validate and sanitize all guest data at the system borders. If an error occurs, fail loudly with explicit, verbose error messages. Never swallow errors silently; AIs rely on clear stack traces to fix bugs autonomously.
+
+## Further reading (READ ONLY IF YOU NEED TO)
+
+- **Booking lifecycle, payments, commission** → `docs/product/system/booking-flow.md`
+- **Pricing models** → `docs/product/system/pricing.md`
+- **Channels** → `docs/product/system/channels.md`
+- **Emails** → `docs/product/system/communication.md`, `docs/design/email-design.md`
+- **Embed / widget** → `docs/product/system/embed.md`
+- **Dashboard & Admin UI** → `docs/design/dashboard-design-principles.md`
+- **Product rules & pitfalls** → `docs/memory/product-context.md`
+- **Tech decisions & pitfalls** → `docs/memory/tech-context.md`
+- **Deploy, env, crons** → `docs/deployment/DEPLOYMENT.md`

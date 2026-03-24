@@ -74,7 +74,7 @@ Always start from Monday (European convention). Never Sunday.
 ## References
 
 - Booking management: `docs/product/supplier/handle-bookings.md`
-- Cursor rule: `.cursor/rules/conventions.mdc` (dashboard UI intent; full spec in `docs/design/dashboard-design-principles.md`)
+- Cursor rule: `.cursor/rules/technical.mdc` (dashboard UI intent; full spec in `docs/design/dashboard-design-principles.md`)
 - Code: `apps/dashboard/src/pages/supplier/SupplierSessions.tsx`
 - Components: `apps/dashboard/src/components/sessions/`
 - Calendar utils: `apps/dashboard/src/components/sessions/calendar-utils.ts`

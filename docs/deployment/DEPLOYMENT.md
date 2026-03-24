@@ -1,6 +1,6 @@
 # Deployment reference
 
-Three Vercel projects, one per app. High-level intent is in `.cursor/rules/project.mdc` and `.cursor/rules/conventions.mdc`; this file is the operational reference (env, crons, migrations, type safety).
+Three Vercel projects, one per app. High-level intent is in `.cursor/rules/project.mdc` and `.cursor/rules/technical.mdc`; this file is the operational reference (env, crons, migrations, type safety).
 
 ## Vercel projects (do not mix)
 

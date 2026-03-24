@@ -9,6 +9,8 @@ interface ParticipantSelectorProps {
   min: number
   max: number
   label?: string
+  /** Merged onto the visible label span (e.g. receptionist eyebrows) */
+  labelClassName?: string
 }
 
 export function ParticipantSelector({ 
@@ -17,6 +19,7 @@ export function ParticipantSelector({
   min, 
   max,
   label,
+  labelClassName,
 }: ParticipantSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -111,7 +114,9 @@ export function ParticipantSelector({
   return (
     <div className="relative font-body" ref={dropdownRef}>
       <label id="participant-label" className="block">
-        <span className="text-sm font-medium text-foreground">{label || 'Participants'}</span>
+        <span className={cn('text-sm font-medium text-foreground', labelClassName)}>
+          {label || 'Participants'}
+        </span>
       </label>
       
       {/* Dropdown button */}

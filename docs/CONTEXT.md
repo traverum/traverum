@@ -1,14 +1,16 @@
 # Traverum — Documentation Index
 
+**Purpose:** This file is the **map of `docs/`** — what lives where, how layers fit together, and where slash commands write. Humans use it to orient; the AI uses it when the task calls for the full index (e.g. you ask how docs are organized, or we need to locate the right area under `docs/`). It is **not** an always-on Cursor rule — the `technical` rule says to read from `docs/` only when needed; routine work usually starts from `docs/memory/active-state.md`, the relevant `docs/product/*` doc, and `docs/memory/*-context.md` instead of this whole index.
+
 ## How this documentation system works
 
 ### Three layers
 
 1. **Product docs** (`docs/product/`) — Human-owned. What each part of the product must accomplish, for whom, and the key design decisions behind it. Written in plain English. The AI reads these before editing related code and never modifies the Goal section without asking.
 
-2. **Cursor rules** (`.cursor/rules/*.mdc`) — `project` and `knowledge-capture` are always on (vision + capturing decisions). `conventions` applies to TypeScript/TSX and states **intent** with pointers to product, design, forbidden, and deployment docs — details live in those docs, not duplicated in rules.
+2. **Cursor rules** (`.cursor/rules/`) — Always on: `project.mdc` (vision), `technical.mdc` (architecture, workflow, pointers into `docs/`), `knowledge-capture.mdc` (ambient decisions → memory files), `persona.md` (how the AI acts — “the CTO”). Details live in product, design, deployment, and memory docs — not duplicated in rules.
 
-3. **Technical docs** (`docs/technical/`) — Full reference specs for deep implementation work. The AI reads these when building complex features. Humans rarely need to read them.
+3. **Integrations & reference** (`docs/integrations/`, `docs/context7/`) — Partner integrations (e.g. Divinea) and CLI/API reference material. The AI reads these when the task touches that integration or tool. Most deep specs still live in `docs/product/`, `docs/design/`, and `docs/memory/*-context.md`.
 
 ### The AI contract
 
@@ -63,11 +65,14 @@ Organized by **persona** — the person using that part of the product. See `doc
 |-----|-------|----------------|
 | `platform/_overview.md` | `/admin/*` | Persona, promise, responsibilities |
 
-### Receptionist (Hotel Front Desk) — PLANNED
+### Receptionist (Hotel Front Desk) — in progress
 
 | Doc | Route | What it covers |
 |-----|-------|----------------|
-| `receptionist/_overview.md` | `/receptionist/*` | Planned feature vision and persona |
+| `receptionist/_overview.md` | `/receptionist/login`, `/receptionist/`, `/receptionist/bookings` | Persona, promise, journeys index, implementation status |
+| `receptionist/browse-and-book.md` | — | Find experiences, book on behalf of guest |
+| `receptionist/track-bookings.md` | — | Status of bookings created by receptionist |
+| `receptionist/contact-supplier.md` | — | Reach supplier for logistics; hotel-only notes |
 
 ### System (Cross-cutting)
 
@@ -81,49 +86,53 @@ Organized by **persona** — the person using that part of the product. See `doc
 
 ---
 
-## Session & Quality System
+## Memory & Quality System
 
 | Doc | Purpose |
 |-----|---------|
-| `active-state.md` | Living handover between sessions — open items, recently done, known issues |
-| `testing.md` | Test coverage map — what's tested, what's exposed, gaps by product journey |
-| `decisions.md` | Architecture and product decisions (append-only, reverse chronological) |
-| `forbidden.md` | Banned patterns — things we never do |
-| `sessions/_template.md` | Session log template (Goal, Blast Radius, Done, Decisions, Open Items) |
+| `memory/active-state.md` | Living handover between sessions — open items, recently done, known issues |
+| `memory/product-context.md` | Product knowledge learned from chats — AI staging area for `docs/product/` |
+| `memory/tech-context.md` | Technical decisions made by the AI — not set in stone, override freely |
+| `testing.md` | Test coverage map (optional file at `docs/testing.md`; regenerated when `/test` runs) |
+| `memory/sessions/_template.md` | Session log template (Goal, Blast Radius, Done, Decisions, Open Items) |
 
 ### Slash commands
 
+Defined in `.cursor/commands/` (Cursor exposes them as `/plan`, `/wrap-up`, `/test`).
+
 | Command | When | What it does |
 |---------|------|-------------|
-| `/plan` | Session start | Reads memory, maps blast radius, creates session file |
-| `/wrap-up` | End of session or switching chats | Logs what was done, scans for missed decisions, updates active-state |
-| `/test` | When you want deploy confidence | Runs unit + E2E tests, updates testing.md, gives deploy verdict |
+| `/plan` | Before a significant build | Reads memory, maps blast radius, creates `docs/memory/sessions/YYYY-MM-DD_topic.md` |
+| `/wrap-up` | End of session or switching chats | Updates session file + `docs/memory/active-state.md`, scans for missed knowledge capture |
+| `/test` | Deploy confidence | Runs unit + E2E tests, updates `docs/testing.md` when present, gives deploy verdict |
 
 ### Always-on rule
 
-`knowledge-capture.mdc` — listens for decisions, corrections, new product context, and constraints during conversation. Routes them to the right file (`decisions.md`, `forbidden.md`, product docs, or cursor rules) and briefly confirms.
+`knowledge-capture.mdc` — listens for decisions, corrections, new product context, and constraints during conversation. Routes them to `memory/product-context.md`, `memory/tech-context.md`, or cursor rules and briefly confirms.
 
 ---
 
 ## Cursor Rules (`.cursor/rules/`)
 
-Auto-injected by the AI based on file patterns. You don't need to reference these manually.
+Injected according to each rule’s Cursor config (`alwaysApply` / globs). You don’t need to reference these manually in chat.
 
 | Rule | Scope | What it covers |
 |------|-------|----------------|
-| `project` | Always | Vision, north stars, product doc contract, session continuity, repo conventions; deploy/embed pointers |
-| `conventions` | `**/*.ts, **/*.tsx` | European-first intent, money/status pointers, dashboard/widget/email/Stripe intent, gotchas, links to product/design/forbidden/deployment docs |
-| `knowledge-capture` | Always | Ambient listener — captures decisions, corrections, product context during conversation |
+| `project.mdc` | Always | Vision — what Traverum is and why it exists |
+| `technical.mdc` | Always | North stars, product doc contract, session continuity, architecture, pointers into `docs/` |
+| `knowledge-capture.mdc` | Always | Ambient listener — captures product knowledge and tech decisions during conversation |
+| `persona.md` | Always | AI role (“the CTO”), communication and simplicity preferences |
 
 ---
 
-## Technical Docs (`docs/technical/`)
+## Integrations & reference (`docs/integrations/`, `docs/context7/`)
 
 | Doc | When to use |
 |-----|-------------|
-| `integrations/divinea-integration.md` | Divinea Wine Suite (OCTO API): availability sync, holds, booking lifecycle. Phased plan — Phase 1 read-only, Phase 2 hold/confirm/release. |
+| [`integrations/divinea-integration.md`](integrations/divinea-integration.md) | Divinea Wine Suite (OCTO API): availability sync, holds, booking lifecycle. Phased plan — Phase 1 read-only, Phase 2 hold/confirm/release. |
+| [`context7/supabase-cli-reference.md`](context7/supabase-cli-reference.md) | Supabase CLI reference (local dev, migrations, etc.). |
 
-Most technical specs live in `docs/product/`, `docs/design/`, `docs/decisions.md`, and `docs/forbidden.md`. Cursor rules (`project`, `conventions`, `knowledge-capture`) point to those sources instead of duplicating them.
+Most day-to-day specs live in `docs/product/`, `docs/design/`, `docs/memory/product-context.md`, and `docs/memory/tech-context.md`. Cursor rules point to those sources instead of duplicating them.
 
 ---
 
@@ -141,8 +150,8 @@ Most technical specs live in `docs/product/`, `docs/design/`, `docs/decisions.md
 
 | Folder | What it contains |
 |--------|-----------------|
-| `docs/deployment/` | [DEPLOYMENT.md](deployment/DEPLOYMENT.md) — env vars, cron schedules, Supabase migrations, Stripe webhooks. Architecture and build commands are in the `project` cursor rule. |
+| `docs/deployment/` | [DEPLOYMENT.md](deployment/DEPLOYMENT.md) — env vars, cron schedules, Supabase migrations, Stripe webhooks. Architecture and build commands are in the `technical` cursor rule. |
 | `docs/planning/` | Planning and implementation docs. **Receptionist:** [receptionist-tool.md](planning/receptionist-tool.md) — purpose, user stories, implementation notes, branch testing. |
-| `docs/sessions/` | Session logs — one file per session. Template: `_template.md`. |
-| `docs/active-state.md` | [active-state.md](active-state.md) — living handover. Read this first in every new chat. |
-| `docs/testing.md` | [testing.md](testing.md) — test coverage map, gaps by product journey. |
+| `docs/memory/sessions/` | Session logs — one file per session. Template: [`_template.md`](memory/sessions/_template.md). |
+| `docs/memory/active-state.md` | [active-state.md](memory/active-state.md) — living handover. Read this first in every new chat. |
+| `docs/testing.md` | Test coverage map (gaps by product journey). Regenerated when you run the `/test` command; path may be absent until then. |

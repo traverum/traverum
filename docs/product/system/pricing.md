@@ -42,5 +42,5 @@ Suppliers can set a minimum booking size. The widget enforces this — the parti
 
 ## References
 
-- Cursor rule: `.cursor/rules/conventions.mdc` (intent + links; formulas and decisions are in this doc)
+- Cursor rule: `.cursor/rules/technical.mdc` (intent + links; formulas and decisions are in this doc)
 - Code: `apps/widget/src/lib/pricing.ts`, `apps/widget/src/lib/commission.ts`

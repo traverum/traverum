@@ -48,6 +48,6 @@ Guests who clicked on an experience and are evaluating whether to book. They nee
 
 ## References
 
-- Cursor rule: `.cursor/rules/widget-conventions.mdc`
+- Cursor rule: `.cursor/rules/technical.mdc`
 - Pricing logic: `docs/product/system/pricing.md`
 - Code: `apps/widget/src/app/[hotelSlug]/[experienceSlug]/page.tsx`

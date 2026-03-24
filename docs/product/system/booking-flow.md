@@ -79,7 +79,7 @@ The email path is primary — suppliers shouldn't need to log in for basic opera
 
 ## References
 
-- Cursor rule: `.cursor/rules/conventions.mdc` (intent + links; lifecycle detail is in this doc)
+- Cursor rule: `.cursor/rules/technical.mdc` (intent + links; lifecycle detail is in this doc)
 - Channels: `docs/product/system/channels.md`
 - Settlement: `docs/product/supplier/get-paid.md`
 - Code: `apps/widget/src/app/api/reservations/`

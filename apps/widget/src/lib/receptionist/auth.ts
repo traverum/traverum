@@ -42,59 +42,71 @@ export async function getReceptionistContext(): Promise<ReceptionistAuthResult> 
 
   const user = userData as unknown as User
 
-  // Find user_partners membership with an allowed role
-  const { data: membership } = await supabase
+  // All memberships with an allowed role (users may belong to supplier + hotel partners).
+  // Pick the first membership that resolves to a hotel_configs row — never rely on .limit(1)
+  // without ordering, or supplier-only rows block receptionist access.
+  const { data: memberships } = await supabase
     .from('user_partners')
     .select('partner_id, role, hotel_config_id')
     .eq('user_id', userData.id)
-    .in('role', ALLOWED_ROLES)
-    .limit(1)
-    .single() as { data: { partner_id: string; role: string; hotel_config_id: string | null } | null }
+    .in('role', ALLOWED_ROLES) as {
+    data: { partner_id: string; role: string; hotel_config_id: string | null }[] | null
+  }
 
-  if (!membership) {
+  if (!memberships?.length) {
     return { success: false, error: 'not_receptionist' }
   }
 
-  // Fetch partner
-  const { data: partnerData } = await supabase
-    .from('partners')
-    .select('*')
-    .eq('id', membership.partner_id)
-    .single()
-
-  if (!partnerData) {
-    return { success: false, error: 'no_user_record' }
+  const membershipRank = (m: { role: string; hotel_config_id: string | null }) => {
+    if (m.role === 'receptionist') return 0
+    if (m.hotel_config_id) return 1
+    return 2
   }
 
-  const partner = partnerData as Partner
+  const sortedMemberships = [...memberships].sort(
+    (a, b) => membershipRank(a) - membershipRank(b),
+  )
 
-  // Fetch hotel config — use the specific hotel_config_id if set, otherwise first config for partner
-  let hotelConfigQuery = supabase
-    .from('hotel_configs')
-    .select('*')
+  for (const membership of sortedMemberships) {
+    const { data: partnerData } = await supabase
+      .from('partners')
+      .select('*')
+      .eq('id', membership.partner_id)
+      .single()
 
-  if (membership.hotel_config_id) {
-    hotelConfigQuery = hotelConfigQuery.eq('id', membership.hotel_config_id)
-  } else {
-    hotelConfigQuery = hotelConfigQuery.eq('partner_id', membership.partner_id)
+    if (!partnerData) {
+      continue
+    }
+
+    const partner = partnerData as Partner
+
+    let hotelConfigQuery = supabase.from('hotel_configs').select('*')
+
+    if (membership.hotel_config_id) {
+      hotelConfigQuery = hotelConfigQuery.eq('id', membership.hotel_config_id)
+    } else {
+      hotelConfigQuery = hotelConfigQuery.eq('partner_id', membership.partner_id)
+    }
+
+    const { data: hotelConfigData } = await hotelConfigQuery.limit(1).maybeSingle()
+
+    if (!hotelConfigData) {
+      continue
+    }
+
+    const hotelConfig = hotelConfigData as HotelConfig
+
+    return {
+      success: true,
+      data: {
+        user,
+        partner,
+        hotelConfig,
+        role: membership.role,
+        userId: userData.id,
+      },
+    }
   }
 
-  const { data: hotelConfigData } = await hotelConfigQuery.limit(1).single()
-
-  if (!hotelConfigData) {
-    return { success: false, error: 'no_hotel_config' }
-  }
-
-  const hotelConfig = hotelConfigData as HotelConfig
-
-  return {
-    success: true,
-    data: {
-      user,
-      partner,
-      hotelConfig,
-      role: membership.role,
-      userId: userData.id,
-    },
-  }
+  return { success: false, error: 'no_hotel_config' }
 }

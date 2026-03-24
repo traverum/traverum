@@ -1,14 +1,6 @@
 # Traverum Design Principles
 
-## Philosophy: Sprezzatura Meets Sisu
-
-Two words define everything we build.
-
-**Sisu** — Finnish quiet determination. Functional precision, no-nonsense reliability, nothing unnecessary. This is our structure, our bones.
-
-**Sprezzatura** — Italian effortless elegance. Making the complex look easy and beautiful without appearing to try. This is our soul, our warmth.
-
-Together: *effortlessly warm, quietly precise.*
+## Philosophy: Nordic Design meets Italian Elegance
 
 ---
 
@@ -24,19 +16,7 @@ Users see, not read. Visual indicators — badges, icons, colors — communicate
 
 ### Warmth, Never Coldness
 
-We are warm ivory, olive accent, natural depth. The warmth makes us feel human — Mediterranean, not sterile. But the warmth is *controlled*, never ornate. The tension between warmth and restraint is the entire point.
-
-### Confident but Quiet
-
-We don't shout. Short, warm sentences. No corporate jargon. A hint of pleasure — travel can be enjoyable. Quality speaks for itself.
-
-### Human Pace
-
-Ambient motion is slow and organic. Functional feedback is instant. Both are deliberate.
-
-### Predictive, Not Prescriptive
-
-Show what users need before they ask. We don't over-guide — we anticipate.
+We are warm ivory, olive accent, natural depth. The warmth makes us feel human — Mediterranean, not sterile.
 
 ---
 
@@ -50,7 +30,7 @@ Clean structure                 Olive + walnut accents
 Functional minimalism           Golden hour warmth
 Direct, honest copy             Unhurried pacing
 Lots of whitespace              The whitespace feels relaxed, not empty
-Reliability signals             Fatto bene — quiet craftsmanship
+Reliability signals             New York -stylish font
 ```
 
 ---
@@ -107,6 +87,4 @@ Every color is warm and muted. No bright, saturated accents. The entire palette 
 Even an Italian nonna understands what our pages are for.
 Even a Finnish top designer loves how they look.
 
-Simple yet effective. Reliable like sisu. Effortless and warm as sprezzatura.
-
-That's Traverum.
+Simple yet effective.
