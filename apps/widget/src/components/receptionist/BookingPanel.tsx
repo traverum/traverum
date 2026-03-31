@@ -9,6 +9,7 @@ import { SessionPicker } from '@/components/SessionPicker'
 import { ParticipantSelector } from '@/components/ParticipantSelector'
 import type { ExperienceSession } from '@/lib/supabase/types'
 import { Check, X, MapPin, Phone, Mail, ExternalLink, MessageCircle, Copy, ChevronRight } from 'lucide-react'
+import { RichText } from '@/components/RichText'
 
 interface BookingPanelProps {
   experience: ReceptionistExperience
@@ -321,7 +322,7 @@ export function BookingPanel({
         {/* Details — prose + structured facts (same card language as contact / preview) */}
         <section className="space-y-3">
           <p className={formEyebrow}>Details</p>
-          <p className="text-sm text-foreground leading-relaxed">{experience.description}</p>
+          <RichText text={experience.description} className="text-sm text-foreground leading-relaxed" />
           <dl className={`${insetCard} divide-y divide-border`}>
             <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,7.75rem)_1fr] gap-x-6 gap-y-0.5 px-4 py-3 sm:items-baseline">
               <dt className={formEyebrow}>Duration</dt>
