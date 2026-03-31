@@ -62,7 +62,7 @@ Configured in `apps/widget/vercel.json`.
 | Job | Schedule | Notes |
 |-----|----------|-------|
 | `/api/cron/auto-complete` | Daily 2 AM | Completes bookings 7+ days after experience |
-| `/api/cron/completion-check` | Daily 9 AM | Sends completion check emails |
+| `/api/cron/completion-check` | Hourly | Sends completion check emails after experience ends |
 | `/api/cron/expire-unpaid` | Hourly (needs Pro or external) | Expires unpaid reservations |
 | `/api/cron/expire-pending` | Hourly (needs Pro or external) | Expires pending bookings |
 | `/api/cron/expire-reservations` | Hourly (needs Pro or external) | Expires old reservations |
@@ -75,7 +75,20 @@ Before running or suggesting any Supabase CLI command, read `docs/context7/supab
 
 ## Supabase migrations
 
+**Full workflow:** Read `.agents/skills/database-migrations/SKILL.md` before any schema change. It covers the complete staging-to-production process.
+
 Migrations live in `apps/dashboard/supabase/migrations/`.
+
+**Current method (MCP-based):**
+1. Write migration SQL
+2. Apply to staging via `user-supabase-staging` MCP `apply_migration`
+3. Verify on staging
+4. Save migration file to `apps/dashboard/supabase/migrations/YYYYMMDDHHMMSS_name.sql`
+5. Regenerate types, typecheck widget
+6. Commit to git
+7. Apply identical SQL to production via production MCP `apply_migration`
+
+**Alternative (Supabase CLI):**
 
 ```bash
 cd apps/dashboard
@@ -88,6 +101,14 @@ pnpm exec supabase db push --linked
 ```
 
 Verify at Supabase Dashboard > Database > Migrations.
+
+### Experience tags (2026-03, data-only)
+
+Migration file: `apps/dashboard/supabase/migrations/20260327120000_replace_categories_with_tags.sql`.
+
+- **What it does:** Rewrites legacy category values inside `experiences.tags` (e.g. `food` → `food_wine`), then deduplicates arrays. **No new columns** — still `tags text[]`.
+- **Types:** Regenerating Supabase types is optional for this migration (no schema change).
+- **App deploy order (production):** Deploy **dashboard** first → apply this migration on production → deploy **widget**. Keeps supplier UI and guest browse aligned with DB slugs. See also `docs/memory/sessions/2026-03-27_experience-tags.md`.
 
 | Environment | Project ref |
 |-------------|-------------|

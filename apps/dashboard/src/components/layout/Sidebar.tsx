@@ -15,6 +15,7 @@ import {
   ChartBarIcon,
   ChevronRightIcon,
   PlusIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { PanelLeft, HelpCircle, Settings } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -304,6 +305,22 @@ export function Sidebar({ children }: SidebarProps) {
                     >
                       <ChartBarIcon className="h-3.5 w-3.5 flex-shrink-0" />
                       <span className="flex-1 min-w-0 truncate">Analytics</span>
+                    </NavLink>
+
+                    <NavLink
+                      to="/supplier/invoices"
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-1.5 h-8 pl-3 pr-2 rounded-md text-sm font-medium transition-colors',
+                          'hover:bg-accent',
+                          isActive
+                            ? 'bg-accent text-foreground'
+                            : 'text-foreground/90 hover:text-foreground'
+                        )
+                      }
+                    >
+                      <DocumentTextIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="flex-1 min-w-0 truncate">Invoices</span>
                     </NavLink>
 
                     {/* Subtle separation + link to See all experiences */}

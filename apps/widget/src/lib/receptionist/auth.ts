@@ -1,5 +1,10 @@
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import type { HotelConfig, Partner, User } from '@/lib/supabase/types'
+
+const PROPERTY_COOKIE = 'traverum_receptionist_property'
+
+export type AvailableHotelConfig = { id: string; slug: string; display_name: string }
 
 export type ReceptionistContext = {
   user: User
@@ -7,6 +12,7 @@ export type ReceptionistContext = {
   hotelConfig: HotelConfig
   role: string
   userId: string
+  availableHotelConfigs: AvailableHotelConfig[]
 }
 
 export type ReceptionistAuthResult =
@@ -19,6 +25,11 @@ const ALLOWED_ROLES = ['receptionist', 'owner', 'admin']
  * Resolve the receptionist context from the authenticated session.
  * Uses user_partners (not legacy users.partner_id) to support role-based access.
  * Owners and admins can also use the receptionist tool.
+ *
+ * When a membership has hotel_config_id set, the user is locked to that property.
+ * When hotel_config_id is null (owners, multi-property receptionists), all
+ * hotel_configs for the partner are available and the user can switch between
+ * them via a cookie-based property selector.
  */
 export async function getReceptionistContext(): Promise<ReceptionistAuthResult> {
   const supabase = await createClient()
@@ -29,7 +40,6 @@ export async function getReceptionistContext(): Promise<ReceptionistAuthResult> 
     return { success: false, error: 'not_authenticated' }
   }
 
-  // Resolve app user by auth_id
   const { data: userData } = await supabase
     .from('users')
     .select('*')
@@ -42,9 +52,6 @@ export async function getReceptionistContext(): Promise<ReceptionistAuthResult> 
 
   const user = userData as unknown as User
 
-  // All memberships with an allowed role (users may belong to supplier + hotel partners).
-  // Pick the first membership that resolves to a hotel_configs row — never rely on .limit(1)
-  // without ordering, or supplier-only rows block receptionist access.
   const { data: memberships } = await supabase
     .from('user_partners')
     .select('partner_id, role, hotel_config_id')
@@ -67,6 +74,9 @@ export async function getReceptionistContext(): Promise<ReceptionistAuthResult> 
     (a, b) => membershipRank(a) - membershipRank(b),
   )
 
+  const cookieStore = await cookies()
+  const preferredPropertyId = cookieStore.get(PROPERTY_COOKIE)?.value ?? null
+
   for (const membership of sortedMemberships) {
     const { data: partnerData } = await supabase
       .from('partners')
@@ -80,21 +90,52 @@ export async function getReceptionistContext(): Promise<ReceptionistAuthResult> 
 
     const partner = partnerData as Partner
 
-    let hotelConfigQuery = supabase.from('hotel_configs').select('*')
-
     if (membership.hotel_config_id) {
-      hotelConfigQuery = hotelConfigQuery.eq('id', membership.hotel_config_id)
-    } else {
-      hotelConfigQuery = hotelConfigQuery.eq('partner_id', membership.partner_id)
+      // Locked to a specific property
+      const { data: hotelConfigData } = await supabase
+        .from('hotel_configs')
+        .select('*')
+        .eq('id', membership.hotel_config_id)
+        .maybeSingle()
+
+      if (!hotelConfigData) continue
+
+      const hotelConfig = hotelConfigData as HotelConfig
+      return {
+        success: true,
+        data: {
+          user,
+          partner,
+          hotelConfig,
+          role: membership.role,
+          userId: userData.id,
+          availableHotelConfigs: [{ id: hotelConfig.id, slug: hotelConfig.slug, display_name: hotelConfig.display_name }],
+        },
+      }
     }
 
-    const { data: hotelConfigData } = await hotelConfigQuery.limit(1).maybeSingle()
+    // No hotel_config_id — fetch all configs for this partner
+    const { data: allConfigs } = await (supabase
+      .from('hotel_configs') as any)
+      .select('*')
+      .eq('partner_id', membership.partner_id)
+      .order('created_at', { ascending: true }) as { data: HotelConfig[] | null }
 
-    if (!hotelConfigData) {
-      continue
-    }
+    if (!allConfigs?.length) continue
 
-    const hotelConfig = hotelConfigData as HotelConfig
+    const availableHotelConfigs: AvailableHotelConfig[] = allConfigs.map((c: HotelConfig) => ({
+      id: c.id,
+      slug: c.slug,
+      display_name: c.display_name,
+    }))
+
+    const selectedConfig = (
+      preferredPropertyId
+        ? allConfigs.find((c: HotelConfig) => c.id === preferredPropertyId)
+        : null
+    ) ?? allConfigs[0]
+
+    const hotelConfig = selectedConfig as HotelConfig
 
     return {
       success: true,
@@ -104,6 +145,7 @@ export async function getReceptionistContext(): Promise<ReceptionistAuthResult> 
         hotelConfig,
         role: membership.role,
         userId: userData.id,
+        availableHotelConfigs,
       },
     }
   }

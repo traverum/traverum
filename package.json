@@ -24,6 +24,11 @@
     "test:e2e": "pnpm --filter @traverum/e2e test",
     "prepare": "husky"
   },
+  "pnpm": {
+    "overrides": {
+      "lucide-react": "0.562.0"
+    }
+  },
   "devDependencies": {
     "husky": "^9.1.7",
     "turbo": "^2.0.0",

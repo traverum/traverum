@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { verifyToken } from '@/lib/tokens'
 import { createRefund } from '@/lib/stripe'
-import { sendEmail } from '@/lib/email/index'
+import { sendEmail, getAppUrl } from '@/lib/email/index'
+import { guestAttendanceVerification } from '@/lib/email/templates'
 import { escapeHtml } from '@/lib/sanitize'
+import { PAYMENT_MODES, ATTENDANCE_VERIFICATION_DAYS } from '@traverum/shared'
+import { randomUUID } from 'crypto'
+import { addDays, format } from 'date-fns'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -14,7 +18,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { searchParams } = new URL(request.url)
   const token = searchParams.get('token')
   
-  // Verify token
   if (!token) {
     return createResponse('error', 'Missing token')
   }
@@ -31,14 +34,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   
   const supabase = createAdminClient()
   
-  // Get booking with related data
   const { data: bookingData } = await supabase
     .from('bookings')
     .select(`
       *,
       reservation:reservations(
         *,
-        experience:experiences(title, currency)
+        experience:experiences(title, currency),
+        session:experience_sessions(session_date)
       )
     `)
     .eq('id', id)
@@ -56,14 +59,60 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   
   const reservation = booking.reservation
   const experience = reservation.experience
+  const isPayOnSite = booking.payment_mode === PAYMENT_MODES.PAY_ON_SITE
   
   try {
-    // Process refund
+    if (isPayOnSite) {
+      const { data: existing } = await supabase
+        .from('attendance_verifications')
+        .select('id')
+        .eq('booking_id', id)
+        .eq('outcome', 'pending')
+        .maybeSingle()
+
+      if (existing) {
+        return createResponse('info', 'An attendance verification is already in progress for this booking. The guest has been asked to confirm.')
+      }
+
+      const verificationToken = randomUUID()
+      const deadline = addDays(new Date(), ATTENDANCE_VERIFICATION_DAYS)
+
+      await (supabase.from('attendance_verifications') as any).insert({
+        booking_id: id,
+        supplier_claim: 'no_show',
+        verification_token: verificationToken,
+        deadline: deadline.toISOString(),
+        outcome: 'pending',
+      })
+
+      const appUrl = getAppUrl()
+      const verificationUrl = `${appUrl}/api/attendance/${verificationToken}`
+      const experienceDate = reservation.session?.session_date || reservation.requested_date || ''
+
+      await sendEmail({
+        to: reservation.guest_email,
+        subject: `Did you attend ${experience.title}?`,
+        html: guestAttendanceVerification({
+          experienceTitle: experience.title,
+          guestName: reservation.guest_name,
+          date: experienceDate,
+          verificationUrl,
+          deadlineDate: format(deadline, 'yyyy-MM-dd'),
+        }),
+      })
+
+      console.log(`Attendance verification created for pay_on_site booking ${id}, token: ${verificationToken}`)
+
+      return createResponse(
+        'success',
+        'Thank you. The guest has been asked to confirm whether they attended. You\'ll be notified of the outcome within 3 days.'
+      )
+    }
+
     if (booking.stripe_charge_id) {
       await createRefund(booking.stripe_charge_id)
     }
     
-    // Update booking status
     const updateClient = createAdminClient()
     await (updateClient
       .from('bookings') as any)
@@ -74,7 +123,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', id)
     
-    // Release session — set back to available
     if (reservation.session_id) {
       await (updateClient
         .from('experience_sessions') as any)
@@ -85,7 +133,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         .eq('id', reservation.session_id)
     }
     
-    // Send refund email to guest
     await sendEmail({
       to: reservation.guest_email,
       subject: `Refund processed - ${experience.title}`,
@@ -102,7 +149,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       `,
     })
     
-    return createResponse('success', 'The experience has been marked as not completed and the guest has been refunded.')
+    return createResponse(
+      'success',
+      'The experience has been marked as not completed and the guest has been refunded.'
+    )
   } catch (error) {
     console.error('No-experience booking error:', error)
     return createResponse('error', 'Failed to process. Please try again.')

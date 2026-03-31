@@ -105,6 +105,103 @@ export async function createTransfer(
 }
 
 /**
+ * Create a Stripe Customer for a guest (for card guarantee / off-session use).
+ */
+export async function createStripeCustomer(
+  guestEmail: string,
+  guestName: string,
+  reservationId: string
+) {
+  const customer = await stripe.customers.create(
+    {
+      email: guestEmail,
+      name: guestName,
+      metadata: { reservationId },
+    },
+    { idempotencyKey: `customer_${reservationId}` }
+  )
+  return customer
+}
+
+/**
+ * Create a Setup Intent for saving a guest's card (pay_on_site guarantee).
+ * usage: 'off_session' allows charging the card later without the guest present.
+ */
+export async function createSetupIntent(
+  customerId: string,
+  reservationId: string
+) {
+  const setupIntent = await stripe.setupIntents.create(
+    {
+      customer: customerId,
+      payment_method_types: ['card'],
+      usage: 'off_session',
+      metadata: { reservationId },
+    },
+    { idempotencyKey: `setup_${reservationId}` }
+  )
+  return setupIntent
+}
+
+/**
+ * Charge a guest's saved card off-session (cancellation fees, no-show charges).
+ * Returns a result object instead of throwing so callers can handle failures gracefully.
+ */
+export async function chargeOffSession(params: {
+  customerId: string
+  paymentMethodId: string
+  amountCents: number
+  currency: string
+  bookingId: string
+  reason: 'cancellation' | 'no_show'
+}): Promise<
+  | { success: true; paymentIntentId: string }
+  | { success: false; reason: string; paymentIntentId?: string; declineCode?: string }
+> {
+  try {
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: params.amountCents,
+        currency: params.currency.toLowerCase(),
+        customer: params.customerId,
+        payment_method: params.paymentMethodId,
+        off_session: true,
+        confirm: true,
+      },
+      { idempotencyKey: `charge_${params.bookingId}_${params.reason}` }
+    )
+    return { success: true, paymentIntentId: paymentIntent.id }
+  } catch (err: any) {
+    if (err.code === 'authentication_required') {
+      return {
+        success: false,
+        reason: 'authentication_required',
+        paymentIntentId: err.raw?.payment_intent?.id,
+      }
+    }
+    if (err.type === 'StripeCardError') {
+      return {
+        success: false,
+        reason: err.code || 'card_declined',
+        declineCode: err.raw?.decline_code,
+      }
+    }
+    throw err
+  }
+}
+
+/**
+ * Retrieve the default PaymentMethod from a confirmed Setup Intent.
+ */
+export async function getPaymentMethodFromSetupIntent(setupIntentId: string) {
+  const setupIntent = await stripe.setupIntents.retrieve(setupIntentId)
+  if (setupIntent.status !== 'succeeded') {
+    throw new Error(`SetupIntent ${setupIntentId} is not succeeded (status: ${setupIntent.status})`)
+  }
+  return setupIntent.payment_method as string
+}
+
+/**
  * Verify a Stripe webhook signature.
  * Tries the platform account secret first, then the Connect webhook secret as fallback.
  */

@@ -160,13 +160,25 @@ export async function POST(request: NextRequest) {
         commission_platform: SELF_OWNED_COMMISSION.platform,
       })
     } else {
-      const { data: distributionData } = await supabase
+      let query = supabase
         .from('distributions')
         .select('*')
         .eq('experience_id', experience.id)
         .eq('hotel_id', reservation.hotel_id)
         .eq('is_active', true)
-        .single()
+
+      if (reservation.hotel_config_id) {
+        query = query.eq('hotel_config_id', reservation.hotel_config_id)
+      }
+
+      const { data: distributionData, error: distError } = await query.limit(1).maybeSingle()
+      if (distError) {
+        console.error('Distribution lookup failed:', distError, {
+          experienceId: experience.id,
+          hotelId: reservation.hotel_id,
+          hotelConfigId: reservation.hotel_config_id,
+        })
+      }
 
       if (!distributionData) {
         return NextResponse.json(

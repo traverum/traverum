@@ -15,6 +15,7 @@ interface TranslatedBookingSummaryProps {
   coverImage?: string | null
   rentalDays?: number
   quantity?: number
+  payOnSite?: boolean
 }
 
 export function TranslatedBookingSummary({ experience, ...rest }: TranslatedBookingSummaryProps) {

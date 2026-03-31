@@ -9,6 +9,7 @@ import {
   LogOut,
   Shield,
   MessageSquare,
+  Receipt,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -18,6 +19,7 @@ const navItems = [
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/payouts', icon: CreditCard, label: 'Payouts' },
   { to: '/partners', icon: Building2, label: 'Partners' },
+  { to: '/invoices', icon: Receipt, label: 'Invoices' },
   { to: '/support-feedback', icon: MessageSquare, label: 'Support' },
 ];
 

@@ -18,6 +18,7 @@ import ExperienceFormRedirect from "./pages/supplier/ExperienceFormRedirect";
 import ExperienceSessions from "./pages/supplier/ExperienceSessions";
 import SupplierSessions from "./pages/supplier/SupplierSessions";
 import BookingManagement from "./pages/supplier/BookingManagement";
+import SupplierInvoices from "./pages/supplier/Invoices";
 import StripeConnect from "./pages/supplier/StripeConnect";
 // SessionDetail redirect - old route now points to BookingManagement
 function SessionDetailRedirect() {
@@ -133,6 +134,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <BookingManagement />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/supplier/invoices" 
+                element={
+                  <ProtectedRoute>
+                    <SupplierInvoices />
                   </ProtectedRoute>
                 } 
               />

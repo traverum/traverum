@@ -6,7 +6,10 @@ import { getEmbedMode, cn } from '@/lib/utils'
 import { isDemoHotel } from '@/lib/demo'
 import { Header } from '@/components/Header'
 import { CheckoutForm } from '@/components/CheckoutForm'
+import { StripeSetupProvider } from '@/components/StripeSetupProvider'
 import { TranslatedBookingSummary } from '@/components/TranslatedBookingSummary'
+import { getCancellationPolicyExperienceIntro } from '@/lib/availability'
+import { PAYMENT_MODES } from '@traverum/shared'
 import type { Experience, ExperienceSession } from '@/lib/supabase/types'
 
 // Force dynamic rendering so hotel config changes take effect immediately
@@ -59,7 +62,7 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
   
   const { data: experienceData } = await supabase
     .from('experiences')
-    .select('*')
+    .select('*, supplier:partners!experiences_partner_fk(payment_mode)')
     .eq('id', experienceId)
     .single()
   
@@ -68,6 +71,8 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
   }
   
   const experience = experienceData as Experience
+  const supplierPaymentMode = (experienceData as any)?.supplier?.payment_mode || PAYMENT_MODES.PAY_ON_SITE
+  const cancellationPolicy = (experience as any).cancellation_policy
   
   // Fetch session if provided
   let session: ExperienceSession | null = null
@@ -95,11 +100,17 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
   const totalCents = parseInt(totalStr)
   const isRequest = search.isRequest === 'true'
   const isDemo = isDemoHotel(hotelSlug)
+  const showCardGuarantee = supplierPaymentMode === PAYMENT_MODES.PAY_ON_SITE && !isRequest
+  const cancellationPolicyText = getCancellationPolicyExperienceIntro(cancellationPolicy)
   
   // Get session date/time for demo display
   const sessionDate = session?.session_date
   const sessionTime = session?.start_time
-  
+
+  const experienceHref = returnUrl
+    ? `/${hotelSlug}/${experience.slug}?returnUrl=${encodeURIComponent(returnUrl)}`
+    : `/${hotelSlug}/${experience.slug}`
+
   return (
     <div className={cn(
       embedMode === 'full' ? 'embed-full' : 'embed-section'
@@ -110,64 +121,32 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
           logoUrl={hotel.logo_url}
           hotelSlug={hotelSlug}
           showBack={true}
-          backTo={returnUrl ? `/${hotelSlug}?returnUrl=${encodeURIComponent(returnUrl)}` : `/${hotelSlug}`}
+          backTo={experienceHref}
           returnUrl={returnUrl}
           websiteUrl={hotel.website_url}
         />
       )}
       
       <main className="container px-4 py-6">
-        {/* Back link */}
-        <Link
-          href={
-            returnUrl
-              ? `/${hotelSlug}/${experience.slug}?returnUrl=${encodeURIComponent(returnUrl)}`
-              : `/${hotelSlug}/${experience.slug}`
-          }
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to experience
-        </Link>
+        {embedMode !== 'full' && (
+          <Link
+            href={experienceHref}
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to experience
+          </Link>
+        )}
         
         <h1 className="text-2xl text-heading-foreground mb-6">
-          {isRequest ? 'Complete Your Request' : 'Complete Your Booking'}
+          {showCardGuarantee ? 'Reserve Your Spot' : isRequest ? 'Complete Your Request' : 'Complete Your Booking'}
         </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Form */}
-          <div className="lg:col-span-3">
-            <div className="bg-card rounded-card border border-border p-6">
-              <h2 className="text-lg font-body text-card-foreground mb-5">
-                Guest Details
-              </h2>
-              
-              <CheckoutForm
-                hotelSlug={hotelSlug}
-                experienceId={experience.id}
-                experienceTitle={experience.title}
-                currency={experience.currency}
-                sessionId={search.sessionId}
-                participants={participants}
-                totalCents={totalCents}
-                isRequest={isRequest}
-                requestDate={search.requestDate}
-                requestTime={search.requestTime}
-                sessionDate={sessionDate}
-                sessionTime={sessionTime}
-                isDemo={isDemo}
-                returnUrl={returnUrl}
-                preferredLanguage={search.preferredLanguage}
-                rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
-                quantity={search.quantity ? parseInt(search.quantity) : undefined}
-              />
-            </div>
-          </div>
-          
-          {/* Summary */}
-          <div className="lg:col-span-2">
+          {/* Summary — shown first on mobile, second on desktop */}
+          <div className="order-first lg:order-last lg:col-span-2">
             <TranslatedBookingSummary
               experience={experience}
               session={session}
@@ -179,7 +158,65 @@ export default async function CheckoutPage({ params, searchParams }: CheckoutPag
               coverImage={coverImage}
               rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
               quantity={search.quantity ? parseInt(search.quantity) : undefined}
+              payOnSite={showCardGuarantee}
             />
+          </div>
+
+          {/* Form */}
+          <div className="lg:col-span-3">
+            <div className="bg-card rounded-card border border-border p-6">
+              <h2 className="text-sm font-medium text-muted-foreground mb-5">
+                Your details
+              </h2>
+              
+              {showCardGuarantee ? (
+                <StripeSetupProvider>
+                  <CheckoutForm
+                    hotelSlug={hotelSlug}
+                    experienceId={experience.id}
+                    experienceTitle={experience.title}
+                    currency={experience.currency}
+                    sessionId={search.sessionId}
+                    participants={participants}
+                    totalCents={totalCents}
+                    isRequest={isRequest}
+                    requestDate={search.requestDate}
+                    requestTime={search.requestTime}
+                    sessionDate={sessionDate}
+                    sessionTime={sessionTime}
+                    isDemo={isDemo}
+                    returnUrl={returnUrl}
+                    preferredLanguage={search.preferredLanguage}
+                    rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
+                    quantity={search.quantity ? parseInt(search.quantity) : undefined}
+                    paymentMode={supplierPaymentMode}
+                    cancellationPolicyText={cancellationPolicyText}
+                  />
+                </StripeSetupProvider>
+              ) : (
+                <CheckoutForm
+                  hotelSlug={hotelSlug}
+                  experienceId={experience.id}
+                  experienceTitle={experience.title}
+                  currency={experience.currency}
+                  sessionId={search.sessionId}
+                  participants={participants}
+                  totalCents={totalCents}
+                  isRequest={isRequest}
+                  requestDate={search.requestDate}
+                  requestTime={search.requestTime}
+                  sessionDate={sessionDate}
+                  sessionTime={sessionTime}
+                  isDemo={isDemo}
+                  returnUrl={returnUrl}
+                  preferredLanguage={search.preferredLanguage}
+                  rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
+                  quantity={search.quantity ? parseInt(search.quantity) : undefined}
+                  paymentMode={supplierPaymentMode}
+                  cancellationPolicyText={cancellationPolicyText}
+                />
+              )}
+            </div>
           </div>
         </div>
       </main>

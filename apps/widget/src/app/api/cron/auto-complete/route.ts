@@ -4,6 +4,7 @@ import { createTransfer } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
 import { baseTemplate } from '@/lib/email/templates'
 import { escapeHtml } from '@/lib/sanitize'
+import { PAYMENT_MODES } from '@traverum/shared'
 import { format, subDays } from 'date-fns'
 import { shouldAutoComplete, resolveBookingExperienceDate } from '@/lib/cron-rules'
 
@@ -63,10 +64,10 @@ export async function POST(request: NextRequest) {
       
       const experience = reservation.experience
       const supplier = experience.supplier
+      const isPayOnSite = booking.payment_mode === PAYMENT_MODES.PAY_ON_SITE
       
-      // Auto-complete: Transfer funds to supplier
       let transferId = null
-      if (supplier?.stripe_account_id && booking.supplier_amount_cents > 0) {
+      if (!isPayOnSite && supplier?.stripe_account_id && booking.supplier_amount_cents > 0) {
         try {
           const transfer = await createTransfer(
             booking.supplier_amount_cents,
@@ -77,11 +78,9 @@ export async function POST(request: NextRequest) {
           transferId = transfer.id
         } catch (transferErr) {
           console.error(`Transfer failed for booking ${booking.id}:`, transferErr)
-          // Continue to mark as completed even if transfer fails
         }
       }
       
-      // Update booking status
       await (supabase
         .from('bookings') as any)
         .update({
@@ -93,32 +92,61 @@ export async function POST(request: NextRequest) {
         .eq('id', booking.id)
       
       if (supplier?.email) {
-        await sendEmail({
-          to: supplier.email,
-          subject: `Payment transferred - ${experience.title}`,
-          html: baseTemplate(`
-            <div class="card">
-              <div class="header"><h1>Payment Transferred</h1></div>
-              <p>Hi ${supplier.name},</p>
-              <p>A booking has been automatically completed and your payment has been transferred.</p>
-              <div class="info-box">
-                <div class="info-row">
-                  <span class="info-label">Experience</span>
-                  <span class="info-value">${experience.title}</span>
+        if (isPayOnSite) {
+          await sendEmail({
+            to: supplier.email,
+            subject: `Experience auto-completed - ${experience.title}`,
+            html: baseTemplate(`
+              <div class="card">
+                <div class="header"><h1>Experience Completed</h1></div>
+                <p>Hi ${supplier.name},</p>
+                <p>A booking has been automatically marked as completed.</p>
+                <div class="info-box">
+                  <div class="info-row">
+                    <span class="info-label">Experience</span>
+                    <span class="info-value">${experience.title}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Guest</span>
+                    <span class="info-value">${escapeHtml(reservation.guest_name)}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Total</span>
+                    <span class="info-value">${new Intl.NumberFormat('fi-FI', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.amount_cents / 100)}</span>
+                  </div>
                 </div>
-                <div class="info-row">
-                  <span class="info-label">Guest</span>
-                  <span class="info-value">${escapeHtml(reservation.guest_name)}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">Amount Transferred</span>
-                  <span class="info-value">${new Intl.NumberFormat('fi-FI', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</span>
-                </div>
+                <p class="text-muted">The guest paid on site. Commission will be included in your monthly invoice. If the experience did not happen, please contact support.</p>
               </div>
-              <p class="text-muted">If the experience did not happen, please contact support.</p>
-            </div>
-          `, 'Payment Transferred'),
-        })
+            `, 'Experience Completed'),
+          })
+        } else {
+          await sendEmail({
+            to: supplier.email,
+            subject: `Payment transferred - ${experience.title}`,
+            html: baseTemplate(`
+              <div class="card">
+                <div class="header"><h1>Payment Transferred</h1></div>
+                <p>Hi ${supplier.name},</p>
+                <p>A booking has been automatically completed and your payment has been transferred.</p>
+                <div class="info-box">
+                  <div class="info-row">
+                    <span class="info-label">Experience</span>
+                    <span class="info-value">${experience.title}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Guest</span>
+                    <span class="info-value">${escapeHtml(reservation.guest_name)}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="info-label">Amount Transferred</span>
+                    <span class="info-value">${new Intl.NumberFormat('fi-FI', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</span>
+                  </div>
+                </div>
+                <p class="text-muted">If the experience did not happen, please contact support.</p>
+              </div>
+            `, 'Payment Transferred'),
+          })
+        }
       }
       
       processed++

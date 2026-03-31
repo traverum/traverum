@@ -10,42 +10,87 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.4"
   }
   public: {
     Tables: {
-      analytics_events: {
+      admin_audit_log: {
         Row: {
-          id: string
-          event_type: string
-          hotel_config_id: string | null
-          experience_id: string | null
-          source: string | null
-          embed_mode: string | null
-          session_id: string | null
+          action: string
           created_at: string
+          details: Json | null
+          id: string
+          target_id: string | null
+          target_type: string | null
+          user_id: string | null
         }
         Insert: {
-          id?: string
-          event_type: string
-          hotel_config_id?: string | null
-          experience_id?: string | null
-          source?: string | null
-          embed_mode?: string | null
-          session_id?: string | null
+          action: string
           created_at?: string
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_id?: string | null
         }
         Update: {
-          id?: string
-          event_type?: string
-          hotel_config_id?: string | null
-          experience_id?: string | null
-          source?: string | null
-          embed_mode?: string | null
-          session_id?: string | null
+          action?: string
           created_at?: string
+          details?: Json | null
+          id?: string
+          target_id?: string | null
+          target_type?: string | null
+          user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "admin_audit_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      analytics_events: {
+        Row: {
+          created_at: string
+          embed_mode: string | null
+          event_type: string
+          experience_id: string | null
+          hotel_config_id: string | null
+          id: string
+          session_id: string | null
+          source: string | null
+        }
+        Insert: {
+          created_at?: string
+          embed_mode?: string | null
+          event_type: string
+          experience_id?: string | null
+          hotel_config_id?: string | null
+          id?: string
+          session_id?: string | null
+          source?: string | null
+        }
+        Update: {
+          created_at?: string
+          embed_mode?: string | null
+          event_type?: string
+          experience_id?: string | null
+          hotel_config_id?: string | null
+          id?: string
+          session_id?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "analytics_events_hotel_config_id_fkey"
             columns: ["hotel_config_id"]
@@ -53,11 +98,51 @@ export type Database = {
             referencedRelation: "hotel_configs"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      attendance_verifications: {
+        Row: {
+          booking_id: string
+          created_at: string
+          deadline: string
+          guest_response: string | null
+          id: string
+          outcome: string
+          reminder_sent: boolean
+          responded_at: string | null
+          supplier_claim: string
+          verification_token: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          deadline: string
+          guest_response?: string | null
+          id?: string
+          outcome?: string
+          reminder_sent?: boolean
+          responded_at?: string | null
+          supplier_claim?: string
+          verification_token: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          deadline?: string
+          guest_response?: string | null
+          id?: string
+          outcome?: string
+          reminder_sent?: boolean
+          responded_at?: string | null
+          supplier_claim?: string
+          verification_token?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "analytics_events_experience_id_fkey"
-            columns: ["experience_id"]
+            foreignKeyName: "attendance_verifications_booking_id_fkey"
+            columns: ["booking_id"]
             isOneToOne: false
-            referencedRelation: "experiences"
+            referencedRelation: "bookings"
             referencedColumns: ["id"]
           },
         ]
@@ -68,11 +153,13 @@ export type Database = {
           booking_status: string
           cancelled_at: string | null
           completed_at: string | null
+          completion_check_sent_at: string | null
           created_at: string | null
           hotel_amount_cents: number
           hotel_payout_id: string | null
           id: string
-          paid_at: string
+          paid_at: string | null
+          payment_mode: string
           platform_amount_cents: number
           reservation_id: string
           session_id: string | null
@@ -88,11 +175,13 @@ export type Database = {
           booking_status?: string
           cancelled_at?: string | null
           completed_at?: string | null
+          completion_check_sent_at?: string | null
           created_at?: string | null
           hotel_amount_cents: number
           hotel_payout_id?: string | null
           id?: string
-          paid_at?: string
+          paid_at?: string | null
+          payment_mode?: string
           platform_amount_cents: number
           reservation_id: string
           session_id?: string | null
@@ -108,11 +197,13 @@ export type Database = {
           booking_status?: string
           cancelled_at?: string | null
           completed_at?: string | null
+          completion_check_sent_at?: string | null
           created_at?: string | null
           hotel_amount_cents?: number
           hotel_payout_id?: string | null
           id?: string
-          paid_at?: string
+          paid_at?: string | null
+          payment_mode?: string
           platform_amount_cents?: number
           reservation_id?: string
           session_id?: string | null
@@ -132,17 +223,152 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookings_reservation_fk"
+            foreignKeyName: "bookings_reservation_id_fkey"
             columns: ["reservation_id"]
             isOneToOne: true
             referencedRelation: "reservations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookings_session_fk"
+            foreignKeyName: "bookings_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "experience_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cancellation_charges: {
+        Row: {
+          amount_cents: number
+          booking_id: string
+          commission_split_cents: Json | null
+          created_at: string
+          id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          booking_id: string
+          commission_split_cents?: Json | null
+          created_at?: string
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          booking_id?: string
+          commission_split_cents?: Json | null
+          created_at?: string
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cancellation_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_invoices: {
+        Row: {
+          cancellation_credit_cents: number
+          commission_amount_cents: number
+          created_at: string
+          id: string
+          net_amount_cents: number
+          paid_at: string | null
+          partner_id: string
+          pdf_url: string | null
+          period_end: string
+          period_start: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          cancellation_credit_cents?: number
+          commission_amount_cents: number
+          created_at?: string
+          id?: string
+          net_amount_cents: number
+          paid_at?: string | null
+          partner_id: string
+          pdf_url?: string | null
+          period_end: string
+          period_start: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          cancellation_credit_cents?: number
+          commission_amount_cents?: number
+          created_at?: string
+          id?: string
+          net_amount_cents?: number
+          paid_at?: string | null
+          partner_id?: string
+          pdf_url?: string | null
+          period_end?: string
+          period_start?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_translations: {
+        Row: {
+          created_at: string
+          description: string
+          experience_id: string
+          id: string
+          language: string
+          meeting_point: string | null
+          source_updated_at: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          experience_id: string
+          id?: string
+          language: string
+          meeting_point?: string | null
+          source_updated_at: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          experience_id?: string
+          id?: string
+          language?: string
+          meeting_point?: string | null
+          source_updated_at?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_translations_experience_id_fkey"
+            columns: ["experience_id"]
+            isOneToOne: false
+            referencedRelation: "experiences"
             referencedColumns: ["id"]
           },
         ]
@@ -157,8 +383,9 @@ export type Database = {
           hotel_config_id: string | null
           hotel_id: string
           id: string
-          is_active: boolean | null
-          sort_order: number | null
+          is_active: boolean
+          selected_for_widget: boolean
+          sort_order: number
         }
         Insert: {
           commission_hotel?: number
@@ -169,8 +396,9 @@ export type Database = {
           hotel_config_id?: string | null
           hotel_id: string
           id?: string
-          is_active?: boolean | null
-          sort_order?: number | null
+          is_active?: boolean
+          selected_for_widget?: boolean
+          sort_order?: number
         }
         Update: {
           commission_hotel?: number
@@ -181,8 +409,9 @@ export type Database = {
           hotel_config_id?: string | null
           hotel_id?: string
           id?: string
-          is_active?: boolean | null
-          sort_order?: number | null
+          is_active?: boolean
+          selected_for_widget?: boolean
+          sort_order?: number
         }
         Relationships: [
           {
@@ -200,7 +429,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "distributions_hotel_fk"
+            foreignKeyName: "distributions_hotel_id_fkey"
             columns: ["hotel_id"]
             isOneToOne: false
             referencedRelation: "partners"
@@ -255,6 +484,7 @@ export type Database = {
       experience_sessions: {
         Row: {
           created_at: string | null
+          divinea_slot_id: string | null
           experience_id: string
           id: string
           price_note: string | null
@@ -269,6 +499,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          divinea_slot_id?: string | null
           experience_id: string
           id?: string
           price_note?: string | null
@@ -283,6 +514,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          divinea_slot_id?: string | null
           experience_id?: string
           id?: string
           price_note?: string | null
@@ -297,7 +529,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "sessions_experience_fk"
+            foreignKeyName: "experience_sessions_experience_id_fkey"
             columns: ["experience_id"]
             isOneToOne: false
             referencedRelation: "experiences"
@@ -310,23 +542,30 @@ export type Database = {
           allows_requests: boolean | null
           available_languages: string[]
           base_price_cents: number
+          calendar_source: string
           cancellation_policy: string | null
           created_at: string | null
           currency: string
           description: string
+          divinea_option_id: string | null
+          divinea_product_id: string | null
           duration_minutes: number
           experience_status: string
           extra_person_cents: number
           force_majeure_refund: boolean | null
+          hotel_notes: string | null
           id: string
           image_url: string | null
           included_participants: number
           location: unknown
           location_address: string | null
+          location_city: string | null
+          location_country: string | null
+          location_region: string | null
           max_days: number | null
           max_participants: number
           meeting_point: string | null
-          min_days: number
+          min_days: number | null
           min_participants: number
           partner_id: string
           price_cents: number
@@ -341,54 +580,68 @@ export type Database = {
           allows_requests?: boolean | null
           available_languages?: string[]
           base_price_cents?: number
+          calendar_source?: string
           cancellation_policy?: string | null
           created_at?: string | null
           currency?: string
-          description: string
-          duration_minutes: number
+          description?: string
+          divinea_option_id?: string | null
+          divinea_product_id?: string | null
+          duration_minutes?: number
           experience_status?: string
           extra_person_cents?: number
           force_majeure_refund?: boolean | null
+          hotel_notes?: string | null
           id?: string
           image_url?: string | null
           included_participants?: number
           location?: unknown
           location_address?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          location_region?: string | null
           max_days?: number | null
-          max_participants: number
+          max_participants?: number
           meeting_point?: string | null
-          min_days?: number
+          min_days?: number | null
           min_participants?: number
           partner_id: string
           price_cents: number
           price_per_day_cents?: number
           pricing_type?: string
-          slug: string
+          slug?: string
           tags?: string[]
-          title: string
+          title?: string
           updated_at?: string | null
         }
         Update: {
           allows_requests?: boolean | null
           available_languages?: string[]
           base_price_cents?: number
+          calendar_source?: string
           cancellation_policy?: string | null
           created_at?: string | null
           currency?: string
           description?: string
+          divinea_option_id?: string | null
+          divinea_product_id?: string | null
           duration_minutes?: number
           experience_status?: string
           extra_person_cents?: number
           force_majeure_refund?: boolean | null
+          hotel_notes?: string | null
           id?: string
           image_url?: string | null
           included_participants?: number
           location?: unknown
           location_address?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          location_region?: string | null
           max_days?: number | null
           max_participants?: number
           meeting_point?: string | null
-          min_days?: number
+          min_days?: number | null
           min_participants?: number
           partner_id?: string
           price_cents?: number
@@ -629,62 +882,153 @@ export type Database = {
           },
         ]
       }
+      partner_invitations: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          hotel_config_id: string | null
+          id: string
+          partner_id: string
+          role: string
+          token: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          hotel_config_id?: string | null
+          id?: string
+          partner_id: string
+          role?: string
+          token?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          hotel_config_id?: string | null
+          id?: string
+          partner_id?: string
+          role?: string
+          token?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_invitations_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invitations_hotel_config_id_fkey"
+            columns: ["hotel_config_id"]
+            isOneToOne: false
+            referencedRelation: "hotel_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invitations_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_invitations_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           city: string | null
           country: string | null
           created_at: string | null
+          display_name: string | null
           email: string
           id: string
           name: string
+          partner_slug: string | null
           partner_type: string
+          payment_mode: string
           phone: string | null
+          profile_visible: boolean
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean | null
           updated_at: string | null
+          website_url: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
+          display_name?: string | null
           email: string
           id?: string
           name: string
+          partner_slug?: string | null
           partner_type: string
+          payment_mode?: string
           phone?: string | null
+          profile_visible?: boolean
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
           updated_at?: string | null
+          website_url?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
+          display_name?: string | null
           email?: string
           id?: string
           name?: string
+          partner_slug?: string | null
           partner_type?: string
+          payment_mode?: string
           phone?: string | null
+          profile_visible?: boolean
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
           updated_at?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }
       reservations: {
         Row: {
+          booked_by_user_id: string | null
           created_at: string | null
+          divinea_reservation_id: string | null
           experience_id: string
+          guest_billing_address: string | null
+          guest_company_name: string | null
           guest_email: string
           guest_name: string
           guest_phone: string | null
-          guest_company_name: string | null
           guest_vat: string | null
-          guest_billing_address: string | null
-          invoice_requested: boolean | null
           hotel_config_id: string | null
-          hotel_id: string
+          hotel_id: string | null
           id: string
+          invoice_requested: boolean | null
           is_request: boolean | null
           participants: number
           payment_deadline: string | null
@@ -698,25 +1042,29 @@ export type Database = {
           response_deadline: string
           session_id: string | null
           source: string | null
+          stripe_customer_id: string | null
           stripe_payment_link_id: string | null
           stripe_payment_link_url: string | null
+          stripe_setup_intent_id: string | null
           time_preference: string | null
           total_cents: number
           updated_at: string | null
         }
         Insert: {
+          booked_by_user_id?: string | null
           created_at?: string | null
+          divinea_reservation_id?: string | null
           experience_id: string
+          guest_billing_address?: string | null
+          guest_company_name?: string | null
           guest_email: string
           guest_name: string
           guest_phone?: string | null
-          guest_company_name?: string | null
           guest_vat?: string | null
-          guest_billing_address?: string | null
-          invoice_requested?: boolean | null
           hotel_config_id?: string | null
-          hotel_id: string
+          hotel_id?: string | null
           id?: string
+          invoice_requested?: boolean | null
           is_request?: boolean | null
           participants: number
           payment_deadline?: string | null
@@ -730,25 +1078,29 @@ export type Database = {
           response_deadline: string
           session_id?: string | null
           source?: string | null
+          stripe_customer_id?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
+          stripe_setup_intent_id?: string | null
           time_preference?: string | null
           total_cents: number
           updated_at?: string | null
         }
         Update: {
+          booked_by_user_id?: string | null
           created_at?: string | null
+          divinea_reservation_id?: string | null
           experience_id?: string
+          guest_billing_address?: string | null
+          guest_company_name?: string | null
           guest_email?: string
           guest_name?: string
           guest_phone?: string | null
-          guest_company_name?: string | null
           guest_vat?: string | null
-          guest_billing_address?: string | null
-          invoice_requested?: boolean | null
           hotel_config_id?: string | null
-          hotel_id?: string
+          hotel_id?: string | null
           id?: string
+          invoice_requested?: boolean | null
           is_request?: boolean | null
           participants?: number
           payment_deadline?: string | null
@@ -762,13 +1114,22 @@ export type Database = {
           response_deadline?: string
           session_id?: string | null
           source?: string | null
+          stripe_customer_id?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
+          stripe_setup_intent_id?: string | null
           time_preference?: string | null
           total_cents?: number
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "reservations_booked_by_user_id_fkey"
+            columns: ["booked_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "reservations_experience_fk"
             columns: ["experience_id"]
@@ -791,7 +1152,7 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reservations_session_fk"
+            foreignKeyName: "reservations_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "experience_sessions"
@@ -823,32 +1184,93 @@ export type Database = {
         }
         Relationships: []
       }
+      support_feedback: {
+        Row: {
+          attachment_paths: Json
+          created_at: string
+          id: string
+          message: string
+          partner_id: string | null
+          sender_email: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          attachment_paths?: Json
+          created_at?: string
+          id?: string
+          message: string
+          partner_id?: string | null
+          sender_email: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          attachment_paths?: Json
+          created_at?: string
+          id?: string
+          message?: string
+          partner_id?: string | null
+          sender_email?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_feedback_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_feedback_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_partners: {
         Row: {
-          created_at: string | null
+          created_at: string
+          hotel_config_id: string | null
           id: string
-          is_default: boolean | null
+          is_default: boolean
           partner_id: string
-          role: string | null
+          role: string
+          updated_at: string
           user_id: string
         }
         Insert: {
-          created_at?: string | null
+          created_at?: string
+          hotel_config_id?: string | null
           id?: string
-          is_default?: boolean | null
+          is_default?: boolean
           partner_id: string
-          role?: string | null
+          role?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
-          created_at?: string | null
+          created_at?: string
+          hotel_config_id?: string | null
           id?: string
-          is_default?: boolean | null
+          is_default?: boolean
           partner_id?: string
-          role?: string | null
+          role?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_partners_hotel_config_id_fkey"
+            columns: ["hotel_config_id"]
+            isOneToOne: false
+            referencedRelation: "hotel_configs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_partners_partner_id_fkey"
             columns: ["partner_id"]
@@ -871,6 +1293,7 @@ export type Database = {
           created_at: string | null
           email: string
           id: string
+          is_superadmin: boolean
           partner_id: string | null
           updated_at: string | null
         }
@@ -879,6 +1302,7 @@ export type Database = {
           created_at?: string | null
           email: string
           id?: string
+          is_superadmin?: boolean
           partner_id?: string | null
           updated_at?: string | null
         }
@@ -887,12 +1311,13 @@ export type Database = {
           created_at?: string | null
           email?: string
           id?: string
+          is_superadmin?: boolean
           partner_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "users_partner_fk"
+            foreignKeyName: "users_partner_id_fkey"
             columns: ["partner_id"]
             isOneToOne: false
             referencedRelation: "partners"
@@ -1219,6 +1644,7 @@ export type Database = {
           distance_meters: number
           duration_minutes: number
           experience_status: string
+          hotel_notes: string
           id: string
           image_url: string
           location: unknown
@@ -2009,14 +2435,13 @@ export const Constants = {
   },
 } as const
 
-
-// Convenience types
-export type AnalyticsEvent = Database['public']['Tables']['analytics_events']['Row']
+// Convenience types — re-append after every types regeneration
 export type Booking = Database['public']['Tables']['bookings']['Row']
 export type Distribution = Database['public']['Tables']['distributions']['Row']
 export type ExperienceSession = Database['public']['Tables']['experience_sessions']['Row']
 export type Experience = Database['public']['Tables']['experiences']['Row']
 export type HotelConfig = Database['public']['Tables']['hotel_configs']['Row']
+export type HotelPayout = Database['public']['Tables']['hotel_payouts']['Row']
 export type Media = Database['public']['Tables']['media']['Row']
 export type Partner = Database['public']['Tables']['partners']['Row']
 export type Reservation = Database['public']['Tables']['reservations']['Row']

@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { formatPrice, formatDuration, formatDate, formatTime } from '@/lib/utils'
+import { formatPrice, formatDate, formatTime, formatTimeRange } from '@/lib/utils'
 import type { Experience, ExperienceSession } from '@/lib/supabase/types'
 
 interface BookingSummaryProps {
@@ -13,6 +13,7 @@ interface BookingSummaryProps {
   coverImage?: string | null
   rentalDays?: number
   quantity?: number
+  payOnSite?: boolean
 }
 
 export function BookingSummary({
@@ -26,6 +27,7 @@ export function BookingSummary({
   coverImage,
   rentalDays,
   quantity,
+  payOnSite,
 }: BookingSummaryProps) {
   const isRental = experience.pricing_type === 'per_day'
   const date = session?.session_date || requestDate || ''
@@ -49,9 +51,6 @@ export function BookingSummary({
         {/* Title */}
         <div>
           <h3 className="font-heading text-card-foreground">{experience.title}</h3>
-          {!isRental && (
-            <p className="text-sm text-muted-foreground mt-0.5">{formatDuration(experience.duration_minutes)}</p>
-          )}
         </div>
         
         {/* Details */}
@@ -87,7 +86,11 @@ export function BookingSummary({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{isRequest ? 'Requested time' : 'Time'}</span>
                 <span className="font-medium text-card-foreground">
-                  {time ? formatTime(time) : 'Not selected'}
+                  {time
+                    ? (experience.duration_minutes && !isRequest
+                        ? formatTimeRange(time, experience.duration_minutes)
+                        : formatTime(time))
+                    : 'Not selected'}
                 </span>
               </div>
               
@@ -107,13 +110,18 @@ export function BookingSummary({
         </div>
         
         {/* Total */}
-        <div className="pt-4 border-t border-border">
+        <div className="pt-4 border-t border-border space-y-2">
           <div className="flex justify-between items-center">
             <span className="font-semibold text-card-foreground">Total</span>
             <span className="text-xl font-bold text-accent">
               {formatPrice(totalCents, experience.currency)}
             </span>
           </div>
+          {payOnSite && (
+            <p className="text-xs text-muted-foreground pt-1">
+              No charge now. You pay the provider on site.
+            </p>
+          )}
         </div>
         
         {/* Notice */}

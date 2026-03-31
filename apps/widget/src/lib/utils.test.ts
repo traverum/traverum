@@ -58,32 +58,33 @@ describe('formatDuration', () => {
 })
 
 describe('formatDate', () => {
-  it('formats YYYY-MM-DD string to dd.MM.yyyy', () => {
-    expect(formatDate('2026-03-20')).toBe('20.03.2026')
+  it('formats YYYY-MM-DD string with month name', () => {
+    expect(formatDate('2026-03-20')).toBe('20 Mar 2026')
   })
 
-  it('formats short (dd.MM)', () => {
-    expect(formatDate('2026-03-20', { short: true })).toBe('20.03')
+  it('formats short with month name', () => {
+    expect(formatDate('2026-03-20', { short: true })).toBe('20 Mar')
   })
 
   it('formats Date object', () => {
     const date = new Date(2026, 2, 20)
-    expect(formatDate(date)).toBe('20.03.2026')
+    expect(formatDate(date)).toBe('20 Mar 2026')
   })
 
   it('formats Date object short', () => {
     const date = new Date(2026, 0, 5)
-    expect(formatDate(date, { short: true })).toBe('05.01')
+    expect(formatDate(date, { short: true })).toBe('5 Jan')
   })
 
-  it('pads single-digit day and month from string', () => {
-    expect(formatDate('2026-01-05')).toBe('05.01.2026')
+  it('formats single-digit day without padding', () => {
+    expect(formatDate('2026-01-05')).toBe('5 Jan 2026')
   })
 
-  it('never uses American format', () => {
+  it('uses globally unambiguous format', () => {
     const result = formatDate('2026-12-25')
-    expect(result).toBe('25.12.2026')
+    expect(result).toBe('25 Dec 2026')
     expect(result).not.toContain('/')
+    expect(result).not.toContain('.')
   })
 })
 

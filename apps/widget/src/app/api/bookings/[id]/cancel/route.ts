@@ -3,9 +3,18 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { verifyToken } from '@/lib/tokens'
 import { createRefund } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
-import { guestRefundProcessed, supplierGuestCancelled } from '@/lib/email/templates'
+import {
+  guestRefundProcessed,
+  supplierGuestCancelled,
+  guestLateCancellationCharged,
+  guestCancellationChargeFailed,
+  guestCancelledFreePayOnSite,
+} from '@/lib/email/templates'
 import { differenceInDays, parseISO, format } from 'date-fns'
-import { canGuestCancel } from '@/lib/availability'
+import { canGuestCancel, CANCELLATION_POLICIES } from '@/lib/availability'
+import { PAYMENT_MODES } from '@traverum/shared'
+import { processCancellationCharge } from '@/lib/cancellation-charges'
+import { formatEmailPrice } from '@/lib/email/index'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -16,7 +25,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { searchParams } = new URL(request.url)
   const token = searchParams.get('token')
   
-  // Verify token
   if (!token) {
     return createResponse('error', 'Missing token')
   }
@@ -33,7 +41,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   
   const supabase = createAdminClient()
   
-  // Get booking with related data (supplier for notification, session start_time for emails)
   const { data: bookingData } = await supabase
     .from('bookings')
     .select(`
@@ -65,59 +72,192 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const reservation = booking.reservation
   const session = reservation.session
   const experience = reservation.experience
-  // Rentals use rental_start_date; session-based use session_date or requested_date
   const experienceDate =
     session?.session_date ||
     reservation.requested_date ||
     reservation.rental_start_date ||
     ''
 
-  // Compare calendar dates consistently so "days until" is stable across day boundaries
   const todayServer = format(new Date(), 'yyyy-MM-dd')
   const daysUntil =
     experienceDate && experienceDate.length >= 10
       ? differenceInDays(parseISO(experienceDate), parseISO(todayServer))
       : 999
+
+  const isPayOnSite = booking.payment_mode === PAYMENT_MODES.PAY_ON_SITE
+
+  if (isPayOnSite) {
+    return handlePayOnSiteCancellation({
+      supabase,
+      booking,
+      reservation,
+      session,
+      experience,
+      experienceDate,
+      daysUntil,
+      bookingId: id,
+    })
+  }
+
+  return handleStripeCancellation({
+    supabase,
+    booking,
+    reservation,
+    session,
+    experience,
+    experienceDate,
+    daysUntil,
+    bookingId: id,
+  })
+}
+
+// ── Pay on site: cancel free (within policy) or charge card (outside policy) ──
+
+async function handlePayOnSiteCancellation(ctx: {
+  supabase: ReturnType<typeof createAdminClient>
+  booking: any
+  reservation: any
+  session: any
+  experience: any
+  experienceDate: string
+  daysUntil: number
+  bookingId: string
+}) {
+  const { supabase, booking, reservation, session, experience, experienceDate, daysUntil, bookingId } = ctx
+  const policy = experience?.cancellation_policy ?? 'moderate'
+  const policyInfo = CANCELLATION_POLICIES.find(p => p.value === policy)
+  const minDays = policyInfo?.minDaysBeforeCancel ?? 7
+  const withinPolicy = minDays > 0 && daysUntil >= minDays
+
+  const dateStr = experienceDate || ''
+  const timeStr = session?.start_time ?? reservation.requested_time ?? null
+  const supplier = experience.supplier
+
+  try {
+    if (!withinPolicy) {
+      // Outside policy: charge the guest's saved card
+      const setupIntentId = reservation.stripe_setup_intent_id
+      const customerId = reservation.stripe_customer_id
+
+      if (!setupIntentId || !customerId) {
+        console.error(`Pay on site booking ${bookingId} missing Stripe data for cancellation charge`)
+        // Can't charge — cancel without charge, log the issue
+        await cancelBookingAndReleaseSession(supabase, bookingId, reservation)
+        await notifySupplierOfCancellation(supplier, experience, bookingId, dateStr, timeStr)
+        return createResponse('success', 'Your booking has been cancelled.')
+      }
+
+      const chargeResult = await processCancellationCharge({
+        supabase,
+        bookingId,
+        stripeSetupIntentId: setupIntentId,
+        stripeCustomerId: customerId,
+        amountCents: booking.amount_cents,
+        currency: experience.currency || 'EUR',
+        reason: 'cancellation',
+        commissionSplitCents: {
+          supplier: booking.supplier_amount_cents,
+          hotel: booking.hotel_amount_cents,
+          platform: booking.platform_amount_cents,
+        },
+      })
+
+      await cancelBookingAndReleaseSession(supabase, bookingId, reservation)
+      await notifySupplierOfCancellation(supplier, experience, bookingId, dateStr, timeStr)
+
+      if (chargeResult.success) {
+        const chargeAmount = formatEmailPrice(booking.amount_cents, experience.currency)
+        await sendEmail({
+          to: reservation.guest_email,
+          subject: `Cancellation confirmed - ${experience.title}`,
+          html: guestLateCancellationCharged({
+            experienceTitle: experience.title,
+            guestName: reservation.guest_name,
+            date: dateStr,
+            bookingId,
+            chargeAmountCents: booking.amount_cents,
+            currency: experience.currency,
+          }),
+        })
+        console.log(`Late cancellation charge succeeded for booking ${bookingId}: ${chargeAmount}`)
+        return createResponse('success', `Your booking has been cancelled. A cancellation fee of ${chargeAmount} has been charged to your card.`)
+      }
+
+      // Charge failed — cancel anyway, notify guest
+      await sendEmail({
+        to: reservation.guest_email,
+        subject: `Cancellation confirmed - ${experience.title}`,
+        html: guestCancellationChargeFailed({
+          experienceTitle: experience.title,
+          guestName: reservation.guest_name,
+          date: dateStr,
+          bookingId,
+          chargeAmountCents: booking.amount_cents,
+          currency: experience.currency,
+          reason: 'cancellation',
+        }),
+      })
+      console.warn(`Late cancellation charge FAILED for booking ${bookingId}: ${chargeResult.failureReason}`)
+      return createResponse('success', 'Your booking has been cancelled.')
+    }
+
+    // Within policy: free cancellation
+    await cancelBookingAndReleaseSession(supabase, bookingId, reservation)
+    await notifySupplierOfCancellation(supplier, experience, bookingId, dateStr, timeStr)
+
+    await sendEmail({
+      to: reservation.guest_email,
+      subject: `Cancellation confirmed - ${experience.title}`,
+      html: guestCancelledFreePayOnSite({
+        experienceTitle: experience.title,
+        guestName: reservation.guest_name,
+        date: dateStr,
+        time: timeStr,
+        bookingId,
+      }),
+    })
+
+    return createResponse('success', 'Your booking has been cancelled. No charge was made to your card.')
+  } catch (error) {
+    console.error('Pay on site cancel booking error:', error)
+    return createResponse('error', 'Failed to process cancellation. Please try again.')
+  }
+}
+
+// ── Stripe: refund within policy, block outside policy ──
+
+async function handleStripeCancellation(ctx: {
+  supabase: ReturnType<typeof createAdminClient>
+  booking: any
+  reservation: any
+  session: any
+  experience: any
+  experienceDate: string
+  daysUntil: number
+  bookingId: string
+}) {
+  const { supabase, booking, reservation, session, experience, experienceDate, daysUntil, bookingId } = ctx
+
   const { canCancel, message } = canGuestCancel(experience?.cancellation_policy ?? 'moderate', daysUntil)
   if (!canCancel) {
     return createResponse('error', message)
   }
-  
+
   try {
-    // Process refund (skip if already refunded, e.g. duplicate cancel or retry)
     if (booking.stripe_charge_id) {
       try {
         await createRefund(booking.stripe_charge_id)
       } catch (refundErr: unknown) {
         const code = (refundErr as { code?: string })?.code
         if (code !== 'charge_already_refunded') throw refundErr
-        // Already refunded: continue to update booking and send emails
       }
     }
 
-    // Update booking status and clear session reference so we can delete the session
-    const updateClient = createAdminClient()
-    await (updateClient
-      .from('bookings') as any)
-      .update({
-        booking_status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        session_id: null,
-      })
-      .eq('id', id)
+    await cancelBookingAndReleaseSession(supabase, bookingId, reservation)
 
-    // Delete the session so the slot disappears from the calendar (no surprise rebookings)
-    if (reservation.session_id) {
-      await (updateClient.from('experience_sessions') as any)
-        .delete()
-        .eq('id', reservation.session_id)
-    }
-    
     const dateStr = experienceDate || ''
     const timeStr = session?.start_time ?? reservation.requested_time ?? null
 
-    // Guest: cancellation + refund confirmation (on-brand template)
     const guestEmailHtml = guestRefundProcessed({
       experienceTitle: experience.title,
       guestName: reservation.guest_name,
@@ -135,20 +275,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       html: guestEmailHtml,
     })
 
-    // Supplier: notify that guest cancelled and slot is released
     const supplier = experience.supplier
     if (supplier?.email) {
-      const supplierEmailHtml = supplierGuestCancelled({
-        experienceTitle: experience.title,
-        bookingId: booking.id,
-        date: dateStr,
-        time: timeStr,
-      })
-      await sendEmail({
-        to: supplier.email,
-        subject: `Booking cancelled by guest - ${experience.title}`,
-        html: supplierEmailHtml,
-      })
+      await notifySupplierOfCancellation(supplier, experience, bookingId, dateStr, timeStr)
     }
 
     return createResponse('success', 'Your booking has been cancelled and a refund has been initiated.')
@@ -156,6 +285,51 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     console.error('Cancel booking error:', error)
     return createResponse('error', 'Failed to process cancellation. Please try again.')
   }
+}
+
+// ── Shared helpers ──
+
+async function cancelBookingAndReleaseSession(
+  supabase: ReturnType<typeof createAdminClient>,
+  bookingId: string,
+  reservation: any
+) {
+  await (supabase.from('bookings') as any)
+    .update({
+      booking_status: 'cancelled',
+      cancelled_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      session_id: null,
+    })
+    .eq('id', bookingId)
+
+  if (reservation.session_id) {
+    await (supabase.from('experience_sessions') as any)
+      .delete()
+      .eq('id', reservation.session_id)
+  }
+}
+
+async function notifySupplierOfCancellation(
+  supplier: { email?: string; name?: string } | null,
+  experience: any,
+  bookingId: string,
+  date: string,
+  time: string | null
+) {
+  if (!supplier?.email) return
+  const { supplierGuestCancelled } = await import('@/lib/email/templates')
+  const supplierEmailHtml = supplierGuestCancelled({
+    experienceTitle: experience.title,
+    bookingId,
+    date,
+    time,
+  })
+  await sendEmail({
+    to: supplier.email,
+    subject: `Booking cancelled by guest - ${experience.title}`,
+    html: supplierEmailHtml,
+  })
 }
 
 function createResponse(type: 'success' | 'error' | 'info', message: string) {

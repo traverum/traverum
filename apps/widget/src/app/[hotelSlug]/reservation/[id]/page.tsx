@@ -1,10 +1,12 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { createAdminClient } from '@/lib/supabase/server'
 import { getHotelBySlug } from '@/lib/hotels'
 import { formatDate, formatTime, formatPrice, cn } from '@/lib/utils'
 import { Header } from '@/components/Header'
 import { TranslatedText } from '@/components/TranslatedText'
+import { SetupIntentConfirmer } from '@/components/SetupIntentConfirmer'
 
 // Force dynamic rendering so hotel config changes take effect immediately
 export const dynamic = 'force-dynamic'
@@ -44,6 +46,15 @@ export default async function ReservationPage({ params, searchParams }: Reservat
   const date = reservation.session?.session_date || reservation.requested_date || ''
   const time = reservation.session?.start_time || reservation.requested_time || ''
   const experience = reservation.experience
+
+  const { data: bookingData } = await supabase
+    .from('bookings')
+    .select('id, payment_mode, booking_status')
+    .eq('reservation_id', id)
+    .single()
+
+  const booking = bookingData as any
+  const isPayOnSiteConfirmed = booking?.payment_mode === 'pay_on_site' && booking?.booking_status === 'confirmed'
   
   return (
     <div className="embed-full">
@@ -63,19 +74,20 @@ export default async function ReservationPage({ params, searchParams }: Reservat
             {/* Status icon */}
             <div className={cn(
               'w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center',
-              reservation.reservation_status === 'pending' && 'bg-warning/10',
-              reservation.reservation_status === 'approved' && 'bg-success/10',
+              isPayOnSiteConfirmed && 'bg-success/10',
+              !isPayOnSiteConfirmed && reservation.reservation_status === 'pending' && 'bg-warning/10',
+              !isPayOnSiteConfirmed && reservation.reservation_status === 'approved' && 'bg-success/10',
               reservation.reservation_status === 'declined' && 'bg-destructive/10',
               reservation.reservation_status === 'expired' && 'bg-muted',
             )}>
-              {reservation.reservation_status === 'pending' && (
-                <svg className="w-10 h-10 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
-              {reservation.reservation_status === 'approved' && (
+              {(isPayOnSiteConfirmed || reservation.reservation_status === 'approved') && (
                 <svg className="w-10 h-10 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {!isPayOnSiteConfirmed && reservation.reservation_status === 'pending' && (
+                <svg className="w-10 h-10 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               )}
               {reservation.reservation_status === 'declined' && (
@@ -92,20 +104,25 @@ export default async function ReservationPage({ params, searchParams }: Reservat
             
             {/* Status title */}
             <h1 className="text-3xl text-card-foreground mb-3">
-              {reservation.reservation_status === 'pending' && (reservation.is_request ? 'Request Sent!' : 'Booking Processing!')}
-              {reservation.reservation_status === 'approved' && 'Booking Approved!'}
+              {isPayOnSiteConfirmed && 'Reservation Confirmed!'}
+              {!isPayOnSiteConfirmed && reservation.reservation_status === 'pending' && (reservation.is_request ? 'Request Sent!' : 'Booking Processing!')}
+              {!isPayOnSiteConfirmed && reservation.reservation_status === 'approved' && 'Booking Approved!'}
               {reservation.reservation_status === 'declined' && 'Booking Unavailable'}
               {reservation.reservation_status === 'expired' && (reservation.is_request ? 'Request Expired' : 'Booking Expired')}
             </h1>
             
             {/* Status message */}
             <p className="text-muted-foreground mb-8 text-base">
-              {reservation.reservation_status === 'pending' && reservation.is_request && 
+              {isPayOnSiteConfirmed &&
+                'Your reservation is confirmed. You\'ll pay the provider directly when you arrive.'}
+              {!isPayOnSiteConfirmed && reservation.reservation_status === 'pending' && reservation.is_request && 
                 'Your booking request has been sent to the experience provider. They will respond within 48 hours.'}
-              {reservation.reservation_status === 'pending' && !reservation.is_request && 
+              {!isPayOnSiteConfirmed && reservation.reservation_status === 'pending' && !reservation.is_request && 
                 'Your booking is being processed. You will be redirected to payment shortly.'}
-              {reservation.reservation_status === 'approved' && 
+              {!isPayOnSiteConfirmed && reservation.reservation_status === 'approved' && reservation.stripe_payment_link_url &&
                 'Great news! Your booking has been approved. Check your email for the payment link.'}
+              {!isPayOnSiteConfirmed && reservation.reservation_status === 'approved' && !reservation.stripe_payment_link_url &&
+                'Great news! Your booking has been approved. Check your email to confirm your reservation.'}
               {reservation.reservation_status === 'declined' && 
                 'Unfortunately, the provider was unable to accept your booking for this time.'}
               {reservation.reservation_status === 'expired' && reservation.is_request && 
@@ -113,6 +130,21 @@ export default async function ReservationPage({ params, searchParams }: Reservat
               {reservation.reservation_status === 'expired' && !reservation.is_request && 
                 'This booking has expired. The payment window has closed.'}
             </p>
+
+            {/* Pay on site reminder */}
+            {isPayOnSiteConfirmed && (
+              <div className="flex items-start gap-3 p-4 rounded-button bg-accent/5 border border-accent/10 text-left mb-8">
+                <svg className="w-5 h-5 text-accent mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm">
+                  <p className="font-medium text-foreground">Pay on site</p>
+                  <p className="text-muted-foreground mt-0.5">
+                    Your card is on file as a guarantee for the cancellation policy. No charge has been made.
+                  </p>
+                </div>
+              </div>
+            )}
             
             {/* Booking details */}
             <div className="bg-background-alt rounded-card p-6 text-left mb-8">
@@ -147,8 +179,8 @@ export default async function ReservationPage({ params, searchParams }: Reservat
               </div>
             </div>
             
-            {/* Payment link for approved */}
-            {reservation.reservation_status === 'approved' && reservation.stripe_payment_link_url && (
+            {/* Payment link for approved (stripe mode only) */}
+            {!isPayOnSiteConfirmed && reservation.reservation_status === 'approved' && reservation.stripe_payment_link_url && (
               <a
                 href={reservation.stripe_payment_link_url}
                 className="inline-flex items-center justify-center px-8 py-3.5 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2"
@@ -175,10 +207,13 @@ export default async function ReservationPage({ params, searchParams }: Reservat
             </div>
           </div>
           
-          {/* Email notice */}
           <p className="text-center text-sm text-muted-foreground mt-6">
-            We've sent a confirmation email to <strong className="text-foreground">{reservation.guest_email}</strong>
+            We&apos;ve sent a confirmation email to <strong className="text-foreground">{reservation.guest_email}</strong>
           </p>
+
+          <Suspense fallback={null}>
+            <SetupIntentConfirmer reservationId={id} />
+          </Suspense>
         </div>
       </main>
     </div>

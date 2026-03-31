@@ -35,6 +35,7 @@ import { getLanguageName } from '@/components/LanguageSelector';
 import { useBookingManagement, type PendingRequest, type AwaitingPaymentItem, type BookingItem } from '@/hooks/useBookingManagement';
 import { useToast } from '@/hooks/use-toast';
 import { SupportToastAction } from '@/components/SupportToastAction';
+import { PAYMENT_MODES } from '@traverum/shared';
 
 function fmtDate(dateStr: string): string {
   return format(new Date(dateStr + 'T12:00:00'), 'd.M.yyyy');
@@ -63,12 +64,19 @@ function PendingRequestCard({
   const [declineSuggestion, setDeclineSuggestion] = useState('');
 
   const isRental = request.isRental;
-  const canAccept = isRental
+
+  const today = new Date().toISOString().slice(0, 10);
+  const relevantDate = isRental
+    ? (request.rental_start_date || request.requested_date)
+    : request.requested_date;
+  const isExpired = !!relevantDate && relevantDate < today;
+
+  const canAccept = !isExpired && (isRental
     ? !!request.requested_date
-    : !!(request.requested_date && request.requested_time);
+    : !!(request.requested_date && request.requested_time));
 
   const deadline = parseISO(request.response_deadline);
-  const isUrgent = deadline.getTime() - Date.now() < 12 * 60 * 60 * 1000;
+  const isUrgent = !isExpired && deadline.getTime() - Date.now() < 12 * 60 * 60 * 1000;
 
   // rental_end_date is inclusive (last day). Duration = diff + 1.
   const rentalDays = isRental && request.rental_start_date && request.rental_end_date
@@ -96,11 +104,16 @@ function PendingRequestCard({
     <>
       <Card className={cn(
         'border shadow-sm overflow-hidden',
-        isUrgent ? 'border-destructive/40' : 'border-border'
+        isExpired ? 'border-border opacity-60' : isUrgent ? 'border-destructive/40' : 'border-border'
       )}>
         <CardContent className="p-0">
-          <div className="px-4 pt-4 pb-2">
+          <div className="px-4 pt-4 pb-2 flex items-center gap-2">
             <h4 className="text-sm font-semibold leading-tight">{request.experience.title}</h4>
+            {isExpired && (
+              <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
+                Expired
+              </Badge>
+            )}
           </div>
 
           <div className="px-4 space-y-1.5 pb-3">
@@ -142,16 +155,22 @@ function PendingRequestCard({
           <div className="border-t border-border px-4 py-3 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold">{formatPrice(request.total_cents)}</span>
-              <span className={cn(
-                'text-xs',
-                isUrgent ? 'text-destructive font-medium' : 'text-muted-foreground'
-              )}>
-                {isUrgent && <AlertTriangle className="w-3 h-3 inline mr-1" />}
-                Respond by {format(deadline, 'd.M HH:mm')}
-              </span>
+              {isExpired ? (
+                <span className="text-xs text-muted-foreground">
+                  Date has passed
+                </span>
+              ) : (
+                <span className={cn(
+                  'text-xs',
+                  isUrgent ? 'text-destructive font-medium' : 'text-muted-foreground'
+                )}>
+                  {isUrgent && <AlertTriangle className="w-3 h-3 inline mr-1" />}
+                  Respond by {format(deadline, 'd.M HH:mm')}
+                </span>
+              )}
             </div>
 
-            {!canAccept && (
+            {!canAccept && !isExpired && (
               <p className="text-xs text-muted-foreground">
                 {isRental
                   ? 'No rental dates specified — decline to suggest alternatives'
@@ -161,23 +180,37 @@ function PendingRequestCard({
             )}
 
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                className="h-8 text-xs px-4"
-                onClick={() => onAccept()}
-                disabled={isAccepting || !canAccept}
-              >
-                {isAccepting ? 'Accepting...' : 'Accept'}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 text-xs"
-                onClick={() => setShowDeclineConfirm(true)}
-                disabled={isDeclining}
-              >
-                Decline and propose new times
-              </Button>
+              {!isExpired && (
+                <Button
+                  size="sm"
+                  className="h-8 text-xs px-4"
+                  onClick={() => onAccept()}
+                  disabled={isAccepting || !canAccept}
+                >
+                  {isAccepting ? 'Accepting...' : 'Accept'}
+                </Button>
+              )}
+              {isExpired ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() => onDecline()}
+                  disabled={isDeclining}
+                >
+                  {isDeclining ? 'Dismissing...' : 'Dismiss'}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs"
+                  onClick={() => setShowDeclineConfirm(true)}
+                  disabled={isDeclining}
+                >
+                  Decline and propose new times
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -339,6 +372,7 @@ function BookingCard({
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [showNoExperienceConfirm, setShowNoExperienceConfirm] = useState(false);
   const isRental = booking.isRental;
+  const isPayOnSite = booking.paymentMode === PAYMENT_MODES.PAY_ON_SITE;
   const isRefunded = booking.bookingStatus === 'cancelled' && !!booking.stripeRefundId;
   const isCancelled = booking.bookingStatus === 'cancelled' && !booking.stripeRefundId;
 
@@ -455,6 +489,9 @@ function BookingCard({
           {/* Right side: amount + status + actions */}
           <div className="text-right flex-shrink-0 space-y-1.5">
             <p className="text-sm font-semibold">{formatPrice(booking.amountCents)}</p>
+            {isPayOnSite && (
+              <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-amber-300 text-amber-700 bg-amber-50">Pay on site</Badge>
+            )}
             {isPast && isRefunded && (
               <Badge variant="secondary" className="text-[10px] h-4 px-1.5">Refunded</Badge>
             )}
@@ -472,7 +509,7 @@ function BookingCard({
                 onClick={() => setShowCancelConfirm(true)}
                 disabled={isCancelling}
               >
-                Cancel & Refund
+                {isPayOnSite ? 'Cancel Booking' : 'Cancel & Refund'}
               </Button>
             )}
             {isPast && booking.bookingStatus === 'confirmed' && onComplete && (
@@ -506,7 +543,10 @@ function BookingCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel this booking?</AlertDialogTitle>
             <AlertDialogDescription>
-              A full refund of {formatPrice(booking.amountCents)} will be processed and {booking.guestName} will be notified by email. This action cannot be undone.
+              {isPayOnSite
+                ? `The booking will be cancelled and ${booking.guestName} will be notified by email. No charge was made. This action cannot be undone.`
+                : `A full refund of ${formatPrice(booking.amountCents)} will be processed and ${booking.guestName} will be notified by email. This action cannot be undone.`
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -516,7 +556,7 @@ function BookingCard({
               onClick={() => { onCancel(); setShowCancelConfirm(false); }}
               disabled={isCancelling}
             >
-              {isCancelling ? 'Cancelling...' : 'Cancel & Refund'}
+              {isCancelling ? 'Cancelling...' : isPayOnSite ? 'Cancel Booking' : 'Cancel & Refund'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -527,7 +567,10 @@ function BookingCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm experience completed?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will trigger a payout of your share to your Stripe account. This action cannot be undone.
+              {isPayOnSite
+                ? 'This will mark the experience as completed. The guest paid on site. Commission will be included in your monthly invoice.'
+                : 'This will trigger a payout of your share to your Stripe account. This action cannot be undone.'
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -547,7 +590,10 @@ function BookingCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Experience didn't happen?</AlertDialogTitle>
             <AlertDialogDescription>
-              A full refund of {formatPrice(booking.amountCents)} will be issued to {booking.guestName}. You will not receive a payout for this booking. This action cannot be undone.
+              {isPayOnSite
+                ? `The booking will be cancelled. No charge was made to ${booking.guestName}. This action cannot be undone.`
+                : `A full refund of ${formatPrice(booking.amountCents)} will be issued to ${booking.guestName}. You will not receive a payout for this booking. This action cannot be undone.`
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -557,7 +603,7 @@ function BookingCard({
               onClick={() => { onNoExperience?.(); setShowNoExperienceConfirm(false); }}
               disabled={isReportingNoExperience}
             >
-              {isReportingNoExperience ? 'Processing...' : 'Refund Guest'}
+              {isReportingNoExperience ? 'Processing...' : isPayOnSite ? 'Cancel Booking' : 'Refund Guest'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -701,28 +747,46 @@ export default function BookingManagement() {
     }
   };
 
+  const findBookingMode = (bookingId: string) => {
+    const all = [...upcomingBookings, ...pastBookings];
+    const b = all.find(x => x.id === bookingId);
+    return b?.paymentMode === PAYMENT_MODES.PAY_ON_SITE;
+  };
+
   const handleCancelBooking = async (bookingId: string) => {
+    const isPos = findBookingMode(bookingId);
     try {
       await cancelBooking.mutateAsync(bookingId);
-      toast({ title: 'Booking cancelled', description: 'A full refund has been issued and the guest notified.' });
+      toast({
+        title: 'Booking cancelled',
+        description: isPos ? 'The guest has been notified.' : 'A full refund has been issued and the guest notified.',
+      });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to cancel booking.', variant: 'destructive', action: <SupportToastAction /> });
     }
   };
 
   const handleCompleteBooking = async (bookingId: string) => {
+    const isPos = findBookingMode(bookingId);
     try {
       await completeBooking.mutateAsync(bookingId);
-      toast({ title: 'Experience confirmed', description: 'Your payout has been initiated.' });
+      toast({
+        title: 'Experience confirmed',
+        description: isPos ? 'The experience has been marked as completed.' : 'Your payout has been initiated.',
+      });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to complete booking.', variant: 'destructive', action: <SupportToastAction /> });
     }
   };
 
   const handleNoExperience = async (bookingId: string) => {
+    const isPos = findBookingMode(bookingId);
     try {
       await reportNoExperience.mutateAsync(bookingId);
-      toast({ title: 'Refund processed', description: 'The guest has been refunded.' });
+      toast({
+        title: isPos ? 'Booking cancelled' : 'Refund processed',
+        description: isPos ? 'The booking has been cancelled.' : 'The guest has been refunded.',
+      });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to process.', variant: 'destructive', action: <SupportToastAction /> });
     }

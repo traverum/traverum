@@ -1,5 +1,7 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { EXPERIENCE_TAGS, getTagLabel } from '@traverum/shared'
+import type { ExperienceWithMedia } from '@/lib/hotels'
 
 /**
  * Merge Tailwind CSS classes with clsx
@@ -36,28 +38,34 @@ export function formatDuration(minutes: number): string {
   return `${hours}h ${remainingMinutes}min`
 }
 
+const MONTH_NAMES_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+]
+
 /**
- * Format date for display (European standard: dd.mm.yyyy)
- * Examples: "20.01.2025", "20.01" (short)
+ * Format date for display using globally unambiguous format.
+ * Examples: "20 Mar 2025", "20 Mar" (short)
  */
 export function formatDate(date: Date | string, options?: { short?: boolean }): string {
-  // For YYYY-MM-DD strings, parse directly to avoid UTC-midnight timezone shift
+  let dayNum: number
+  let monthIdx: number
+  let year: number
+
   if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    const [year, month, day] = date.split('-')
-    return options?.short ? `${day}.${month}` : `${day}.${month}.${year}`
+    const [y, m, d] = date.split('-')
+    dayNum = parseInt(d, 10)
+    monthIdx = parseInt(m, 10) - 1
+    year = parseInt(y, 10)
+  } else {
+    const d = typeof date === 'string' ? new Date(date) : date
+    dayNum = d.getDate()
+    monthIdx = d.getMonth()
+    year = d.getFullYear()
   }
 
-  const d = typeof date === 'string' ? new Date(date) : date
-
-  const day = d.getDate().toString().padStart(2, '0')
-  const month = (d.getMonth() + 1).toString().padStart(2, '0')
-  const year = d.getFullYear()
-
-  if (options?.short) {
-    return `${day}.${month}`
-  }
-
-  return `${day}.${month}.${year}`
+  const mon = MONTH_NAMES_SHORT[monthIdx]
+  return options?.short ? `${dayNum} ${mon}` : `${dayNum} ${mon} ${year}`
 }
 
 /**
@@ -67,6 +75,19 @@ export function formatDate(date: Date | string, options?: { short?: boolean }): 
 export function formatTime(time: string): string {
   const [hours, minutes] = time.split(':')
   return `${hours}:${minutes}`
+}
+
+/**
+ * Format a start time + duration into a range string like "15:00–17:00".
+ */
+export function formatTimeRange(startTime: string, durationMinutes: number): string {
+  const [h, m] = startTime.split(':').map(Number)
+  const totalMinutes = h * 60 + m + durationMinutes
+  const endH = Math.floor(totalMinutes / 60) % 24
+  const endM = totalMinutes % 60
+  const start = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  const end = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+  return `${start}\u2013${end}`
 }
 
 /**
@@ -192,4 +213,44 @@ export function hexToHsl(hex: string): string {
   l = Math.round(l * 100)
   
   return `${h} ${s}% ${l}%`
+}
+
+// --- Tag section grouping (shared between NetflixLayout & CategoryAnchorSection) ---
+
+export interface TagSection {
+  id: string
+  label: string
+  experiences: ExperienceWithMedia[]
+}
+
+export function groupExperiencesByTag(experiences: ExperienceWithMedia[]): TagSection[] {
+  const result: TagSection[] = []
+  const grouped = new Map<string, ExperienceWithMedia[]>()
+  const untagged: ExperienceWithMedia[] = []
+
+  for (const exp of experiences) {
+    const expTags = (exp.tags || []).filter((t: string) =>
+      EXPERIENCE_TAGS.some(tag => tag.id === t)
+    )
+
+    if (expTags.length === 0) {
+      untagged.push(exp)
+    } else {
+      for (const tag of expTags) {
+        if (!grouped.has(tag)) grouped.set(tag, [])
+        grouped.get(tag)!.push(exp)
+      }
+    }
+  }
+
+  for (const tag of EXPERIENCE_TAGS) {
+    const exps = grouped.get(tag.id)
+    if (exps && exps.length > 0) {
+      result.push({ id: tag.id, label: getTagLabel(tag.id), experiences: exps })
+    }
+  }
+
+  result.sort((a, b) => b.experiences.length - a.experiences.length)
+
+  return result
 }

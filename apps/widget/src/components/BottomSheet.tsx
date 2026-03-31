@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation'
 import { SessionPicker } from './SessionPicker'
 import { ParticipantSelector } from './ParticipantSelector'
 import { formatPrice } from '@/lib/utils'
-import { calculatePrice, getDisplayPrice } from '@/lib/pricing'
+import { calculatePrice, getDisplayPrice, type PriceCalculation } from '@/lib/pricing'
+import { buildCtaNote } from '@/lib/experience-detail-copy'
 import { LanguageSelector } from './LanguageSelector'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 import type { ExperienceSession } from '@/lib/supabase/types'
@@ -31,10 +32,10 @@ interface BottomSheetProps {
   returnUrl?: string | null
   // Rental props
   rentalDate?: string
-  rentalDays?: number
+  rentalEndDate?: string
   quantity?: number
   onRentalDateChange?: (date: string) => void
-  onRentalDaysChange?: (days: number) => void
+  onRentalEndDateChange?: (date: string) => void
   onQuantityChange?: (quantity: number) => void
 }
 
@@ -56,10 +57,10 @@ export function BottomSheet({
   availabilityRules = [],
   returnUrl,
   rentalDate = '',
-  rentalDays: rentalDaysProp = 1,
+  rentalEndDate = '',
   quantity = 1,
   onRentalDateChange,
-  onRentalDaysChange,
+  onRentalEndDateChange,
   onQuantityChange,
 }: BottomSheetProps) {
   const router = useRouter()
@@ -88,7 +89,10 @@ export function BottomSheet({
   }, [isOpen, handleKeyDown])
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId) || null
-  const rentalDays = rentalDaysProp
+  const isRentalComplete = !!(rentalDate && rentalEndDate)
+  const rentalDays = isRentalComplete
+    ? Math.max(1, Math.round((new Date(rentalEndDate + 'T12:00:00').getTime() - new Date(rentalDate + 'T12:00:00').getTime()) / 86_400_000) + 1)
+    : (experience.min_days || 1)
   const minDays = experience.min_days || 1
   const maxDays = experience.max_days || null
 
@@ -97,7 +101,7 @@ export function BottomSheet({
     : calculatePrice(experience, participants, selectedSession)
   
   const canContinue = isRental
-    ? !!rentalDate
+    ? isRentalComplete
     : (isCustomRequest 
       ? (customDate && requestTime && experience.allows_requests)
       : selectedSessionId)
@@ -202,8 +206,8 @@ export function BottomSheet({
                 participants={isRental ? quantity : participants}
                 availabilityRules={availabilityRules}
                 mode={isRental ? 'rental' : 'session'}
-                rentalDays={rentalDays}
-                onRentalDaysChange={onRentalDaysChange}
+                rentalEndDate={rentalEndDate}
+                onRentalEndDateChange={onRentalEndDateChange}
                 minDays={minDays}
                 maxDays={maxDays}
               />
@@ -248,6 +252,9 @@ export function BottomSheet({
                   <span className="tabular-nums">{formatPrice(priceCalc.totalPrice, experience.currency)}</span>
                 </div>
               )}
+              {!isRental && (
+                <MobilePriceBreakdown experience={experience} priceCalc={priceCalc} participants={participants} />
+              )}
               <div className="flex items-center justify-between mb-3">
                 <span className="text-muted-foreground">Total</span>
                 <span className="text-xl font-bold text-foreground tabular-nums">
@@ -261,12 +268,75 @@ export function BottomSheet({
                 disabled={!canContinue}
                 className="w-full py-3.5 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
-                {isRental || isCustomRequest ? 'Send Request' : 'Book Now'}
+                {isRental || isCustomRequest
+                  ? 'Send Request'
+                  : experience.supplier.payment_mode === 'pay_on_site' ? 'Reserve Now' : 'Book Now'}
               </button>
+              {(() => {
+                const note = buildCtaNote({
+                  paymentMode: experience.supplier.payment_mode,
+                  isRequest: isRental || isCustomRequest,
+                })
+                if (!note) return null
+                return <p className="text-[13px] text-muted-foreground text-center mt-2">{note}</p>
+              })()}
             </div>
           </motion.div>
         </>
       )}
     </AnimatePresence>
   )
+}
+
+function MobilePriceBreakdown({
+  experience,
+  priceCalc,
+  participants,
+}: {
+  experience: ExperienceWithMedia
+  priceCalc: PriceCalculation
+  participants: number
+}) {
+  const currency = experience.currency || 'EUR'
+
+  switch (experience.pricing_type) {
+    case 'per_person': {
+      const unitPrice = priceCalc.pricePerPerson ?? 0
+      return (
+        <div className="flex justify-between text-sm text-muted-foreground mb-2 tabular-nums">
+          <span>{formatPrice(unitPrice, currency)} × {participants} {participants === 1 ? 'person' : 'people'}</span>
+          <span>{formatPrice(priceCalc.totalPrice, currency)}</span>
+        </div>
+      )
+    }
+
+    case 'base_plus_extra': {
+      const included = experience.included_participants || 1
+      if (priceCalc.extraParticipants > 0) {
+        return (
+          <div className="flex justify-between text-sm text-muted-foreground mb-2 tabular-nums">
+            <span>for {included} + {priceCalc.extraParticipants} extra</span>
+            <span>{formatPrice(priceCalc.totalPrice, currency)}</span>
+          </div>
+        )
+      }
+      return (
+        <div className="flex justify-between text-sm text-muted-foreground mb-2">
+          <span>for up to {included} {included === 1 ? 'person' : 'people'}</span>
+          <span className="tabular-nums">{formatPrice(priceCalc.totalPrice, currency)}</span>
+        </div>
+      )
+    }
+
+    case 'flat_rate':
+      return (
+        <div className="flex justify-between text-sm text-muted-foreground mb-2">
+          <span>fixed price for the group</span>
+          <span className="tabular-nums">{formatPrice(priceCalc.totalPrice, currency)}</span>
+        </div>
+      )
+
+    default:
+      return null
+  }
 }

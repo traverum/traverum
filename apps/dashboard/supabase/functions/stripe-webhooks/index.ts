@@ -79,7 +79,10 @@ serve(async (req) => {
 
         const { error: updateError } = await supabase
           .from('partners')
-          .update({ stripe_onboarding_complete: isOnboardingComplete })
+          .update({ 
+            stripe_onboarding_complete: isOnboardingComplete,
+            payment_mode: isOnboardingComplete ? 'stripe' : 'pay_on_site',
+          })
           .eq('stripe_account_id', account.id);
 
         if (updateError) {
@@ -99,7 +102,8 @@ serve(async (req) => {
           .from('partners')
           .update({ 
             stripe_account_id: null,
-            stripe_onboarding_complete: false 
+            stripe_onboarding_complete: false,
+            payment_mode: 'pay_on_site',
           })
           .eq('stripe_account_id', account.id);
 

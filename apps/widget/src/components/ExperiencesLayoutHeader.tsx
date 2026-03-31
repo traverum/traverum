@@ -4,10 +4,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { ContentLanguageSelector } from '@/components/ContentLanguageSelector'
 
-/**
- * Header for /experiences routes. Matches receptionist design (receptionist-ui).
- * On /experiences shows Veyond + language. On subpages shows Back + language.
- */
 export function ExperiencesLayoutHeader() {
   const pathname = usePathname()
   const router = useRouter()

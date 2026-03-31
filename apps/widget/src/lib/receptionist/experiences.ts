@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server'
+import { parseLatLng } from '@/lib/geo'
 import type { HotelConfig } from '@/lib/supabase/types'
 
 export interface ReceptionistExperience {
@@ -49,13 +50,12 @@ export async function getSelectedExperiences(
   const supabase = createAdminClient()
 
   // Prefer hotel_config_id; fallback to hotel_id for branches where config_id may be unset
-  // partners: omit phone so branch schemas without partners.phone don't break
   let query = (supabase.from('distributions') as any)
     .select(`
       *,
       experiences (
         *,
-        partners (id, name, email)
+        partners (id, name, email, phone)
       )
     `)
     .order('id', { ascending: true })
@@ -83,7 +83,7 @@ export async function getSelectedExperiences(
         *,
         experiences (
           *,
-          partners (id, name, email)
+          partners (id, name, email, phone)
         )
       `)
       .eq('hotel_id', hotelPartnerId)
@@ -170,55 +170,6 @@ export async function getSelectedExperiences(
     })
 }
 
-/**
- * Parse lat/lng from Supabase geography (GeoJSON object, WKT string, or coordinates array).
- * Returns [lat, lng] or null if unparseable. GeoJSON and WKT use (lng, lat) order; we return (lat, lng).
- */
-function parseLatLng(location: unknown): { lat: number; lng: number } | null {
-  if (location == null) return null
-  let lat: number | null = null
-  let lng: number | null = null
-  if (typeof location === 'string') {
-    const s = location.trim()
-    const wktMatch = s.match(/POINT\s*\(\s*([^\s,)]+)\s+([^\s,)]+)\s*\)/i)
-    if (wktMatch) {
-      lng = parseFloat(wktMatch[1])
-      lat = parseFloat(wktMatch[2])
-    } else {
-      try {
-        const parsed = JSON.parse(s) as { type?: string; coordinates?: [number, number] }
-        if (parsed?.coordinates && parsed.coordinates.length >= 2) {
-          lng = parsed.coordinates[0]
-          lat = parsed.coordinates[1]
-        }
-      } catch {
-        const twoNumbers = s.match(/(-?\d+\.?\d*)\s*[, \t]\s*(-?\d+\.?\d*)/)
-        if (twoNumbers) {
-          const a = parseFloat(twoNumbers[1])
-          const b = parseFloat(twoNumbers[2])
-          if (Math.abs(a) <= 180 && Math.abs(b) <= 90) {
-            lng = a
-            lat = b
-          } else if (Math.abs(b) <= 180 && Math.abs(a) <= 90) {
-            lng = b
-            lat = a
-          } else {
-            lng = a
-            lat = b
-          }
-        }
-      }
-    }
-  } else if (typeof location === 'object' && location !== null) {
-    const loc = location as { coordinates?: [number, number] }
-    if (loc.coordinates && loc.coordinates.length >= 2) {
-      lng = loc.coordinates[0]
-      lat = loc.coordinates[1]
-    }
-  }
-  if (lat === null || lng === null) return null
-  return { lat, lng }
-}
 
 /**
  * Fetch all active experiences excluding a partner (e.g. hotel's own).

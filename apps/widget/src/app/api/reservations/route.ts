@@ -9,10 +9,10 @@ import {
   supplierNewBooking,
 } from '@/lib/email/templates'
 import { calculatePrice } from '@/lib/pricing'
-import { createPaymentLink } from '@/lib/stripe'
+import { createPaymentLink, createStripeCustomer, createSetupIntent } from '@/lib/stripe'
 import { sanitizeGuestText, sanitizeGuestEmail } from '@/lib/sanitize'
 import { reservationLimiter, getClientIp } from '@/lib/rate-limit'
-import { PAYMENT_DEADLINE_HOURS } from '@traverum/shared'
+import { PAYMENT_DEADLINE_HOURS, PAYMENT_MODES } from '@traverum/shared'
 import { addHours } from 'date-fns'
 import {
   validateRequiredFields,
@@ -233,8 +233,9 @@ export async function POST(request: NextRequest) {
     // One group per session — claim it immediately, then redirect to payment.
     // =========================================================================
     if (!isRequest && sessionId && sessionData) {
-      // Session stays 'available' until payment is confirmed (via Stripe webhook).
-      // The reservation links to the session so the webhook can mark it as 'booked'.
+      const supplierPaymentMode = experience.supplier?.payment_mode || PAYMENT_MODES.PAY_ON_SITE
+      const isPayOnSite = supplierPaymentMode === PAYMENT_MODES.PAY_ON_SITE
+
       const paymentDeadline = addHours(new Date(), PAYMENT_DEADLINE_HOURS)
       
       const { data: reservation, error: reservationError } = await (supabase
@@ -271,13 +272,35 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         )
       }
-      
+
+      // ── pay_on_site: Create Stripe Customer + Setup Intent ──
+      if (isPayOnSite) {
+        const customer = await createStripeCustomer(cleanEmail, cleanName, reservation.id)
+        const setupIntent = await createSetupIntent(customer.id, reservation.id)
+
+        await (supabase.from('reservations') as any)
+          .update({
+            stripe_customer_id: customer.id,
+            stripe_setup_intent_id: setupIntent.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', reservation.id)
+
+        return NextResponse.json({
+          success: true,
+          reservationId: reservation.id,
+          setupIntentClientSecret: setupIntent.client_secret,
+          stripeCustomerId: customer.id,
+          paymentMode: PAYMENT_MODES.PAY_ON_SITE,
+        })
+      }
+
+      // ── stripe (default): Create Payment Link ──
       const successPath = isDirect
         ? `/experiences/confirmation/${reservation.id}`
         : `/${hotelSlug}/confirmation/${reservation.id}`
       const cancelPath = isDirect ? '/experiences' : `/${hotelSlug}`
 
-      // Create payment link immediately - user goes straight to payment
       const paymentLink = await createPaymentLink({
         reservationId: reservation.id,
         experienceTitle: experience.title,
@@ -287,7 +310,6 @@ export async function POST(request: NextRequest) {
         cancelUrl: `${appUrl}${cancelPath}`,
       })
       
-      // Update reservation with payment link
       await (supabase
         .from('reservations') as any)
         .update({
@@ -297,7 +319,6 @@ export async function POST(request: NextRequest) {
         })
         .eq('id', reservation.id)
       
-      // Return payment URL for immediate redirect (user never sees reservation page)
       return NextResponse.json({
         success: true,
         paymentUrl: paymentLink.url,

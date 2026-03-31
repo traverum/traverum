@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useActivePartner } from '@/hooks/useActivePartner';
 import { useActiveHotelConfig } from '@/hooks/useActiveHotelConfig';
-import { getCategoryLabel, getCategoryIcon, DEFAULT_COMMISSION, SELF_OWNED_COMMISSION } from '@traverum/shared';
+import { getTagLabel, DEFAULT_COMMISSION, SELF_OWNED_COMMISSION } from '@traverum/shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -172,15 +172,17 @@ function SortableExperienceCard({
                 </span>
               )}
             </div>
-            {exp.tags.length > 0 && exp.tags[0] && (
-              <div className="mt-2">
-                <Badge
-                  variant="outline"
-                  className="text-xs font-normal border-border/50"
-                >
-                  <span className="mr-1">{getCategoryIcon(exp.tags[0])}</span>
-                  {getCategoryLabel(exp.tags[0])}
-                </Badge>
+            {exp.tags.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {exp.tags.map(tag => (
+                  <Badge
+                    key={tag}
+                    variant="outline"
+                    className="text-xs font-normal border-border/50"
+                  >
+                    {getTagLabel(tag)}
+                  </Badge>
+                ))}
               </div>
             )}
           </div>
@@ -864,15 +866,17 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
                                 </span>
                               )}
                             </div>
-                            {exp.tags.length > 0 && exp.tags[0] && (
-                              <div className="mt-2">
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs font-normal border-border/50"
-                                >
-                                  <span className="mr-1">{getCategoryIcon(exp.tags[0])}</span>
-                                  {getCategoryLabel(exp.tags[0])}
-                                </Badge>
+                            {exp.tags.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {exp.tags.map(tag => (
+                                  <Badge
+                                    key={tag}
+                                    variant="outline"
+                                    className="text-xs font-normal border-border/50"
+                                  >
+                                    {getTagLabel(tag)}
+                                  </Badge>
+                                ))}
                               </div>
                             )}
                           </div>

@@ -41,11 +41,16 @@ export default async function ReceptionistProtectedLayout({
     )
   }
 
-  const { hotelConfig, user } = result.data
+  const { hotelConfig, user, availableHotelConfigs } = result.data
 
   return (
     <div className="veyond-theme receptionist-ui min-h-screen bg-background font-sans">
-      <ReceptionistNav hotelName={hotelConfig.display_name} userName={user.email} />
+      <ReceptionistNav
+        hotelName={hotelConfig.display_name}
+        userName={user.email}
+        availableProperties={availableHotelConfigs}
+        activePropertyId={hotelConfig.id}
+      />
       <main className="mx-auto max-w-6xl px-5 py-6 sm:px-8">
         {children}
       </main>

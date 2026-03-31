@@ -39,14 +39,52 @@ export function shouldExpireUnpaid(
 
 /**
  * Determine whether a confirmed booking is due for a completion check email.
- * The check fires the day after the experience (experienceDate === yesterday).
+ * Fires once the experience end time has passed.
+ *
+ * For session-based bookings we know the exact end_time.
+ * For request-based bookings we compute end time from start_time + duration.
+ * Fallback: if no time info is available, fires the day after the experience.
  */
 export function isCompletionCheckDue(
   experienceDate: string | null | undefined,
-  yesterday: string
+  nowISO: string,
+  endTime?: string | null,
+  startTime?: string | null,
+  durationMinutes?: number | null,
 ): boolean {
   if (!experienceDate) return false
-  return experienceDate === yesterday
+
+  const resolvedEndTime = endTime ?? computeEndTime(startTime, durationMinutes)
+
+  if (resolvedEndTime) {
+    const endDatetime = new Date(`${experienceDate}T${resolvedEndTime}:00Z`)
+    if (isNaN(endDatetime.getTime())) return false
+    return new Date(nowISO) >= endDatetime
+  }
+
+  // Fallback: no time info → fire starting midnight (UTC) after the experience date
+  const dayAfter = new Date(`${experienceDate}T00:00:00Z`)
+  dayAfter.setUTCDate(dayAfter.getUTCDate() + 1)
+  return new Date(nowISO) >= dayAfter
+}
+
+/**
+ * Compute an end time string (HH:MM) from a start time and duration.
+ * Returns null if either input is missing.
+ */
+export function computeEndTime(
+  startTime: string | null | undefined,
+  durationMinutes: number | null | undefined,
+): string | null {
+  if (!startTime || !durationMinutes) return null
+
+  const [hours, minutes] = startTime.split(':').map(Number)
+  if (isNaN(hours) || isNaN(minutes)) return null
+
+  const totalMinutes = hours * 60 + minutes + durationMinutes
+  const endHours = Math.floor(totalMinutes / 60) % 24
+  const endMinutes = totalMinutes % 60
+  return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
 }
 
 /**

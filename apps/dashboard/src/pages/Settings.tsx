@@ -8,9 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { Copy, Trash2, Users, Link as LinkIcon, Check, Mail, Building2 } from 'lucide-react';
+import { Copy, Trash2, Users, Link as LinkIcon, Check, Mail, Building2, Phone, UserCircle } from 'lucide-react';
 import { getSupportToastOptionsSonner } from '@/lib/support';
+import { AvatarUploader } from '@/components/AvatarUploader';
 
 const WIDGET_BASE_URL = import.meta.env.VITE_WIDGET_URL || 'https://book.veyond.eu';
 const DASHBOARD_URL = import.meta.env.VITE_DASHBOARD_URL || window.location.origin;
@@ -43,6 +46,20 @@ export default function Settings() {
   const [orgEmailSaving, setOrgEmailSaving] = useState(false);
   const [orgEmailDirty, setOrgEmailDirty] = useState(false);
 
+  // Organization phone (receptionist contact; optional)
+  const [orgPhone, setOrgPhone] = useState('');
+  const [orgPhoneSaving, setOrgPhoneSaving] = useState(false);
+  const [orgPhoneDirty, setOrgPhoneDirty] = useState(false);
+
+  // Host profile
+  const [displayName, setDisplayName] = useState('');
+  const [bio, setBio] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profileVisible, setProfileVisible] = useState(false);
+  const [partnerSlug, setPartnerSlug] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileDirty, setProfileDirty] = useState(false);
+
   useEffect(() => {
     if (activePartner?.partner?.name) {
       setOrgName(activePartner.partner.name);
@@ -52,7 +69,36 @@ export default function Settings() {
       setOrgEmail(activePartner.partner.email);
       setOrgEmailDirty(false);
     }
-  }, [activePartner?.partner?.name, activePartner?.partner?.email]);
+    const phone = activePartner?.partner?.phone ?? '';
+    setOrgPhone(phone);
+    setOrgPhoneDirty(false);
+  }, [activePartner?.partner?.name, activePartner?.partner?.email, activePartner?.partner?.phone]);
+
+  // Load host profile fields from DB (these aren't in the useUserPartners select)
+  const { data: profileData } = useQuery({
+    queryKey: ['partnerProfile', activePartnerId],
+    queryFn: async () => {
+      if (!activePartnerId) return null;
+      const { data } = await supabase
+        .from('partners')
+        .select('display_name, bio, avatar_url, profile_visible, partner_slug')
+        .eq('id', activePartnerId)
+        .single();
+      return data;
+    },
+    enabled: !!activePartnerId,
+  });
+
+  useEffect(() => {
+    if (profileData) {
+      setDisplayName(profileData.display_name ?? '');
+      setBio(profileData.bio ?? '');
+      setAvatarUrl(profileData.avatar_url ?? null);
+      setProfileVisible(profileData.profile_visible ?? false);
+      setPartnerSlug(profileData.partner_slug ?? '');
+      setProfileDirty(false);
+    }
+  }, [profileData]);
 
   const isOwner = activePartner?.role === 'owner';
   const canManageSettings = isOwner || activePartner?.role === 'superadmin';
@@ -202,6 +248,116 @@ export default function Settings() {
     }
   };
 
+  const handleSaveOrgPhone = async () => {
+    if (!activePartnerId) return;
+    const trimmed = orgPhone.trim();
+    const digits = trimmed.replace(/\D/g, '');
+    if (trimmed.length > 0 && digits.length < 6) {
+      toast.error('Please enter a valid phone number, or leave the field empty');
+      return;
+    }
+
+    setOrgPhoneSaving(true);
+    try {
+      const { error } = await supabase
+        .from('partners')
+        .update({ phone: trimmed.length > 0 ? trimmed : null })
+        .eq('id', activePartnerId);
+
+      if (error) throw error;
+
+      toast.success(trimmed.length > 0 ? 'Phone number updated' : 'Phone number removed');
+      setOrgPhoneDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['userPartners'] });
+    } catch {
+      toast.error('Failed to update phone number', getSupportToastOptionsSonner());
+    } finally {
+      setOrgPhoneSaving(false);
+    }
+  };
+
+  function slugify(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+  }
+
+  const handleDisplayNameChange = (value: string) => {
+    setDisplayName(value);
+    if (!partnerSlug || partnerSlug === slugify(displayName)) {
+      setPartnerSlug(slugify(value));
+    }
+    setProfileDirty(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!activePartnerId) return;
+
+    if (profileVisible && !displayName.trim()) {
+      toast.error('Display name is required when profile is visible');
+      return;
+    }
+
+    const slug = partnerSlug.trim() || slugify(displayName);
+    if (profileVisible && !slug) {
+      toast.error('A URL slug is required when profile is visible');
+      return;
+    }
+
+    setProfileSaving(true);
+    try {
+      const { data: updatedRow, error } = await supabase
+        .from('partners')
+        .update({
+          display_name: displayName.trim() || null,
+          bio: bio.trim() || null,
+          avatar_url: avatarUrl,
+          profile_visible: profileVisible,
+          partner_slug: slug || null,
+        })
+        .eq('id', activePartnerId)
+        .select('id')
+        .maybeSingle();
+
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('This URL slug is already taken. Please choose a different one.', getSupportToastOptionsSonner());
+          return;
+        }
+        const hint =
+          error.message?.includes('display_name') || error.message?.includes('partner_slug')
+            ? ' If you just deployed this feature, run the migration `20260328120000_add_partner_profiles` on your Supabase project.'
+            : '';
+        toast.error(`${error.message || 'Could not save host profile'}${hint}`, getSupportToastOptionsSonner());
+        console.error('Host profile update failed:', error);
+        return;
+      }
+
+      if (!updatedRow) {
+        toast.error(
+          'Could not save: this profile was not updated. You may not have access to this organization, or the database is missing the host profile columns — apply migration 20260328120000_add_partner_profiles.',
+          getSupportToastOptionsSonner()
+        );
+        return;
+      }
+
+      toast.success('Host profile updated');
+      setProfileDirty(false);
+      queryClient.invalidateQueries({ queryKey: ['partnerProfile', activePartnerId] });
+    } catch (e) {
+      console.error('Host profile update failed:', e);
+      toast.error(
+        e instanceof Error ? e.message : 'Failed to update profile',
+        getSupportToastOptionsSonner()
+      );
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   if (!activePartner) return null;
 
   return (
@@ -245,13 +401,13 @@ export default function Settings() {
         </Card>
       )}
 
-      {/* Organization email */}
+      {/* Notifications & contact */}
       {canManageSettings && (
         <Card className="border border-border mb-4">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-medium flex items-center gap-2">
               <Mail className="h-4 w-4" />
-              Notification email
+              Notifications & contact
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -281,6 +437,123 @@ export default function Settings() {
                 {orgEmailSaving ? 'Saving...' : 'Save'}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground pt-1">
+              Phone (optional) can be shown to partner hotels' reception when they need to reach you about a booking (call or WhatsApp). Include country code (e.g. +39…).
+            </p>
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="org-phone" className="text-sm flex items-center gap-1.5">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                  Phone
+                </Label>
+                <Input
+                  id="org-phone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="+39 …"
+                  value={orgPhone}
+                  onChange={(e) => {
+                    setOrgPhone(e.target.value);
+                    const saved = activePartner.partner.phone ?? '';
+                    setOrgPhoneDirty(e.target.value !== saved);
+                  }}
+                />
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                className="h-8"
+                onClick={handleSaveOrgPhone}
+                disabled={!orgPhoneDirty || orgPhoneSaving}
+              >
+                {orgPhoneSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Host profile */}
+      {canManageSettings && (
+        <Card className="border border-border mb-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <UserCircle className="h-4 w-4" />
+              Host profile
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Show a personal profile on the booking page so guests can see who's behind the experiences. This builds trust and makes the page more human.
+            </p>
+
+            <AvatarUploader
+              partnerId={activePartnerId!}
+              currentUrl={avatarUrl}
+              onUploaded={(url) => { setAvatarUrl(url); setProfileDirty(true); }}
+            />
+
+            <div className="space-y-1.5">
+              <Label htmlFor="display-name" className="text-sm">Display name</Label>
+              <Input
+                id="display-name"
+                type="text"
+                placeholder="Marco"
+                value={displayName}
+                onChange={(e) => handleDisplayNameChange(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">The name guests will see (e.g. your first name).</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="host-bio" className="text-sm">Bio</Label>
+              <Textarea
+                id="host-bio"
+                placeholder="Born and raised on the shores of Lake Maggiore, I've been guiding wine tours for over 10 years..."
+                value={bio}
+                rows={3}
+                onChange={(e) => { setBio(e.target.value); setProfileDirty(true); }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="partner-slug" className="text-sm">URL slug</Label>
+              <div className="flex items-center gap-0">
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-1.5 rounded-l-md border border-r-0 border-border">
+                  /hosts/
+                </span>
+                <Input
+                  id="partner-slug"
+                  type="text"
+                  className="rounded-l-none"
+                  placeholder="marco"
+                  value={partnerSlug}
+                  onChange={(e) => { setPartnerSlug(slugify(e.target.value)); setProfileDirty(true); }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between py-1">
+              <div className="space-y-0.5">
+                <Label htmlFor="profile-visible" className="text-sm">Visible to guests</Label>
+                <p className="text-xs text-muted-foreground">Show your profile on the booking page.</p>
+              </div>
+              <Switch
+                id="profile-visible"
+                checked={profileVisible}
+                onCheckedChange={(checked) => { setProfileVisible(checked); setProfileDirty(true); }}
+              />
+            </div>
+
+            <Button
+              variant="default"
+              size="sm"
+              className="h-8"
+              onClick={handleSaveProfile}
+              disabled={!profileDirty || profileSaving}
+            >
+              {profileSaving ? 'Saving...' : 'Save profile'}
+            </Button>
           </CardContent>
         </Card>
       )}

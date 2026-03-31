@@ -1,10 +1,13 @@
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { getHotelWithExperiences } from '@/lib/hotels'
+import { getHotelWithExperiences, getSessionCalendar } from '@/lib/hotels'
 import { getEmbedMode, cn } from '@/lib/utils'
 import { logAnalyticsEvent, parseSource } from '@/lib/analytics.server'
 import { Header } from '@/components/Header'
 import { ExperienceListClient } from '@/components/ExperienceListClient'
+import { FilterableExperienceBrowser } from '@/components/FilterableExperienceBrowser'
+import { HostsSection } from '@/components/HostsSection'
 import { AnalyticsSessionInit } from '@/components/AnalyticsSessionInit'
 import { EmbedResizer } from '@/components/EmbedResizer'
 
@@ -30,6 +33,9 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
   }
   
   const { hotel, experiences } = data
+
+  const experienceIds = experiences.map((e) => e.id)
+  const sessionCalendar = await getSessionCalendar(experienceIds)
 
   logAnalyticsEvent({
     event_type: 'widget_view',
@@ -71,39 +77,32 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
         embedMode === 'full' ? 'px-4 py-6' : ''
       )}>
         {/* Title - configurable, shown in both embed modes */}
-        {titleEnabled && (
+        {titleEnabled && embedMode === 'section' && (
           <div 
-            className={cn(
-              'w-full',
-              embedMode === 'section' ? 'mb-0 embed-section-title-wrapper' : 'mb-6'
-            )} 
-            style={embedMode === 'section' ? { 
+            className="w-full mb-0 embed-section-title-wrapper"
+            style={{ 
               marginTop: 0, 
               marginBottom: 0,
               paddingTop: hotelSlug === 'hotel-rosa' ? '0' : 'var(--wp--preset--spacing--50, 3rem)',
               paddingBottom: hotelSlug === 'hotel-rosa' ? '0' : 'var(--wp--preset--spacing--50, 3rem)',
               paddingLeft: 0,
               paddingRight: 0
-            } : {}}
+            }}
           >
             <div 
               className={cn(
-                embedMode === 'section' 
-                  ? hotelSlug === 'hotel-rosa' 
-                    ? 'embed-section-container' 
-                    : 'max-w-[1480px] mx-auto px-4'
-                  : 'container mx-auto'
+                hotelSlug === 'hotel-rosa' 
+                  ? 'embed-section-container' 
+                  : 'max-w-[1480px] mx-auto px-4'
               )}
             >
               <h1 
                 className={cn(
                   "font-heading text-heading-foreground",
-                  embedMode === 'section' && hotelSlug === 'hotel-rosa' && 'embed-section-title'
+                  hotelSlug === 'hotel-rosa' && 'embed-section-title'
                 )}
                 style={{ 
-                  fontSize: embedMode === 'section' && hotelSlug === 'hotel-rosa' 
-                    ? '48px' 
-                    : 'var(--font-size-title)' 
+                  fontSize: hotelSlug === 'hotel-rosa' ? '48px' : 'var(--font-size-title)' 
                 }}
               >
                 {widgetTitle}
@@ -112,7 +111,7 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
                 <p 
                   className={cn(
                     "text-muted-foreground mt-2",
-                    embedMode === 'section' && hotelSlug === 'hotel-rosa' && 'embed-section-subtitle'
+                    hotelSlug === 'hotel-rosa' && 'embed-section-subtitle'
                   )}
                   style={{ fontSize: 'var(--font-size-h3)' }}
                 >
@@ -120,6 +119,16 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
                 </p>
               )}
             </div>
+          </div>
+        )}
+        {titleEnabled && embedMode === 'full' && (
+          <div className="flex flex-col items-center text-center py-10 md:py-14">
+            <p className="text-[11px] sm:text-xs font-body font-extralight tracking-[0.35em] uppercase text-muted-foreground mb-3">
+              {widgetSubtitle}
+            </p>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-heading font-light text-heading-foreground tracking-tight leading-[0.95]">
+              {widgetTitle}
+            </h1>
           </div>
         )}
         
@@ -141,36 +150,52 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
         
         {/* Experience grid */}
         {experiences.length > 0 ? (
-          <>
-            <ExperienceListClient 
-              experiences={displayExperiences}
+          embedMode === 'full' ? (
+            <>
+            <FilterableExperienceBrowser
+              experiences={experiences}
+              sessionCalendar={sessionCalendar}
               hotelSlug={hotelSlug}
               embedMode={embedMode}
               returnUrl={returnUrl}
               hotelConfigId={hotel.id}
             />
-            
-            {/* View all link - section mode only */}
-            {hasMoreExperiences && (
-              <div className="mt-8 mb-8 text-center">
-                <Link
-                  href={
-                    returnUrl
-                      ? `/${hotelSlug}?returnUrl=${encodeURIComponent(returnUrl)}`
-                      : `/${hotelSlug}`
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-                >
-                  See all {experiences.length} experiences
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </Link>
-              </div>
-            )}
-          </>
+            <Suspense>
+              <HostsSection hotelConfigId={hotel.id} channelSlug={hotelSlug} />
+            </Suspense>
+            </>
+          ) : (
+            <>
+              <ExperienceListClient 
+                experiences={displayExperiences}
+                hotelSlug={hotelSlug}
+                embedMode={embedMode}
+                returnUrl={returnUrl}
+                cardStyle="veyond"
+                hotelConfigId={hotel.id}
+              />
+              
+              {hasMoreExperiences && (
+                <div className="mt-8 mb-8 text-center">
+                  <Link
+                    href={
+                      returnUrl
+                        ? `/${hotelSlug}?returnUrl=${encodeURIComponent(returnUrl)}`
+                        : `/${hotelSlug}`
+                    }
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  >
+                    See all {experiences.length} experiences
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </Link>
+                </div>
+              )}
+            </>
+          )
         ) : (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No experiences available</p>

@@ -19,6 +19,7 @@ interface Booking {
   isRequest: boolean
   paymentUrl: string | null
   createdAt: string
+  bookedBy: string | null
 }
 
 interface BookingsClientProps {
@@ -72,7 +73,7 @@ export function BookingsClient({ bookings }: BookingsClientProps) {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-light text-foreground">My Bookings</h1>
+      <h1 className="text-2xl font-light text-foreground">Bookings</h1>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <div className="flex bg-muted rounded-2xl p-1">
@@ -164,6 +165,7 @@ export function BookingsClient({ bookings }: BookingsClientProps) {
                       )}
                       <span className="text-muted-foreground">
                         Booked {formatDate(b.createdAt)}
+                        {b.bookedBy && ` by ${b.bookedBy}`}
                       </span>
                     </div>
 

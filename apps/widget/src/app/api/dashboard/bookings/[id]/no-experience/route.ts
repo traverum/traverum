@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 import { createRefund } from '@/lib/stripe'
-import { sendEmail } from '@/lib/email/index'
-import { guestRefundProcessed } from '@/lib/email/templates'
+import { sendEmail, getAppUrl } from '@/lib/email/index'
+import { guestRefundProcessed, guestAttendanceVerification } from '@/lib/email/templates'
+import { PAYMENT_MODES, ATTENDANCE_VERIFICATION_DAYS } from '@traverum/shared'
 import type { Database } from '@/lib/supabase/types'
+import { randomUUID } from 'crypto'
+import { addDays, format } from 'date-fns'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -91,6 +94,60 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!userPartner) {
       return NextResponse.json({ error: 'Forbidden: you do not own this experience' }, { status: 403 })
+    }
+
+    const isPayOnSite = booking.payment_mode === PAYMENT_MODES.PAY_ON_SITE
+
+    if (isPayOnSite) {
+      const { data: existing } = await supabase
+        .from('attendance_verifications')
+        .select('id')
+        .eq('booking_id', id)
+        .eq('outcome', 'pending')
+        .maybeSingle()
+
+      if (existing) {
+        return NextResponse.json({
+          success: true,
+          attendance_verification: true,
+          message: 'An attendance verification is already in progress for this booking.',
+        })
+      }
+
+      const verificationToken = randomUUID()
+      const deadline = addDays(new Date(), ATTENDANCE_VERIFICATION_DAYS)
+
+      await (supabase.from('attendance_verifications') as any).insert({
+        booking_id: id,
+        supplier_claim: 'no_show',
+        verification_token: verificationToken,
+        deadline: deadline.toISOString(),
+        outcome: 'pending',
+      })
+
+      const appUrl = getAppUrl()
+      const verificationUrl = `${appUrl}/api/attendance/${verificationToken}`
+      const experienceDate = session?.session_date || reservation.requested_date || ''
+
+      await sendEmail({
+        to: reservation.guest_email,
+        subject: `Did you attend ${experience.title}?`,
+        html: guestAttendanceVerification({
+          experienceTitle: experience.title,
+          guestName: reservation.guest_name,
+          date: experienceDate,
+          verificationUrl,
+          deadlineDate: format(deadline, 'yyyy-MM-dd'),
+        }),
+      })
+
+      console.log(`Attendance verification created for pay_on_site booking ${id} via dashboard, token: ${verificationToken}`)
+
+      return NextResponse.json({
+        success: true,
+        attendance_verification: true,
+        message: 'The guest has been asked to confirm attendance. You will be notified of the outcome within 3 days.',
+      })
     }
 
     if (booking.stripe_charge_id) {

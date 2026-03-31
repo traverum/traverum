@@ -95,7 +95,7 @@ describe('getDefaultCommissionRates', () => {
 
   it('returns a copy (not a reference)', () => {
     const rates = getDefaultCommissionRates()
-    rates.supplier = 0
+    ;(rates as any).supplier = 0
     const fresh = getDefaultCommissionRates()
     expect(fresh.supplier).toBe(80)
   })

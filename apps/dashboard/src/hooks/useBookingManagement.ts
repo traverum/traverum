@@ -76,6 +76,7 @@ export interface BookingItem {
   completedAt: string | null;
   cancelledAt: string | null;
   stripeRefundId: string | null;
+  paymentMode: string;
   guestName: string;
   guestEmail: string;
   guestPhone: string | null;
@@ -299,6 +300,7 @@ export function useBookingManagement() {
             completedAt: booking.completed_at,
             cancelledAt: booking.cancelled_at,
             stripeRefundId: booking.stripe_refund_id,
+            paymentMode: booking.payment_mode || 'stripe',
             guestName: r.guest_name,
             guestEmail: r.guest_email,
             guestPhone: r.guest_phone,

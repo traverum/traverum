@@ -10,10 +10,10 @@ export default async function ReceptionistBookingsPage() {
     redirect('/receptionist/login')
   }
 
-  const { userId } = result.data
+  const { hotelConfig } = result.data
   const supabase = createAdminClient()
 
-  // Fetch reservations created by this receptionist
+  // All bookings made via the receptionist tool for the active property
   const { data: reservations } = await (supabase
     .from('reservations') as any)
     .select(`
@@ -33,18 +33,20 @@ export default async function ReceptionistBookingsPage() {
       stripe_payment_link_url,
       source,
       booked_by_user_id,
+      booker:users!reservations_booked_by_user_id_fkey (email),
       experience:experiences!reservations_experience_fk (
         id,
         title,
         slug,
         currency
       ),
-      session:experience_sessions!reservations_session_fk (
+      session:experience_sessions!reservations_session_id_fkey (
         session_date,
         start_time
       )
     `)
-    .eq('booked_by_user_id', userId)
+    .eq('source', 'receptionist')
+    .eq('hotel_config_id', hotelConfig.id)
     .order('created_at', { ascending: false })
     .limit(100)
 
@@ -102,6 +104,7 @@ export default async function ReceptionistBookingsPage() {
       isRequest: r.is_request,
       paymentUrl: r.stripe_payment_link_url,
       createdAt: r.created_at,
+      bookedBy: r.booker?.email || null,
     }
   })
 

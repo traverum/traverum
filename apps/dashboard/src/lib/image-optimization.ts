@@ -74,3 +74,14 @@ export async function optimizeGalleryImage(file: File): Promise<File> {
     maxSizeMB: 0.7, // 700KB target for galleries (premium quality)
   });
 }
+
+/**
+ * Optimize avatar / profile image (square, 500x500px max)
+ */
+export async function optimizeAvatarImage(file: File): Promise<File> {
+  return optimizeImage(file, {
+    maxWidth: 500,
+    maxHeight: 500,
+    maxSizeMB: 0.2,
+  });
+}

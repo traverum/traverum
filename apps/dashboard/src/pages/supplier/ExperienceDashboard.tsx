@@ -25,7 +25,7 @@ import { useSupplierData, Experience } from '@/hooks/useSupplierData';
 import { useExperienceAvailability } from '@/hooks/useExperienceAvailability';
 import { supabase } from '@/integrations/supabase/client';
 import { ImageUploader, MediaItem } from '@/components/ImageUploader';
-import { CategorySelector } from '@/components/CategorySelector';
+import { TagSelector } from '@/components/TagSelector';
 import { AvailabilityEditor } from '@/components/experience/AvailabilityEditor';
 import { CancellationPolicySelector } from '@/components/experience/CancellationPolicySelector';
 import { PricingType } from '@/lib/pricing';
@@ -107,10 +107,7 @@ function ExperienceDashboardInner() {
 
   // Form state — seeded from cached experience so the first render already shows correct data
   const [title, setTitle] = useState(() => experience?.title || '');
-  const [category, setCategory] = useState<string | null>(() => {
-    const tags = exp?.tags || [];
-    return tags.length > 0 ? tags[0] : null;
-  });
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => exp?.tags || []);
   const [description, setDescription] = useState(() => experience?.description || '');
   const [images, setImages] = useState<MediaItem[]>([]);
   const [durationMinutes, setDurationMinutes] = useState(() => experience?.duration_minutes?.toString() || '');
@@ -160,7 +157,7 @@ function ExperienceDashboardInner() {
   useEffect(() => {
     if (!hasInitialized.current) return;
     formValuesRef.current = {
-      title, category, description, durationMinutes, locationAddress, locationLat, locationLng,
+      title, selectedTags, description, durationMinutes, locationAddress, locationLat, locationLng,
       meetingPoint, hotelNotes, minParticipants, maxParticipants, pricingType, basePriceCents,
       includedParticipants, extraPersonCents, pricePerDayCents, minDays, maxDays,
       cancellationPolicy, allowsRequests, availableLanguages,
@@ -205,7 +202,7 @@ function ExperienceDashboardInner() {
         title: vals.title?.trim() || 'New Experience',
         slug: slugify(vals.title || 'new-experience') + `-${experienceId.slice(0, 8)}`,
         description: vals.description?.trim() || '',
-        tags: vals.category ? [vals.category] : [],
+        tags: vals.selectedTags || [],
         duration_minutes: durationValue,
         ...locationData,
         meeting_point: vals.meetingPoint?.trim() || null,
@@ -260,9 +257,7 @@ function ExperienceDashboardInner() {
   useEffect(() => {
     if (experience && !hasInitialized.current) {
       setTitle(experience.title);
-      // Extract category from tags array (first element, for backwards compatibility)
-      const tags = (experience as any).tags || [];
-      setCategory(tags.length > 0 ? tags[0] : null);
+      setSelectedTags((experience as any).tags || []);
       setDescription(experience.description);
       setDurationMinutes(experience.duration_minutes.toString());
       setAvailableLanguages((experience as any).available_languages || []);
@@ -368,7 +363,7 @@ function ExperienceDashboardInner() {
 
   // Debounced values for auto-save
   const debouncedTitle = useDebounce(title, 2000);
-  const debouncedCategory = useDebounce(category, 2000);
+  const debouncedTags = useDebounce(selectedTags, 2000);
   const debouncedDescription = useDebounce(description, 2000);
   const debouncedLocationAddress = useDebounce(locationAddress, 2000);
   const debouncedLocationLat = useDebounce(locationLat, 2000);
@@ -434,7 +429,7 @@ function ExperienceDashboardInner() {
           title: debouncedTitle.trim() || 'New Experience',
           slug: slugify(debouncedTitle || 'new-experience') + `-${experienceId?.slice(0, 8)}`,
           description: debouncedDescription.trim(),
-          tags: debouncedCategory ? [debouncedCategory] : [], // Store category as single-element array
+          tags: debouncedTags,
           duration_minutes: durationValue,
           ...locationData,
           meeting_point: debouncedMeetingPoint.trim() || null,
@@ -501,7 +496,7 @@ function ExperienceDashboardInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     experienceId,
-    debouncedTitle, debouncedCategory, debouncedDescription, debouncedLocationAddress, debouncedLocationLat, debouncedLocationLng, debouncedMeetingPoint, debouncedDuration,
+    debouncedTitle, debouncedTags, debouncedDescription, debouncedLocationAddress, debouncedLocationLat, debouncedLocationLng, debouncedMeetingPoint, debouncedDuration,
     debouncedMinParticipants, debouncedMaxParticipants, debouncedPricingType,
     debouncedBasePrice, debouncedIncludedParticipants, debouncedExtraPersonPrice, debouncedPricePerDay,
     debouncedMinDays, debouncedMaxDays,
@@ -938,10 +933,10 @@ function ExperienceDashboardInner() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">Category *</Label>
-                  <CategorySelector
-                    value={category}
-                    onChange={setCategory}
+                  <Label className="text-sm">Tags *</Label>
+                  <TagSelector
+                    value={selectedTags}
+                    onChange={setSelectedTags}
                   />
                 </div>
 

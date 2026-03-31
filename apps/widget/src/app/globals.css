@@ -84,6 +84,16 @@
   --ring: 95 16% 36%;
   --input: 40 9% 20% / 0.09;
   --link-color: 28 31% 28%;
+
+  /* Font sizes — matches hotel layout scale at 16px base */
+  --font-size-base: 16px;
+  --font-size-title: 48px;
+  --font-size-h1: 32px;
+  --font-size-h2: 24px;
+  --font-size-h3: 18px;
+  --font-size-body: 16px;
+  --font-size-sm: 14px;
+  --font-size-lg: 20px;
 }
 
 /* Receptionist-specific: softer, rounder, more generous */
@@ -136,7 +146,7 @@
 
 @layer utilities {
   .safe-area-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
   }
   
   .safe-area-top {

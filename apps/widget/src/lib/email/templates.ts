@@ -967,6 +967,521 @@ export function supplierGuestCancelled(data: {
   return baseTemplate(content, 'Booking Cancelled by Guest')
 }
 
+// ============================================================================
+// PAY ON SITE templates
+// ============================================================================
+
+// Guest: Reservation confirmed (pay on site — card guarantee saved)
+export function guestReservationConfirmedPayOnSite(data: BaseEmailData & {
+  bookingId: string
+  meetingPoint?: string | null
+  supplierName: string
+  supplierEmail: string
+  cancellationPolicyText: string
+  rentalEndDate?: string
+  rentalDays?: number
+}) {
+  const isRental = !!data.rentalEndDate
+  const dateTimeRows = isRental
+    ? `
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate!)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays ?? 1} ${(data.rentalDays ?? 1) === 1 ? 'day' : 'days'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Quantity</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+    : `
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Reservation Confirmed</h1>
+      </div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>Your reservation is confirmed! No payment is due now — you'll pay the provider directly on site.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Provider</span>
+          <span class="info-value">${data.supplierName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Provider Email</span>
+          <span class="info-value"><a href="mailto:${data.supplierEmail}" style="color: #5A6B4E; text-decoration: none;">${data.supplierEmail}</a></span>
+        </div>
+        ${dateTimeRows}
+        ${data.meetingPoint ? `
+        <div class="info-row">
+          <span class="info-label">Meeting Point</span>
+          <span class="info-value">${data.meetingPoint}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Amount to Pay on Site</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+      </div>
+
+      <div style="background: rgba(244, 239, 230, 0.5); border-radius: 6px; padding: 16px 20px; margin: 20px 0;">
+        <p style="margin: 0 0 8px; font-weight: 500; font-size: 13px; color: rgba(55, 53, 47, 0.6);">CANCELLATION POLICY</p>
+        <p style="margin: 0; font-size: 14px; color: rgba(55, 53, 47, 0.8);">${data.cancellationPolicyText} Your card on file may be charged if you cancel outside the policy or don't show up.</p>
+      </div>
+      
+      <p class="text-muted text-center">Enjoy your experience!</p>
+    </div>
+  `
+  return baseTemplate(content, 'Reservation Confirmed')
+}
+
+// Supplier: New booking confirmed (pay on site — guest contact revealed)
+export function supplierNewBookingPayOnSite(data: BaseEmailData & {
+  guestEmail: string
+  guestPhone?: string | null
+  bookingId: string
+  hotelName: string
+  meetingPoint?: string | null
+  rentalEndDate?: string
+  rentalDays?: number
+  guestCompanyName?: string | null
+  guestVat?: string | null
+  invoiceRequested?: boolean
+}) {
+  const isRental = !!data.rentalEndDate
+  const dateTimeRows = isRental
+    ? `
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate!)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays ?? 1} ${(data.rentalDays ?? 1) === 1 ? 'day' : 'days'}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Quantity</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+    : `
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+    `
+
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>New Booking Confirmed</h1>
+      </div>
+      <p>A guest has booked your experience via ${escapeHtml(data.hotelName)}. The guest will pay you directly on site.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Guest Name</span>
+          <span class="info-value">${escapeHtml(data.guestName)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Guest Email</span>
+          <span class="info-value">${escapeHtml(data.guestEmail)}</span>
+        </div>
+        ${data.guestPhone ? `
+        <div class="info-row">
+          <span class="info-label">Guest Phone</span>
+          <span class="info-value">${escapeHtml(data.guestPhone)}</span>
+        </div>
+        ` : ''}
+        ${data.guestCompanyName ? `
+        <div class="info-row">
+          <span class="info-label">Company</span>
+          <span class="info-value">${escapeHtml(data.guestCompanyName)}${data.guestVat ? ` · VAT ${escapeHtml(data.guestVat)}` : ''}</span>
+        </div>
+        ` : ''}
+        ${data.invoiceRequested ? `
+        <div class="info-row">
+          <span class="info-label">Invoice</span>
+          <span class="info-value">Invoice requested</span>
+        </div>
+        ` : ''}
+        ${dateTimeRows}
+        ${data.meetingPoint ? `
+        <div class="info-row">
+          <span class="info-label">Meeting Point</span>
+          <span class="info-value">${data.meetingPoint}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Amount (Guest Pays on Site)</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+      </div>
+      
+      <p class="text-muted">The guest's card is on file as a guarantee. After the experience, you'll receive an email to confirm completion. Commission will be invoiced monthly.</p>
+    </div>
+  `
+  return baseTemplate(content, 'New Booking Confirmed')
+}
+
+// Guest: Provide card guarantee (request-based flow — supplier accepted, guest needs to save card)
+export function guestProvideGuarantee(data: BaseEmailData & {
+  guaranteeUrl: string
+  meetingPoint?: string | null
+  rentalEndDate?: string
+  rentalDays?: number
+}) {
+  const isRental = !!data.rentalEndDate
+  const dateTimeRows = isRental
+    ? `
+        <div class="info-row">
+          <span class="info-label">Start Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">End Date</span>
+          <span class="info-value">${formatEmailDate(data.rentalEndDate!)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Duration</span>
+          <span class="info-value">${data.rentalDays ?? 1} ${(data.rentalDays ?? 1) === 1 ? 'day' : 'days'}</span>
+        </div>
+    `
+    : `
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        ${data.time ? `
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        ` : ''}
+    `
+
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Your Request Was Accepted!</h1>
+      </div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>Great news! The experience provider has accepted your booking request. To confirm your reservation, please provide your card details as a guarantee.</p>
+      <p><strong>No charge now</strong> — you'll pay the provider directly on site.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        ${dateTimeRows}
+        <div class="info-row">
+          <span class="info-label">Participants</span>
+          <span class="info-value">${data.participants}</span>
+        </div>
+        ${data.meetingPoint ? `
+        <div class="info-row">
+          <span class="info-label">Meeting Point</span>
+          <span class="info-value">${data.meetingPoint}</span>
+        </div>
+        ` : ''}
+        <div class="info-row">
+          <span class="info-label">Amount to Pay on Site</span>
+          <span class="info-value">${formatEmailPrice(data.totalCents, data.currency)}</span>
+        </div>
+      </div>
+      
+      <div class="text-center mt-4">
+        <a href="${data.guaranteeUrl}" class="btn btn-primary" style="color: white;">Provide Card Guarantee</a>
+      </div>
+      
+      <p class="text-muted text-center mt-4">Your card is saved only as a guarantee for the cancellation policy. It will only be charged if you cancel late or don't show up.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Confirm Your Reservation')
+}
+
+// ============================================================================
+// ATTENDANCE VERIFICATION templates
+// ============================================================================
+
+// Guest: Attendance verification — "Did you attend this experience?"
+export function guestAttendanceVerification(data: {
+  experienceTitle: string
+  guestName: string
+  date: string
+  verificationUrl: string
+  deadlineDate: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Did You Attend This Experience?</h1>
+      </div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>The experience provider has reported that the following experience did not take place. We'd like to hear your side.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+      </div>
+      
+      <p>Please let us know whether you attended:</p>
+      
+      <div class="text-center mt-4">
+        <a href="${data.verificationUrl}" class="btn btn-primary" style="color: white;">Respond Now</a>
+      </div>
+      
+      <p class="text-muted text-center mt-4">Please respond by ${formatEmailDate(data.deadlineDate)}. If we don't hear from you, the provider's report will be upheld and your booking will be cancelled.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Attendance Verification')
+}
+
+// Guest: Attendance verification reminder (day 2)
+export function guestAttendanceReminder(data: {
+  experienceTitle: string
+  guestName: string
+  date: string
+  verificationUrl: string
+  deadlineDate: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Reminder: Did You Attend?</h1>
+      </div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>We still need your response about the following experience. The provider reported it didn't take place — do you agree?</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+      </div>
+      
+      <div class="text-center mt-4">
+        <a href="${data.verificationUrl}" class="btn btn-primary" style="color: white;">Respond Now</a>
+      </div>
+      
+      <p class="text-muted text-center mt-4">This is your last chance to respond. If we don't hear from you by ${formatEmailDate(data.deadlineDate)}, the provider's report will be upheld.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Attendance Verification Reminder')
+}
+
+// Guest: late cancellation — card charged
+export function guestLateCancellationCharged(data: {
+  experienceTitle: string
+  guestName: string
+  date: string
+  bookingId: string
+  chargeAmountCents: number
+  currency?: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header"><h1>Booking Cancelled</h1></div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>Your booking has been cancelled. As per the cancellation policy, a cancellation fee has been charged to your card on file.</p>
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Cancellation Fee</span>
+          <span class="info-value">${formatEmailPrice(data.chargeAmountCents, data.currency)}</span>
+        </div>
+      </div>
+      <p class="text-muted">This charge reflects the cancellation policy you agreed to when booking. If you have questions, please contact support.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Booking Cancelled')
+}
+
+// Guest: no-show — card charged
+export function guestNoShowCharged(data: {
+  experienceTitle: string
+  guestName: string
+  date: string
+  bookingId: string
+  chargeAmountCents: number
+  currency?: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header"><h1>No-Show Fee Charged</h1></div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>You confirmed that you did not attend this experience. As per the cancellation policy, a no-show fee has been charged to your card on file.</p>
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">No-Show Fee</span>
+          <span class="info-value">${formatEmailPrice(data.chargeAmountCents, data.currency)}</span>
+        </div>
+      </div>
+      <p class="text-muted">This charge reflects the cancellation policy you agreed to when booking. If you have questions, please contact support.</p>
+    </div>
+  `
+  return baseTemplate(content, 'No-Show Fee Charged')
+}
+
+// Guest: cancellation/no-show charge failed
+export function guestCancellationChargeFailed(data: {
+  experienceTitle: string
+  guestName: string
+  date: string
+  bookingId: string
+  chargeAmountCents: number
+  currency?: string
+  reason: 'cancellation' | 'no_show'
+}) {
+  const reasonLabel = data.reason === 'cancellation' ? 'cancellation' : 'no-show'
+  const content = `
+    <div class="card">
+      <div class="header"><h1>Booking Cancelled</h1></div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>Your booking has been cancelled. We attempted to charge a ${reasonLabel} fee of ${formatEmailPrice(data.chargeAmountCents, data.currency)} to your card, but the charge could not be processed.</p>
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+      </div>
+      <p class="text-muted">You may be contacted separately regarding the outstanding fee. If you have questions, please contact support.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Booking Cancelled')
+}
+
+// Guest: pay_on_site cancellation — free (within policy)
+export function guestCancelledFreePayOnSite(data: {
+  experienceTitle: string
+  guestName: string
+  date: string
+  time: string | null | undefined
+  bookingId: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header"><h1>Booking Cancelled</h1></div>
+      <p>Hi ${escapeHtml(data.guestName)},</p>
+      <p>Your booking has been cancelled successfully. No charge was made to your card.</p>
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Booking Reference</span>
+          <span class="info-value">${data.bookingId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Experience</span>
+          <span class="info-value">${data.experienceTitle}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Date</span>
+          <span class="info-value">${formatEmailDate(data.date)}</span>
+        </div>
+        ${data.time ? `
+        <div class="info-row">
+          <span class="info-label">Time</span>
+          <span class="info-value">${formatEmailTime(data.time)}</span>
+        </div>
+        ` : ''}
+      </div>
+      <p class="text-muted">We hope to see you again soon!</p>
+    </div>
+  `
+  return baseTemplate(content, 'Booking Cancelled')
+}
+
 // Admin: Stripe account updated
 export function adminAccountStatusChanged(data: {
   partnerName: string
@@ -1023,4 +1538,64 @@ export function adminAccountStatusChanged(data: {
     </div>
   `
   return baseTemplate(content, 'Stripe Account Update')
+}
+
+// Partner: Monthly commission invoice
+export function partnerCommissionInvoice(data: {
+  partnerName: string
+  periodLabel: string
+  bookingCount: number
+  totalBookingValueCents: number
+  commissionAmountCents: number
+  cancellationCreditCents: number
+  netAmountCents: number
+  invoiceId: string
+}) {
+  const content = `
+    <div class="card">
+      <div class="header">
+        <h1>Commission Invoice</h1>
+      </div>
+      <p>Hi ${escapeHtml(data.partnerName)},</p>
+      <p>Here is your commission invoice for <strong>${escapeHtml(data.periodLabel)}</strong>.</p>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Invoice</span>
+          <span class="info-value">#${data.invoiceId.slice(0, 8).toUpperCase()}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Period</span>
+          <span class="info-value">${escapeHtml(data.periodLabel)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Completed bookings</span>
+          <span class="info-value">${data.bookingCount}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Total booking value</span>
+          <span class="info-value">${formatEmailPrice(data.totalBookingValueCents)}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Commission owed</span>
+          <span class="info-value">${formatEmailPrice(data.commissionAmountCents)}</span>
+        </div>
+        ${data.cancellationCreditCents > 0 ? `
+        <div class="info-row">
+          <span class="info-label">Cancellation credits</span>
+          <span class="info-value">-${formatEmailPrice(data.cancellationCreditCents)}</span>
+        </div>
+        ` : ''}
+        <div class="info-row" style="border-top: 1px solid #e5e0d8; padding-top: 8px; margin-top: 4px;">
+          <span class="info-label"><strong>Net amount due</strong></span>
+          <span class="info-value"><strong>${formatEmailPrice(data.netAmountCents)}</strong></span>
+        </div>
+      </div>
+
+      <p>Please transfer the net amount to complete the invoice. If you have questions about any charges, reply to this email.</p>
+      
+      <p class="text-muted">This invoice covers commission for pay-on-site bookings where guests paid you directly. The commission is the platform and hotel share of each completed booking.</p>
+    </div>
+  `
+  return baseTemplate(content, 'Commission Invoice')
 }

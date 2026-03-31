@@ -13,6 +13,7 @@ import Payouts from "./pages/Payouts";
 import Partners from "./pages/Partners";
 import PartnerDetail from "./pages/PartnerDetail";
 import SupportFeedback from "./pages/SupportFeedback";
+import Invoices from "./pages/Invoices";
 
 const queryClient = new QueryClient();
 
@@ -37,6 +38,7 @@ const App = () => (
               <Route path="/payouts" element={<Payouts />} />
               <Route path="/partners" element={<Partners />} />
               <Route path="/partners/:partnerId" element={<PartnerDetail />} />
+              <Route path="/invoices" element={<Invoices />} />
               <Route path="/support-feedback" element={<SupportFeedback />} />
             </Route>
           </Routes>

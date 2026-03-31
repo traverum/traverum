@@ -21,8 +21,8 @@ interface DatePickerDrawerProps {
   participants: number
   availabilityRules?: AvailabilityRule[]
   mode?: 'session' | 'rental'
-  rentalDays?: number
-  onRentalDaysChange?: (days: number) => void
+  rentalEndDate?: string
+  onRentalEndDateChange?: (date: string) => void
   minDays?: number
   maxDays?: number | null
 }
@@ -42,8 +42,8 @@ export function DatePickerDrawer({
   participants,
   availabilityRules = [],
   mode = 'session',
-  rentalDays,
-  onRentalDaysChange,
+  rentalEndDate,
+  onRentalEndDateChange,
   minDays = 1,
   maxDays,
 }: DatePickerDrawerProps) {
@@ -51,7 +51,7 @@ export function DatePickerDrawer({
   const isRentalMode = mode === 'rental'
 
   const hasSelection = isRentalMode
-    ? !!(customDate && rentalDays && rentalDays > 0)
+    ? !!(customDate && rentalEndDate)
     : isCustomRequest 
       ? (customDate && requestTime)
       : selectedSessionId
@@ -136,8 +136,8 @@ export function DatePickerDrawer({
                 participants={participants}
                 availabilityRules={availabilityRules}
                 mode={mode}
-                rentalDays={rentalDays}
-                onRentalDaysChange={onRentalDaysChange}
+                rentalEndDate={rentalEndDate}
+                onRentalEndDateChange={onRentalEndDateChange}
                 minDays={minDays}
                 maxDays={maxDays}
               />
