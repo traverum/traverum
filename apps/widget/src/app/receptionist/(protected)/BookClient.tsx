@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react'
 import type { ReceptionistExperience } from '@/lib/receptionist/experiences'
 import { ExperienceCard } from '@/components/receptionist/ExperienceCard'
 import { BookingPanel } from '@/components/receptionist/BookingPanel'
+import { getTagLabel } from '@traverum/shared'
 
 interface BookClientProps {
   selected: ReceptionistExperience[]
@@ -126,7 +127,7 @@ export function BookClient({ selected, nearby, hotelSlug, hotelName, userId, app
                   : 'bg-card text-muted-foreground shadow-sm hover:text-foreground hover:shadow'
               }`}
             >
-              {tag}
+              {getTagLabel(tag)}
             </button>
           ))}
         </div>

@@ -7,9 +7,9 @@ import {
   PAYMENT_DEADLINE_HOURS,
   CURRENCY,
   formatPrice,
-  EXPERIENCE_CATEGORIES,
-  getCategoryLabel,
-  getCategoryIcon,
+  EXPERIENCE_TAGS,
+  getTagLabel,
+  getTagLabels,
 } from './constants'
 
 describe('Commission constants', () => {
@@ -88,37 +88,32 @@ describe('Payment deadline', () => {
   })
 })
 
-describe('Experience categories', () => {
-  it('has 6 categories', () => {
-    expect(EXPERIENCE_CATEGORIES).toHaveLength(6)
+describe('Experience tags', () => {
+  it('has 7 tags', () => {
+    expect(EXPERIENCE_TAGS).toHaveLength(7)
   })
 
-  it('each category has id, label, icon', () => {
-    for (const cat of EXPERIENCE_CATEGORIES) {
-      expect(cat.id).toBeTruthy()
-      expect(cat.label).toBeTruthy()
-      expect(cat.icon).toBeTruthy()
+  it('each tag has id and label', () => {
+    for (const tag of EXPERIENCE_TAGS) {
+      expect(tag.id).toBeTruthy()
+      expect(tag.label).toBeTruthy()
     }
   })
 
-  it('getCategoryLabel returns label for known id', () => {
-    expect(getCategoryLabel('food')).toBe('Food & Drink')
-    expect(getCategoryLabel('nature')).toBe('Nature & Outdoors')
+  it('getTagLabel returns label for known id', () => {
+    expect(getTagLabel('food_wine')).toBe('Food & Wine')
+    expect(getTagLabel('adventure_outdoors')).toBe('Adventure & Outdoors')
   })
 
-  it('getCategoryLabel returns "All" for null', () => {
-    expect(getCategoryLabel(null)).toBe('All')
+  it('getTagLabel returns "All" for null', () => {
+    expect(getTagLabel(null)).toBe('All')
   })
 
-  it('getCategoryLabel returns raw id for unknown category', () => {
-    expect(getCategoryLabel('unknown')).toBe('unknown')
+  it('getTagLabel returns raw id for unknown tag', () => {
+    expect(getTagLabel('unknown')).toBe('unknown')
   })
 
-  it('getCategoryIcon returns icon for known id', () => {
-    expect(getCategoryIcon('food')).toBeTruthy()
-  })
-
-  it('getCategoryIcon returns empty string for null', () => {
-    expect(getCategoryIcon(null)).toBe('')
+  it('getTagLabels maps array of ids to labels', () => {
+    expect(getTagLabels(['food_wine', 'family'])).toEqual(['Food & Wine', 'Family Time'])
   })
 })

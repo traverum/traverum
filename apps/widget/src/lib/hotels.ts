@@ -24,6 +24,7 @@ export interface ExperienceWithMedia extends Experience {
     email: string
     stripe_account_id: string | null
     stripe_onboarding_complete: boolean | null
+    payment_mode: 'stripe' | 'pay_on_site'
   }
   distribution: Distribution
 }
@@ -191,7 +192,8 @@ export async function getExperienceForHotel(
           name,
           email,
           stripe_account_id,
-          stripe_onboarding_complete
+          stripe_onboarding_complete,
+          payment_mode
         )
       )
     `)
@@ -258,7 +260,7 @@ export async function getAllActiveExperiences(): Promise<ExperienceWithMedia[]> 
     .select(`
       *,
       supplier:partners!experiences_partner_fk (
-        id, name, email, stripe_account_id, stripe_onboarding_complete
+        id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode
       )
     `)
     .eq('experience_status', 'active')
@@ -304,7 +306,7 @@ export async function getExperienceDirect(
     .select(`
       *,
       supplier:partners!experiences_partner_fk (
-        id, name, email, stripe_account_id, stripe_onboarding_complete
+        id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode
       )
     `)
     .eq('slug', experienceSlug)
@@ -329,5 +331,283 @@ export async function getExperienceDirect(
     coverImage: media[0]?.url || exp.image_url || null,
     supplier: exp.supplier,
     distribution: { ...DIRECT_DISTRIBUTION, experience_id: exp.id },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Session calendar (for listing-page availability filters)
+// ---------------------------------------------------------------------------
+
+export interface SessionCalendarEntry {
+  experience_id: string
+  session_date: string
+  start_time: string
+  spots_available: number
+}
+
+/**
+ * Fetch lightweight session data for availability filtering on listing pages.
+ * Only returns future sessions that are available (not cancelled/full).
+ */
+export async function getSessionCalendar(
+  experienceIds: string[]
+): Promise<SessionCalendarEntry[]> {
+  if (experienceIds.length === 0) return []
+
+  const supabase = createAdminClient()
+  const today = new Date().toISOString().split('T')[0]
+
+  const { data, error } = await supabase
+    .from('experience_sessions')
+    .select('experience_id, session_date, start_time, spots_available')
+    .in('experience_id', experienceIds)
+    .eq('session_status', 'available')
+    .gte('session_date', today)
+    .gt('spots_available', 0)
+    .order('session_date', { ascending: true })
+
+  if (error || !data) return []
+
+  return data as SessionCalendarEntry[]
+}
+
+// ---------------------------------------------------------------------------
+// Hosts
+// ---------------------------------------------------------------------------
+
+export interface HostProfile {
+  id: string
+  display_name: string
+  bio: string | null
+  avatar_url: string | null
+  partner_slug: string
+  city: string | null
+  country: string | null
+}
+
+export interface HostWithExperiences extends HostProfile {
+  experiences: ExperienceWithMedia[]
+}
+
+/**
+ * Fetch all partners with profile_visible = true that have active experiences.
+ * When hotelConfigId is set (hotel channel), scope to partners distributed to that hotel.
+ * When null (Veyond direct), return all visible hosts.
+ */
+export async function getVisibleHosts(
+  hotelConfigId: string | null
+): Promise<HostProfile[]> {
+  const supabase = createAdminClient()
+
+  if (hotelConfigId) {
+    // Hotel channel: only partners whose experiences are distributed to this hotel
+    const { data: distData } = await (supabase
+      .from('distributions') as any)
+      .select(`
+        experience:experiences!distributions_experience_fk (
+          partner_id,
+          experience_status
+        )
+      `)
+      .eq('hotel_config_id', hotelConfigId)
+      .eq('is_active', true)
+
+    if (!distData || distData.length === 0) return []
+
+    const partnerIds = [
+      ...new Set(
+        (distData as any[])
+          .filter(d => d.experience?.experience_status === 'active')
+          .map(d => d.experience.partner_id)
+          .filter(Boolean) as string[]
+      ),
+    ]
+
+    if (partnerIds.length === 0) return []
+
+    const { data: partners } = await supabase
+      .from('partners')
+      .select('id, display_name, bio, avatar_url, partner_slug, city, country')
+      .eq('profile_visible', true)
+      .in('id', partnerIds)
+
+    if (!partners) return []
+
+    return (partners as any[])
+      .filter(p => p.display_name && p.partner_slug)
+      .map(p => ({
+        id: p.id,
+        display_name: p.display_name!,
+        bio: p.bio,
+        avatar_url: p.avatar_url,
+        partner_slug: p.partner_slug!,
+        city: p.city,
+        country: p.country,
+      }))
+  }
+
+  // Veyond direct: all visible hosts with at least one active experience
+  const { data: partners } = await supabase
+    .from('partners')
+    .select('id, display_name, bio, avatar_url, partner_slug, city, country')
+    .eq('profile_visible', true)
+
+  if (!partners || partners.length === 0) return []
+
+  const visiblePartners = (partners as any[]).filter(
+    p => p.display_name && p.partner_slug
+  )
+
+  if (visiblePartners.length === 0) return []
+
+  // Verify each has at least one active experience
+  const { data: expCounts } = await supabase
+    .from('experiences')
+    .select('partner_id')
+    .eq('experience_status', 'active')
+    .in(
+      'partner_id',
+      visiblePartners.map(p => p.id)
+    )
+
+  const activePartnerIds = new Set(
+    (expCounts || []).map((e: any) => e.partner_id)
+  )
+
+  return visiblePartners
+    .filter(p => activePartnerIds.has(p.id))
+    .map(p => ({
+      id: p.id,
+      display_name: p.display_name!,
+      bio: p.bio,
+      avatar_url: p.avatar_url,
+      partner_slug: p.partner_slug!,
+      city: p.city,
+      country: p.country,
+    }))
+}
+
+/**
+ * Fetch a single host profile by slug with their active experiences.
+ * Scoped by channel: hotelConfigId = null for Veyond direct, set for hotel widget.
+ */
+export async function getHostBySlug(
+  hostSlug: string,
+  hotelConfigId: string | null
+): Promise<HostWithExperiences | null> {
+  const supabase = createAdminClient()
+
+  const { data: partnerData } = await supabase
+    .from('partners')
+    .select('id, display_name, bio, avatar_url, partner_slug, city, country, profile_visible')
+    .eq('partner_slug', hostSlug)
+    .eq('profile_visible', true)
+    .single()
+
+  if (!partnerData || !partnerData.display_name || !partnerData.partner_slug) {
+    return null
+  }
+
+  const partner = partnerData as any
+
+  let experiences: ExperienceWithMedia[]
+
+  if (hotelConfigId) {
+    // Hotel channel: only experiences distributed to this hotel
+    const { data: distData } = await (supabase
+      .from('distributions') as any)
+      .select(`
+        *,
+        experience:experiences!distributions_experience_fk (
+          *,
+          supplier:partners!experiences_partner_fk (
+            id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode
+          )
+        )
+      `)
+      .eq('hotel_config_id', hotelConfigId)
+      .eq('is_active', true)
+
+    const dists = ((distData || []) as any[]).filter(
+      d =>
+        d.experience?.partner_id === partner.id &&
+        d.experience?.experience_status === 'active'
+    )
+
+    const experienceIds = dists.map(d => d.experience.id)
+    const { data: mediaList } = await supabase
+      .from('media')
+      .select('*')
+      .in('experience_id', experienceIds.length > 0 ? experienceIds : ['__none__'])
+      .order('sort_order', { ascending: true })
+
+    const mediaData = (mediaList || []) as any[]
+
+    experiences = dists.map(d => {
+      const exp = d.experience
+      const expMedia = mediaData.filter(m => m.experience_id === exp.id)
+      return {
+        ...exp,
+        media: expMedia,
+        coverImage: expMedia[0]?.url || exp.image_url || null,
+        supplier: exp.supplier,
+        distribution: {
+          id: d.id,
+          hotel_id: d.hotel_id,
+          experience_id: d.experience_id,
+          commission_supplier: d.commission_supplier,
+          commission_hotel: d.commission_hotel,
+          commission_platform: d.commission_platform,
+          is_active: d.is_active,
+          created_at: d.created_at,
+        },
+      }
+    })
+  } else {
+    // Veyond direct
+    const { data: expData } = await supabase
+      .from('experiences')
+      .select(`
+        *,
+        supplier:partners!experiences_partner_fk (
+          id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode
+        )
+      `)
+      .eq('partner_id', partner.id)
+      .eq('experience_status', 'active')
+      .order('created_at', { ascending: false })
+
+    const exps = (expData || []) as any[]
+    const experienceIds = exps.map(e => e.id)
+
+    const { data: mediaList } = await supabase
+      .from('media')
+      .select('*')
+      .in('experience_id', experienceIds.length > 0 ? experienceIds : ['__none__'])
+      .order('sort_order', { ascending: true })
+
+    const mediaData = (mediaList || []) as any[]
+
+    experiences = exps.map(exp => {
+      const expMedia = mediaData.filter(m => m.experience_id === exp.id)
+      return {
+        ...exp,
+        media: expMedia,
+        coverImage: expMedia[0]?.url || exp.image_url || null,
+        supplier: exp.supplier,
+        distribution: { ...DIRECT_DISTRIBUTION, experience_id: exp.id },
+      }
+    })
+  }
+
+  return {
+    id: partner.id,
+    display_name: partner.display_name,
+    bio: partner.bio,
+    avatar_url: partner.avatar_url,
+    partner_slug: partner.partner_slug,
+    city: partner.city,
+    country: partner.country,
+    experiences,
   }
 }

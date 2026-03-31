@@ -14,6 +14,7 @@ export interface UserPartner {
     id: string;
     name: string;
     email: string;
+    phone: string | null;
     partner_type: string;
     stripe_account_id: string | null;
     stripe_onboarding_complete: boolean | null;
@@ -58,7 +59,7 @@ export function useUserPartners() {
       if (isSuperadmin) {
         const { data: allPartners, error: partnerError } = await supabase
           .from('partners')
-          .select('id, name, email, partner_type, stripe_account_id, stripe_onboarding_complete, city, country')
+          .select('id, name, email, phone, partner_type, stripe_account_id, stripe_onboarding_complete, city, country')
           .order('name');
 
         if (partnerError) {
@@ -90,6 +91,7 @@ export function useUserPartners() {
             id,
             name,
             email,
+            phone,
             partner_type,
             stripe_account_id,
             stripe_onboarding_complete,

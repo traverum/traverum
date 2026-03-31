@@ -29,7 +29,6 @@ export function VeyondHeader({ showBack = false, backTo }: VeyondHeaderProps) {
               type="button"
               onClick={handleBackClick}
               className="inline-flex items-center gap-2 px-2 h-10 -ml-2 rounded-button hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              aria-label="Back to all experiences"
             >
               <svg className="w-5 h-5 text-foreground" aria-hidden="true" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5m7-7-7 7 7 7" />

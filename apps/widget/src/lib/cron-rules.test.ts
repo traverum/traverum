@@ -5,6 +5,7 @@ import {
   shouldExpireUnpaid,
   isCompletionCheckDue,
   resolveBookingExperienceDate,
+  computeEndTime,
 } from './cron-rules'
 
 // ---------------------------------------------------------------------------
@@ -99,30 +100,79 @@ describe('shouldExpireUnpaid', () => {
 // isCompletionCheckDue
 // ---------------------------------------------------------------------------
 describe('isCompletionCheckDue', () => {
-  const yesterday = '2026-03-19'
-
-  it('returns true when experience was yesterday', () => {
-    expect(isCompletionCheckDue('2026-03-19', yesterday)).toBe(true)
+  it('returns true when end_time has passed', () => {
+    expect(isCompletionCheckDue('2026-03-20', '2026-03-20T16:00:00.000Z', '15:00')).toBe(true)
   })
 
-  it('returns false when experience is today', () => {
-    expect(isCompletionCheckDue('2026-03-20', yesterday)).toBe(false)
+  it('returns false when end_time has not passed yet', () => {
+    expect(isCompletionCheckDue('2026-03-20', '2026-03-20T14:00:00.000Z', '15:00')).toBe(false)
   })
 
-  it('returns false when experience was 2 days ago', () => {
-    expect(isCompletionCheckDue('2026-03-18', yesterday)).toBe(false)
+  it('returns true at exact end_time', () => {
+    expect(isCompletionCheckDue('2026-03-20', '2026-03-20T15:00:00.000Z', '15:00')).toBe(true)
+  })
+
+  it('computes end time from start_time + duration when no end_time', () => {
+    // 10:00 + 120 min = 12:00 — now is 13:00 → due
+    expect(isCompletionCheckDue('2026-03-20', '2026-03-20T13:00:00.000Z', null, '10:00', 120)).toBe(true)
+  })
+
+  it('returns false when computed end time has not passed', () => {
+    // 10:00 + 120 min = 12:00 — now is 11:00 → not due
+    expect(isCompletionCheckDue('2026-03-20', '2026-03-20T11:00:00.000Z', null, '10:00', 120)).toBe(false)
+  })
+
+  it('falls back to day-after when no time info available', () => {
+    // No end_time, no start_time, no duration → fires after midnight next day
+    expect(isCompletionCheckDue('2026-03-19', '2026-03-20T00:00:00.000Z')).toBe(true)
+    expect(isCompletionCheckDue('2026-03-20', '2026-03-20T23:59:00.000Z')).toBe(false)
   })
 
   it('returns false when experience is in the future', () => {
-    expect(isCompletionCheckDue('2026-04-01', yesterday)).toBe(false)
+    expect(isCompletionCheckDue('2026-04-01', '2026-03-20T12:00:00.000Z', '10:00')).toBe(false)
   })
 
   it('returns false when experience date is null', () => {
-    expect(isCompletionCheckDue(null, yesterday)).toBe(false)
+    expect(isCompletionCheckDue(null, '2026-03-20T12:00:00.000Z')).toBe(false)
   })
 
   it('returns false when experience date is undefined', () => {
-    expect(isCompletionCheckDue(undefined, yesterday)).toBe(false)
+    expect(isCompletionCheckDue(undefined, '2026-03-20T12:00:00.000Z')).toBe(false)
+  })
+
+  it('prefers end_time over start_time + duration', () => {
+    // end_time says 14:00, start+duration would say 12:00
+    // now is 13:00 — should NOT be due since end_time (14:00) hasn't passed
+    expect(isCompletionCheckDue('2026-03-20', '2026-03-20T13:00:00.000Z', '14:00', '10:00', 120)).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// computeEndTime
+// ---------------------------------------------------------------------------
+describe('computeEndTime', () => {
+  it('adds duration to start time', () => {
+    expect(computeEndTime('10:00', 120)).toBe('12:00')
+  })
+
+  it('handles crossing hour boundaries', () => {
+    expect(computeEndTime('10:45', 30)).toBe('11:15')
+  })
+
+  it('wraps past midnight', () => {
+    expect(computeEndTime('23:00', 120)).toBe('01:00')
+  })
+
+  it('returns null when start_time is null', () => {
+    expect(computeEndTime(null, 120)).toBeNull()
+  })
+
+  it('returns null when duration is null', () => {
+    expect(computeEndTime('10:00', null)).toBeNull()
+  })
+
+  it('returns null when both are missing', () => {
+    expect(computeEndTime(null, null)).toBeNull()
   })
 })
 

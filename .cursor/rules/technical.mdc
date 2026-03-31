@@ -52,6 +52,16 @@ Most important flow is our booking flow.
 
 **For understanding your past decisions, read:** `docs/memory/active-state.md`, `docs/memory/product-context.md`, `docs/memory/tech-context.md`. These are decisions we have made in the past together. Not set in stone but useful for keeping the product working and our users happy.
 
+## AI Agent Readiness — Think Like a Fifth User
+
+Traverum has five user types: hoteliers, receptionists, suppliers, guests, and **AI agents**. When building or modifying any feature that touches inventory, availability, or bookings, ask:
+
+1. Can an AI agent discover this data programmatically? (structured JSON, descriptive field names)
+2. Can an agent act on it? (clean API endpoint, machine-parseable errors)
+3. Would adding this feature break existing agent interfaces? (response envelope, field names)
+
+Not every feature needs an agent surface — admin tools and internal dashboards don't. But anything guest-facing or inventory-related should be built with agents in mind. See `docs/memory/tech-context.md` entry "AI Agent Interface" for the full technical approach (CLI + MCP + OpenAPI).
+
 ## Code Philosophy — Optimize for Future AI Context
 
 Your primary objective is to write code that is incredibly easy for *future AI sessions* to read, debug, and modify. You have the freedom to choose the exact methods, but you must strictly adhere to this architectural intent:

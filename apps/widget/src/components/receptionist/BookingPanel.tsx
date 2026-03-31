@@ -65,7 +65,7 @@ export function BookingPanel({
   const [requestTime, setRequestTime] = useState('')
   const [participants, setParticipants] = useState(experience.min_participants || 2)
   const [rentalDate, setRentalDate] = useState('')
-  const [rentalDays, setRentalDays] = useState(experience.min_days || 1)
+  const [rentalEndDate, setRentalEndDate] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [guestName, setGuestName] = useState(initialGuestName)
   const [guestEmail, setGuestEmail] = useState(initialGuestEmail)
@@ -75,6 +75,8 @@ export function BookingPanel({
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
   const [bookingId, setBookingId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  /** Which contact field was last copied (phone / email) — separate from payment-link copy */
+  const [contactCopied, setContactCopied] = useState<'phone' | 'email' | null>(null)
 
   const isRental = experience.pricing_type === 'per_day'
 
@@ -85,7 +87,7 @@ export function BookingPanel({
     setSelectedSessionId(null)
     setUseRequest(false)
     setRentalDate('')
-    setRentalDays(experience.min_days || 1)
+    setRentalEndDate('')
     setQuantity(1)
 
     const fetchSessions = async () => {
@@ -112,10 +114,21 @@ export function BookingPanel({
     return () => { cancelled = true }
   }, [experience.id])
 
+  useEffect(() => {
+    setContactCopied(null)
+  }, [experience.id])
+
   const selectedSession = useMemo(
     () => sessions.find(s => s.id === selectedSessionId) || null,
     [sessions, selectedSessionId]
   )
+
+  const rentalDays = useMemo(() => {
+    if (!isRental || !rentalDate || !rentalEndDate) return experience.min_days || 1
+    const s = new Date(rentalDate + 'T12:00:00')
+    const e = new Date(rentalEndDate + 'T12:00:00')
+    return Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1)
+  }, [isRental, rentalDate, rentalEndDate, experience.min_days])
 
   const priceCalc = useMemo(() => {
     return isRental
@@ -126,20 +139,19 @@ export function BookingPanel({
   const canSubmit = useMemo(() => {
     if (!guestName.trim() || !guestEmail.trim()) return false
     if (isRental) {
-      return !!rentalDate && quantity >= 1 && quantity <= experience.max_participants
+      return !!(rentalDate && rentalEndDate) && quantity >= 1 && quantity <= experience.max_participants
     }
     return (
       (!!selectedSessionId || (useRequest && !!requestDate && !!requestTime)) &&
       participants >= (experience.min_participants || 1) &&
       participants <= experience.max_participants
     )
-  }, [guestName, guestEmail, isRental, rentalDate, quantity, experience.max_participants, selectedSessionId, useRequest, requestDate, requestTime, participants, experience.min_participants])
+  }, [guestName, guestEmail, isRental, rentalDate, rentalEndDate, quantity, experience.max_participants, selectedSessionId, useRequest, requestDate, requestTime, participants, experience.min_participants])
 
   const handleSessionSelect = useCallback((sessionId: string | null, isCustom: boolean) => {
     setSelectedSessionId(sessionId)
     setUseRequest(isCustom)
     if (!isCustom) {
-      setRequestDate('')
       setRequestTime('')
     }
   }, [])
@@ -149,6 +161,14 @@ export function BookingPanel({
       await navigator.clipboard.writeText(text)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    } catch { /* clipboard may not be available */ }
+  }, [])
+
+  const copyContactField = useCallback(async (kind: 'phone' | 'email', text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setContactCopied(kind)
+      setTimeout(() => setContactCopied(null), 2000)
     } catch { /* clipboard may not be available */ }
   }, [])
 
@@ -223,11 +243,8 @@ export function BookingPanel({
   const whatsappUrl = useMemo(() => {
     if (!experience.supplier.phone) return null
     const phone = experience.supplier.phone.replace(/[^+\d]/g, '')
-    const msg = encodeURIComponent(
-      `Hi, I'm calling from ${hotelName} regarding "${experience.title}". I have a guest interested in this experience.`
-    )
-    return `https://wa.me/${phone}?text=${msg}`
-  }, [experience.supplier.phone, hotelName, experience.title])
+    return `https://wa.me/${phone}`
+  }, [experience.supplier.phone])
 
   // Always Veyond direct URL: hotel widget may omit experiences not on their curated list
   const bookingSiteUrl = useMemo(() => {
@@ -390,19 +407,32 @@ export function BookingPanel({
           <div className={`${insetCard} px-4 divide-y divide-border`}>
             <div className="flex items-center gap-3 py-3 min-h-[44px]">
               <Phone className={`w-4 h-4 flex-shrink-0 ${experience.supplier.phone ? 'text-muted-foreground' : 'text-muted-foreground opacity-50'}`} />
-              <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 {experience.supplier.phone ? (
-                  <a
-                    href={`tel:${experience.supplier.phone}`}
-                    className="text-sm text-foreground hover:text-accent transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded min-w-0 truncate"
+                  <button
+                    type="button"
+                    onClick={() => copyContactField('phone', experience.supplier.phone!)}
+                    className="text-left text-sm text-foreground hover:text-accent transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded min-w-0 truncate inline-flex items-center gap-1.5 max-w-full"
+                    aria-label={`Copy phone number ${experience.supplier.phone}`}
                   >
-                    {experience.supplier.phone}
-                  </a>
+                    <span className="truncate">{experience.supplier.phone}</span>
+                    {contactCopied === 'phone' ? (
+                      <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0 opacity-70" aria-hidden />
+                    )}
+                  </button>
                 ) : (
                   <span className="text-sm text-muted-foreground tabular-nums" aria-label="No phone number">
                     —
                   </span>
                 )}
+                {experience.supplier.phone && whatsappUrl ? (
+                  <span
+                    className="h-4 w-px shrink-0 bg-border/70"
+                    aria-hidden
+                  />
+                ) : null}
                 {whatsappUrl ? (
                   <a
                     href={whatsappUrl}
@@ -420,12 +450,19 @@ export function BookingPanel({
             <div className="flex items-center gap-3 py-3 min-h-[44px]">
               <Mail className={`w-4 h-4 flex-shrink-0 ${experience.supplier.email ? 'text-muted-foreground' : 'text-muted-foreground opacity-50'}`} />
               {experience.supplier.email ? (
-                <a
-                  href={`mailto:${experience.supplier.email}?subject=${encodeURIComponent(`Guest inquiry: ${experience.title}`)}`}
-                  className="text-sm text-foreground hover:text-accent transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded min-w-0 truncate"
+                <button
+                  type="button"
+                  onClick={() => copyContactField('email', experience.supplier.email)}
+                  className="text-left text-sm text-foreground hover:text-accent transition-colors touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 rounded min-w-0 truncate inline-flex items-center gap-1.5 max-w-full flex-1"
+                  aria-label={`Copy email ${experience.supplier.email}`}
                 >
-                  {experience.supplier.email}
-                </a>
+                  <span className="truncate">{experience.supplier.email}</span>
+                  {contactCopied === 'email' ? (
+                    <Check className="w-3.5 h-3.5 text-success shrink-0" aria-hidden />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0 opacity-70" aria-hidden />
+                  )}
+                </button>
               ) : (
                 <span className="text-sm text-muted-foreground tabular-nums" aria-label="No email">
                   —
@@ -456,8 +493,8 @@ export function BookingPanel({
               participants={isRental ? quantity : participants}
               availabilityRules={[]}
               mode={isRental ? 'rental' : 'session'}
-              rentalDays={rentalDays}
-              onRentalDaysChange={setRentalDays}
+              rentalEndDate={rentalEndDate}
+              onRentalEndDateChange={setRentalEndDate}
               minDays={experience.min_days || 1}
               maxDays={experience.max_days ?? undefined}
             />

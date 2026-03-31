@@ -1,11 +1,16 @@
-import { getAllActiveExperiences } from '@/lib/hotels'
+import { Suspense } from 'react'
+import { getAllActiveExperiences, getSessionCalendar } from '@/lib/hotels'
 import { logAnalyticsEvent } from '@/lib/analytics.server'
-import { ExperienceListClient } from '@/components/ExperienceListClient'
+import { FilterableExperienceBrowser } from '@/components/FilterableExperienceBrowser'
+import { HostsSection } from '@/components/HostsSection'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ExperiencesBrowsePage() {
   const experiences = await getAllActiveExperiences()
+
+  const experienceIds = experiences.map((e) => e.id)
+  const sessionCalendar = await getSessionCalendar(experienceIds)
 
   logAnalyticsEvent({
     event_type: 'widget_view',
@@ -25,17 +30,22 @@ export default async function ExperiencesBrowsePage() {
       </header>
 
       {experiences.length > 0 ? (
-        <ExperienceListClient
+        <FilterableExperienceBrowser
           experiences={experiences}
+          sessionCalendar={sessionCalendar}
           hotelSlug="experiences"
           embedMode="full"
-          cardStyle="veyond"
+          hotelConfigId={null}
         />
       ) : (
         <div className="py-16 text-center text-sm text-muted-foreground">
           No experiences available yet.
         </div>
       )}
+
+      <Suspense>
+        <HostsSection hotelConfigId={null} channelSlug="experiences" />
+      </Suspense>
     </div>
   )
 }

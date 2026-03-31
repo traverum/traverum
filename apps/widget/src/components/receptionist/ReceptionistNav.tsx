@@ -3,22 +3,39 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { ChevronDown, LogOut } from 'lucide-react'
+import { ChevronDown, LogOut, Building2 } from 'lucide-react'
+
+interface AvailableProperty {
+  id: string
+  slug: string
+  display_name: string
+}
 
 interface ReceptionistNavProps {
   hotelName: string
   userName?: string
+  availableProperties?: AvailableProperty[]
+  activePropertyId?: string
 }
 
-export function ReceptionistNav({ hotelName, userName }: ReceptionistNavProps) {
+const PROPERTY_COOKIE = 'traverum_receptionist_property'
+
+function setPropertyCookie(propertyId: string) {
+  const maxAge = 365 * 24 * 60 * 60
+  document.cookie = `${PROPERTY_COOKIE}=${propertyId}; path=/receptionist; max-age=${maxAge}; SameSite=Lax`
+}
+
+export function ReceptionistNav({ hotelName, userName, availableProperties, activePropertyId }: ReceptionistNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [showDropdown, setShowDropdown] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
 
+  const hasMultipleProperties = (availableProperties?.length ?? 0) >= 2
+
   const navItems = [
     { href: '/receptionist', label: 'Book' },
-    { href: '/receptionist/bookings', label: 'My Bookings' },
+    { href: '/receptionist/bookings', label: 'Bookings' },
   ]
 
   const handleLogout = async () => {
@@ -30,6 +47,13 @@ export function ReceptionistNav({ hotelName, userName }: ReceptionistNavProps) {
       console.error('Logout error:', error)
       setLoggingOut(false)
     }
+  }
+
+  const handlePropertySwitch = (propertyId: string) => {
+    if (propertyId === activePropertyId) return
+    setPropertyCookie(propertyId)
+    setShowDropdown(false)
+    router.refresh()
   }
 
   return (
@@ -73,12 +97,38 @@ export function ReceptionistNav({ hotelName, userName }: ReceptionistNavProps) {
             {showDropdown && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-                <div className="absolute right-0 z-20 mt-2 w-52 rounded-2xl bg-card border border-border/50 py-2 shadow-lg">
+                <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl bg-card border border-border/50 py-2 shadow-lg">
                   {userName && (
                     <div className="px-4 py-2 text-xs text-muted-foreground">
                       {userName}
                     </div>
                   )}
+
+                  {hasMultipleProperties && availableProperties && (
+                    <div className="border-t border-border/50 mt-1 pt-1">
+                      <div className="px-4 py-1.5 text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">
+                        Property
+                      </div>
+                      {availableProperties.map((property) => {
+                        const isActive = property.id === activePropertyId
+                        return (
+                          <button
+                            key={property.id}
+                            onClick={() => handlePropertySwitch(property.id)}
+                            className={`flex items-center gap-2.5 w-full px-4 py-2 text-left text-sm transition-colors ${
+                              isActive
+                                ? 'text-foreground font-medium bg-accent/10'
+                                : 'text-muted-foreground hover:text-foreground hover:bg-accent/5'
+                            }`}
+                          >
+                            <Building2 className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="truncate">{property.display_name}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+
                   <div className="sm:hidden border-t border-border/50 mt-1 pt-1">
                     {navItems.map((item) => (
                       <Link

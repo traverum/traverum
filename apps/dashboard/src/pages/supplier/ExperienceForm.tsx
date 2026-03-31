@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SupportToastAction } from '@/components/SupportToastAction';
 import { ImageUploader, MediaItem } from '@/components/ImageUploader';
 import { PricingType, PricingConfig, getPriceExamples } from '@/lib/pricing';
-import { CategorySelector } from '@/components/CategorySelector';
+import { TagSelector } from '@/components/TagSelector';
 import { FormSection } from '@/components/experience/FormSection';
 import { AvailabilityEditor, defaultAvailability } from '@/components/experience/AvailabilityEditor';
 import { CancellationPolicySelector, defaultCancellationPolicy } from '@/components/experience/CancellationPolicySelector';
@@ -66,7 +66,7 @@ export default function ExperienceForm() {
 
   // Basic Info state
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [images, setImages] = useState<MediaItem[]>([]);
   const [durationMinutes, setDurationMinutes] = useState('');
@@ -105,9 +105,7 @@ export default function ExperienceForm() {
       if (experience) {
         // Basic info
         setTitle(experience.title);
-        // Extract category from tags array (first element, for backwards compatibility)
-        const tags = (experience as any).tags || [];
-        setCategory(tags.length > 0 ? tags[0] : null);
+        setSelectedTags((experience as any).tags || []);
         setDescription(experience.description);
         setDurationMinutes(experience.duration_minutes.toString());
         setMeetingPoint(experience.meeting_point || '');
@@ -197,7 +195,7 @@ export default function ExperienceForm() {
   };
 
   // Section completion checks
-  const isBasicInfoComplete = title.length >= 3 && description.length >= 50 && durationMinutes && category !== null;
+  const isBasicInfoComplete = title.length >= 3 && description.length >= 50 && !!durationMinutes && selectedTags.length > 0;
   const isLocationComplete = locationAddress.trim().length > 0 && locationLat !== null && locationLng !== null;
   const isPricingComplete = useMemo(() => {
     const maxP = parseInt(maxParticipants) || 0;
@@ -277,8 +275,8 @@ export default function ExperienceForm() {
       return;
     }
 
-    if (!category) {
-      toast({ title: 'Validation error', description: 'Please select a category.', variant: 'destructive', action: <SupportToastAction /> });
+    if (selectedTags.length === 0) {
+      toast({ title: 'Validation error', description: 'Please select at least one tag.', variant: 'destructive', action: <SupportToastAction /> });
       return;
     }
 
@@ -368,7 +366,7 @@ export default function ExperienceForm() {
         title: title.trim(),
         slug: slugify(title),
         description: description.trim(),
-        tags: category ? [category] : [], // Store category as single-element array for backwards compatibility
+        tags: selectedTags,
         image_url: coverImageUrl,
         // Database constraint requires price_cents > 0, so only set if greater than 0
         price_cents: legacyPriceCents > 0 ? legacyPriceCents : 1, // Use 1 as minimum to satisfy constraint
@@ -550,14 +548,17 @@ export default function ExperienceForm() {
                 </p>
               </div>
 
-              {/* Category */}
+              {/* Tags */}
               <div className="space-y-2">
-                <Label>Category *</Label>
-                <CategorySelector
-                  value={category}
-                  onChange={setCategory}
+                <Label>Tags *</Label>
+                <TagSelector
+                  value={selectedTags}
+                  onChange={setSelectedTags}
                   disabled={loading}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Select one or more tags that describe this experience
+                </p>
               </div>
 
               {/* Description */}

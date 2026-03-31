@@ -3,8 +3,8 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 import { createPaymentLink } from '@/lib/stripe'
 import { sendEmail, getAppUrl } from '@/lib/email/index'
-import { guestBookingApproved } from '@/lib/email/templates'
-import { PAYMENT_DEADLINE_HOURS } from '@traverum/shared'
+import { guestBookingApproved, guestProvideGuarantee } from '@/lib/email/templates'
+import { PAYMENT_DEADLINE_HOURS, PAYMENT_MODES } from '@traverum/shared'
 import { addHours } from 'date-fns'
 import type { Database } from '@/lib/supabase/types'
 
@@ -90,15 +90,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Forbidden: you do not own this experience' }, { status: 403 })
     }
 
-    // Check if supplier has completed Stripe onboarding
-    if (!supplier.stripe_onboarding_complete) {
+    // Stripe onboarding only required for suppliers using stripe payment mode
+    // (pay_on_site suppliers collect payment directly, no connected account needed)
+    const supplierPaymentMode = supplier.payment_mode || PAYMENT_MODES.PAY_ON_SITE
+    if (supplierPaymentMode === PAYMENT_MODES.STRIPE && !supplier.stripe_onboarding_complete) {
       return NextResponse.json(
         { error: 'You need to complete Stripe onboarding before accepting bookings. Go to your dashboard to finish setup.' },
         { status: 400 }
       )
     }
 
-    // Check if already processed
+    // Idempotent: if already approved, return success (avoids confusing error
+    // when the supplier double-clicks or retries)
+    if (reservation.reservation_status === 'approved') {
+      return NextResponse.json({ success: true })
+    }
+
     if (reservation.reservation_status !== 'pending') {
       return NextResponse.json(
         { error: `Request has already been ${reservation.reservation_status}` },
@@ -116,6 +123,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const isRental = experience.pricing_type === 'per_day'
+    const today = new Date().toISOString().slice(0, 10)
+    const relevantDate = isRental
+      ? (reservation.rental_start_date || reservation.requested_date)
+      : reservation.requested_date
+
+    if (relevantDate && relevantDate < today) {
+      return NextResponse.json(
+        { error: 'This request is for a date that has already passed. Please dismiss it instead.' },
+        { status: 400 }
+      )
+    }
 
     // For non-rental requests: we need both date and time
     if (!isRental && (!reservation.requested_date || !reservation.requested_time)) {
@@ -139,14 +157,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Get hotel config for redirect URL (skip for direct Veyond bookings)
     const isDirect = !reservation.hotel_id
-    let hotelSlug = 'default'
-    if (!isDirect) {
+    let hotelSlug: string | null = null
+    if (!isDirect && reservation.hotel_config_id) {
       const { data: hotelConfig } = await supabase
         .from('hotel_configs')
         .select('slug')
-        .eq('partner_id', reservation.hotel_id)
+        .eq('id', reservation.hotel_config_id)
         .single()
-      hotelSlug = (hotelConfig as any)?.slug || 'default'
+      hotelSlug = (hotelConfig as any)?.slug || null
     }
     const appUrl = getAppUrl()
 
@@ -179,11 +197,63 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .eq('id', reservation.id)
     }
 
-    // Create Stripe Payment Link
-    const successPath = isDirect
+    // Shared date/time resolution for emails
+    const emailDate = isRental
+      ? (reservation.rental_start_date || reservation.requested_date || '')
+      : (reservation.requested_date || '')
+    const emailTime = isRental ? '' : (formattedTime || '')
+
+    let emailRentalDays: number | undefined
+    let emailRentalEndDate: string | undefined
+    if (isRental && reservation.rental_start_date && reservation.rental_end_date) {
+      emailRentalEndDate = reservation.rental_end_date
+      emailRentalDays = Math.max(1, Math.round(
+        (new Date(reservation.rental_end_date + 'T12:00:00').getTime() - new Date(reservation.rental_start_date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1)
+    }
+
+    // ── pay_on_site: skip Payment Link, send "provide card guarantee" email ──
+    if (supplierPaymentMode === PAYMENT_MODES.PAY_ON_SITE) {
+      await (supabase.from('reservations') as any)
+        .update({
+          reservation_status: 'approved',
+          ...(formattedTime ? { requested_time: formattedTime } : {}),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reservation.id)
+
+      const guaranteePath = (isDirect || !hotelSlug)
+        ? `/experiences/reservation/${reservation.id}/guarantee`
+        : `/${hotelSlug}/reservation/${reservation.id}/guarantee`
+
+      const emailHtml = guestProvideGuarantee({
+        experienceTitle: experience.title,
+        guestName: reservation.guest_name,
+        date: emailDate,
+        time: emailTime,
+        participants: reservation.participants,
+        totalCents: reservation.total_cents,
+        currency: experience.currency,
+        guaranteeUrl: `${appUrl}${guaranteePath}`,
+        meetingPoint: experience.meeting_point,
+        ...(isRental ? { rentalEndDate: emailRentalEndDate, rentalDays: emailRentalDays } : {}),
+      })
+
+      await sendEmail({
+        to: reservation.guest_email,
+        subject: `Your request was accepted! Confirm your reservation - ${experience.title}`,
+        html: emailHtml,
+      })
+
+      return NextResponse.json({ success: true, sessionId })
+    }
+
+    // ── stripe (default): Create Payment Link ──
+    const useDirectPaths = isDirect || !hotelSlug
+    const successPath = useDirectPaths
       ? `/experiences/confirmation/${reservation.id}`
       : `/${hotelSlug}/confirmation/${reservation.id}`
-    const cancelPath = isDirect
+    const cancelPath = useDirectPaths
       ? `/experiences/reservation/${reservation.id}`
       : `/${hotelSlug}/reservation/${reservation.id}`
 
@@ -196,7 +266,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       cancelUrl: `${appUrl}${cancelPath}`,
     })
 
-    // Update reservation
     const paymentDeadline = addHours(new Date(), PAYMENT_DEADLINE_HOURS)
 
     await (supabase.from('reservations') as any)
@@ -210,23 +279,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', reservation.id)
 
-    // Compute rental info for email
-    const emailDate = isRental
-      ? (reservation.rental_start_date || reservation.requested_date || '')
-      : (reservation.requested_date || '')
-    const emailTime = isRental ? '' : (formattedTime || '')
-
-    // rental_end_date is inclusive (last day). Duration = diff + 1.
-    let emailRentalDays: number | undefined
-    let emailRentalEndDate: string | undefined
-    if (isRental && reservation.rental_start_date && reservation.rental_end_date) {
-      emailRentalEndDate = reservation.rental_end_date
-      emailRentalDays = Math.max(1, Math.round(
-        (new Date(reservation.rental_end_date + 'T12:00:00').getTime() - new Date(reservation.rental_start_date + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24)
-      ) + 1)
-    }
-
-    // Send email to guest with payment link
     const emailHtml = guestBookingApproved({
       experienceTitle: experience.title,
       guestName: reservation.guest_name,

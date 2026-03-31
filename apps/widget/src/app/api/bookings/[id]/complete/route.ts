@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/tokens'
 import { createTransfer, stripe } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
 import { escapeHtml } from '@/lib/sanitize'
+import { PAYMENT_MODES } from '@traverum/shared'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -66,10 +67,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const supplier = experience.supplier
   
   try {
-    // Transfer funds to supplier via Stripe Connect
+    const isPayOnSite = booking.payment_mode === PAYMENT_MODES.PAY_ON_SITE
+
     let transferId = null
-    if (supplier.stripe_account_id && booking.supplier_amount_cents > 0) {
-      // Get charge ID from payment intent (required for test mode transfers)
+    if (!isPayOnSite && supplier.stripe_account_id && booking.supplier_amount_cents > 0) {
       let chargeId = booking.stripe_charge_id
       
       if (!chargeId && booking.stripe_payment_intent_id) {
@@ -88,12 +89,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         experience.currency,
         supplier.stripe_account_id,
         booking.id,
-        chargeId || undefined // Pass charge ID as source_transaction for test mode
+        chargeId || undefined
       )
       transferId = transfer.id
     }
     
-    // Update booking status
     const updateClient = createAdminClient()
     await (updateClient
       .from('bookings') as any)
@@ -105,25 +105,45 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', id)
     
-    // Send payout confirmation to supplier
     if (supplier.email) {
-      await sendEmail({
-        to: supplier.email,
-        subject: `Payment transferred - ${experience.title}`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h1 style="color: #111;">Payment Transferred! 💰</h1>
-            <p>Great job! The experience has been marked as completed.</p>
-            <p><strong>Amount transferred:</strong> ${new Intl.NumberFormat('en', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</p>
-            <p><strong>Booking:</strong> ${experience.title}</p>
-            <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
-            <p style="color: #666; margin-top: 20px;">The funds will arrive in your connected Stripe account within 2-3 business days.</p>
-          </div>
-        `,
-      })
+      if (isPayOnSite) {
+        await sendEmail({
+          to: supplier.email,
+          subject: `Experience completed - ${experience.title}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #111;">Experience Completed</h1>
+              <p>The experience has been marked as completed.</p>
+              <p><strong>Booking:</strong> ${experience.title}</p>
+              <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
+              <p style="color: #666; margin-top: 20px;">The guest paid on site. Commission will be included in your monthly invoice.</p>
+            </div>
+          `,
+        })
+      } else {
+        await sendEmail({
+          to: supplier.email,
+          subject: `Payment transferred - ${experience.title}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h1 style="color: #111;">Payment Transferred!</h1>
+              <p>Great job! The experience has been marked as completed.</p>
+              <p><strong>Amount transferred:</strong> ${new Intl.NumberFormat('en', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</p>
+              <p><strong>Booking:</strong> ${experience.title}</p>
+              <p><strong>Guest:</strong> ${escapeHtml(reservation.guest_name)}</p>
+              <p style="color: #666; margin-top: 20px;">The funds will arrive in your connected Stripe account within 2-3 business days.</p>
+            </div>
+          `,
+        })
+      }
     }
     
-    return createResponse('success', 'The experience has been marked as completed and payment has been transferred to your account.')
+    return createResponse(
+      'success',
+      isPayOnSite
+        ? 'The experience has been marked as completed.'
+        : 'The experience has been marked as completed and payment has been transferred to your account.'
+    )
   } catch (error: any) {
     console.error('Complete booking error:', error)
     const errorMessage = error?.message || error?.toString() || 'Unknown error'

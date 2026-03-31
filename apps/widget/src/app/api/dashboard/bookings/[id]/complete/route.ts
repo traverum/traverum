@@ -5,6 +5,7 @@ import { createTransfer, stripe } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
 import { baseTemplate } from '@/lib/email/templates'
 import { escapeHtml } from '@/lib/sanitize'
+import { PAYMENT_MODES } from '@traverum/shared'
 import type { Database } from '@/lib/supabase/types'
 
 interface RouteParams {
@@ -92,8 +93,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Forbidden: you do not own this experience' }, { status: 403 })
     }
 
+    const isPayOnSite = booking.payment_mode === PAYMENT_MODES.PAY_ON_SITE
+
     let transferId = null
-    if (supplier.stripe_account_id && booking.supplier_amount_cents > 0) {
+    if (!isPayOnSite && supplier.stripe_account_id && booking.supplier_amount_cents > 0) {
       let chargeId = booking.stripe_charge_id
 
       if (!chargeId && booking.stripe_payment_intent_id) {
@@ -128,34 +131,62 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .eq('id', id)
 
     if (supplier.email) {
-      await sendEmail({
-        to: supplier.email,
-        subject: `Payment transferred - ${experience.title}`,
-        html: baseTemplate(`
-          <div class="card">
-            <div class="header"><h1>Payment Transferred</h1></div>
-            <p>The experience has been marked as completed and your payment has been transferred.</p>
-            <div class="info-box">
-              <div class="info-row">
-                <span class="info-label">Experience</span>
-                <span class="info-value">${experience.title}</span>
+      if (isPayOnSite) {
+        await sendEmail({
+          to: supplier.email,
+          subject: `Experience completed - ${experience.title}`,
+          html: baseTemplate(`
+            <div class="card">
+              <div class="header"><h1>Experience Completed</h1></div>
+              <p>The experience has been marked as completed.</p>
+              <div class="info-box">
+                <div class="info-row">
+                  <span class="info-label">Experience</span>
+                  <span class="info-value">${experience.title}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Guest</span>
+                  <span class="info-value">${escapeHtml(reservation.guest_name)}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Total</span>
+                  <span class="info-value">${new Intl.NumberFormat('fi-FI', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.amount_cents / 100)}</span>
+                </div>
               </div>
-              <div class="info-row">
-                <span class="info-label">Guest</span>
-                <span class="info-value">${escapeHtml(reservation.guest_name)}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Amount Transferred</span>
-                <span class="info-value">${new Intl.NumberFormat('fi-FI', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</span>
-              </div>
+              <p class="text-muted">The guest paid on site. Commission will be included in your monthly invoice.</p>
             </div>
-            <p class="text-muted">The funds will arrive in your connected Stripe account within 2-3 business days.</p>
-          </div>
-        `, 'Payment Transferred'),
-      })
+          `, 'Experience Completed'),
+        })
+      } else {
+        await sendEmail({
+          to: supplier.email,
+          subject: `Payment transferred - ${experience.title}`,
+          html: baseTemplate(`
+            <div class="card">
+              <div class="header"><h1>Payment Transferred</h1></div>
+              <p>The experience has been marked as completed and your payment has been transferred.</p>
+              <div class="info-box">
+                <div class="info-row">
+                  <span class="info-label">Experience</span>
+                  <span class="info-value">${experience.title}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Guest</span>
+                  <span class="info-value">${escapeHtml(reservation.guest_name)}</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Amount Transferred</span>
+                  <span class="info-value">${new Intl.NumberFormat('fi-FI', { style: 'currency', currency: experience.currency || 'EUR' }).format(booking.supplier_amount_cents / 100)}</span>
+                </div>
+              </div>
+              <p class="text-muted">The funds will arrive in your connected Stripe account within 2-3 business days.</p>
+            </div>
+          `, 'Payment Transferred'),
+        })
+      }
     }
 
-    console.log(`Supplier completed booking ${id} via dashboard, transfer initiated`)
+    console.log(`Supplier completed booking ${id} via dashboard${isPayOnSite ? ' (pay on site)' : ', transfer initiated'}`)
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

@@ -92,7 +92,7 @@ Most important flow is our booking flow.
 - **UI:** MUI + Tailwind (widget), shadcn/ui + Tailwind + Lucide (dashboard/admin)
 - **State:** React Context + React Query (no Zustand)
 - **DB:** Supabase (Postgres + RLS + PostGIS)
-- **Payments:** Stripe Connect (Payment Links, not Checkout Sessions)
+- **Payments:** Stripe Connect (Payment Links, Checkout, Payment Element, etc. — per flow)
 - **Email:** Resend (`Veyond <bookings@veyond.eu>`)
 - **Dates:** date-fns (no dayjs/moment)
 - **Deploy:** Three separate Vercel projects — never mix them
@@ -106,8 +106,7 @@ Most important flow is our booking flow.
 3. **No emojis in UI.** Lucide icons only.
 4. **Dashboard/Admin never mutate Supabase directly.** All mutations go through widget API routes.
 5. **Always sanitize guest input.** `sanitizeGuestText()`, `sanitizeGuestEmail()`, `escapeHtml()` in emails.
-6. **Stripe Payment Links, not Checkout Sessions.** Stable URLs for email-based payment flow.
-7. **Status transitions are one-way.** Never transition reservations or bookings backwards.
+6. **Status transitions are one-way.** Never transition reservations or bookings backwards.
 
 ---
 

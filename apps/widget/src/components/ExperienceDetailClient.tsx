@@ -26,11 +26,15 @@ export function ExperienceDetailClient({ experience, sessions, hotelSlug, availa
 
   // Rental-specific state (per_day pricing)
   const [rentalDate, setRentalDate] = useState('')
-  const [rentalDays, setRentalDays] = useState(experience.min_days || 1)
+  const [rentalEndDate, setRentalEndDate] = useState('')
   const [quantity, setQuantity] = useState(1)
 
   const isRental = experience.pricing_type === 'per_day'
   const selectedSession = sessions.find(s => s.id === selectedSessionId) || null
+
+  const rentalDays = (isRental && rentalDate && rentalEndDate)
+    ? Math.max(1, Math.round((new Date(rentalEndDate + 'T12:00:00').getTime() - new Date(rentalDate + 'T12:00:00').getTime()) / 86_400_000) + 1)
+    : (experience.min_days || 1)
 
   const priceCalc = isRental
     ? calculatePrice(experience, quantity, null, rentalDays, quantity)
@@ -77,10 +81,10 @@ export function ExperienceDetailClient({ experience, sessions, hotelSlug, availa
         availabilityRules={availabilityRules}
         returnUrl={returnUrl}
         rentalDate={rentalDate}
-        rentalDays={rentalDays}
+        rentalEndDate={rentalEndDate}
         quantity={quantity}
         onRentalDateChange={setRentalDate}
-        onRentalDaysChange={setRentalDays}
+        onRentalEndDateChange={setRentalEndDate}
         onQuantityChange={setQuantity}
       />
     </>

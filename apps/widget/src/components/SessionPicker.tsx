@@ -16,6 +16,11 @@ const Calendar = dynamic(
   { ssr: false, loading: () => <div className="w-full h-[320px] rounded-lg border border-border animate-pulse bg-muted/30" /> }
 )
 
+const RangeCalendar = dynamic(
+  () => import('@/components/ui/calendar').then(mod => ({ default: mod.RangeCalendar })),
+  { ssr: false, loading: () => <div className="w-full h-[320px] rounded-lg border border-border animate-pulse bg-muted/30" /> }
+)
+
 interface SessionPickerProps {
   sessions: ExperienceSession[]
   selectedSessionId: string | null
@@ -27,10 +32,10 @@ interface SessionPickerProps {
   onRequestTimeChange: (time: string) => void
   participants: number
   availabilityRules?: AvailabilityRule[]
-  // Rental mode: single date + days dropdown (no time, no sessions)
+  // Rental mode: date range calendar (no time, no sessions)
   mode?: 'session' | 'rental'
-  rentalDays?: number
-  onRentalDaysChange?: (days: number) => void
+  rentalEndDate?: string
+  onRentalEndDateChange?: (date: string) => void
   minDays?: number
   maxDays?: number | null
 }
@@ -58,8 +63,8 @@ export function SessionPicker({
   participants,
   availabilityRules = [],
   mode = 'session',
-  rentalDays: rentalDaysProp,
-  onRentalDaysChange,
+  rentalEndDate: rentalEndDateProp,
+  onRentalEndDateChange,
   minDays = 1,
   maxDays,
 }: SessionPickerProps) {
@@ -69,7 +74,6 @@ export function SessionPicker({
     customDate ? new Date(customDate) : undefined
   )
   const [showRequestTimes, setShowRequestTimes] = useState(false)
-  const [daysDropdownOpen, setDaysDropdownOpen] = useState(false)
   
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -188,47 +192,48 @@ export function SessionPicker({
 
   // Handle toggling request times section
   const handleToggleRequestTimes = useCallback(() => {
-    setShowRequestTimes(prev => {
-      if (!prev) {
-        // Opening request times: clear session selection
-        onSessionSelect(null, false)
-        onRequestTimeChange('')
-      } else {
-        // Closing request times: clear request state
-        onSessionSelect(null, false)
-        onRequestTimeChange('')
-      }
-      return !prev
-    })
-  }, [onSessionSelect, onRequestTimeChange])
+    if (!showRequestTimes) {
+      onSessionSelect(null, true)
+      onRequestTimeChange('')
+    } else {
+      onSessionSelect(null, false)
+      onRequestTimeChange('')
+    }
+    setShowRequestTimes(prev => !prev)
+  }, [showRequestTimes, onSessionSelect, onRequestTimeChange])
 
-  // --- Rental mode: single date calendar + days dropdown ---
+  // --- Rental mode: date range calendar ---
   if (isRentalMode) {
-    const rentalDays = rentalDaysProp || minDays
     const maxDaysValue = maxDays || 30
-    const daysOptions: number[] = []
-    for (let i = minDays; i <= maxDaysValue; i++) daysOptions.push(i)
+    const rangeStartObj = customDate ? new Date(customDate + 'T00:00:00') : undefined
+    const rangeEndObj = rentalEndDateProp ? new Date(rentalEndDateProp + 'T00:00:00') : undefined
 
-    const handleRentalDateSelect = (date: Date | undefined) => {
-      setSelectedCalendarDate(date)
-      if (date) {
-        onCustomDateChange(format(date, 'yyyy-MM-dd'))
+    const handleRangeChange = (start: Date | undefined, end: Date | undefined) => {
+      if (start) {
+        const startKey = format(start, 'yyyy-MM-dd')
+        onCustomDateChange(startKey)
         onSessionSelect(null, true)
+        setSelectedCalendarDate(start)
       } else {
         onCustomDateChange('')
         onSessionSelect(null, false)
+        setSelectedCalendarDate(undefined)
       }
+      onRentalEndDateChange?.(end ? format(end, 'yyyy-MM-dd') : '')
     }
 
     return (
       <div className="font-body">
         <div className="flex flex-col md:flex-row md:gap-6 md:items-start">
-          {/* Calendar — single date selection */}
+          {/* Calendar — date range selection */}
           <div className="flex justify-center md:flex-shrink-0">
-            <Calendar
-              selected={selectedCalendarDate}
-              onSelect={handleRentalDateSelect}
+            <RangeCalendar
+              rangeStart={rangeStartObj}
+              rangeEnd={rangeEndObj}
+              onRangeChange={handleRangeChange}
               disabled={isDateDisabled}
+              minDays={minDays}
+              maxDays={maxDaysValue}
               className="rounded-lg border border-border p-2"
             />
           </div>
@@ -236,64 +241,36 @@ export function SessionPicker({
           {/* Info panel */}
           <div className="flex-1 mt-4 md:mt-0 min-w-0">
             <AnimatePresence mode="wait">
-              {selectedCalendarDate && (
+              {customDate && (
                 <motion.div
+                  key={customDate + (rentalEndDateProp || '')}
                   initial={shouldReduceMotion ? false : slideInVariants.hidden}
                   animate={slideInVariants.visible}
                   exit={shouldReduceMotion ? undefined : fadeInVariants.hidden}
                   transition={{ duration: shouldReduceMotion ? 0 : 0.2 }}
                   className="space-y-3"
                 >
-                  <p className="text-sm font-medium text-foreground">
-                    {format(selectedCalendarDate, 'EEEE, d MMMM')}
-                  </p>
+                  {rentalEndDateProp ? (
+                    <p className="text-sm font-medium text-foreground">
+                      {format(new Date(customDate + 'T00:00:00'), 'EEE, MMM d')}
+                      {' – '}
+                      {format(new Date(rentalEndDateProp + 'T00:00:00'), 'EEE, MMM d')}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Select an end date on the calendar
+                    </p>
+                  )}
 
-                  {/* How it works */}
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2">
                     <svg className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><rect width="20" height="16" x="2" y="4" rx="2" /><path strokeLinecap="round" strokeLinejoin="round" d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
                     <span>Provider responds within 48h. You pay after they approve.</span>
-                  </div>
-
-                  {/* Days selector */}
-                  <div className="relative">
-                    <label className="block text-xs font-medium text-foreground mb-1.5">Number of days</label>
-                    <button
-                      type="button"
-                      onClick={() => setDaysDropdownOpen(!daysDropdownOpen)}
-                      className="w-full flex items-center justify-between px-3 py-2.5 border border-border rounded-lg bg-background hover:border-accent/50 transition-colors duration-150 text-left touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1"
-                    >
-                      <span className="text-sm font-medium text-foreground tabular-nums">
-                        {rentalDays} {rentalDays === 1 ? 'day' : 'days'}
-                      </span>
-                      <svg className={cn('w-4 h-4 text-muted-foreground transition-transform duration-150', daysDropdownOpen && 'rotate-180')} aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" /></svg>
-                    </button>
-                    {daysDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 bg-background border border-border rounded-lg shadow-lg overflow-hidden">
-                        <div className="max-h-48 overflow-y-auto overscroll-contain">
-                          {daysOptions.map((d) => (
-                            <button
-                              key={d}
-                              type="button"
-                              onClick={() => { onRentalDaysChange?.(d); setDaysDropdownOpen(false) }}
-                              className={cn(
-                                'w-full px-3 py-2 text-left text-sm transition-colors duration-100 touch-manipulation',
-                                'focus:outline-none',
-                                d === rentalDays ? 'bg-accent/10 text-accent font-medium' : 'text-foreground hover:bg-muted'
-                              )}
-                            >
-                              <span className="tabular-nums">{d} {d === 1 ? 'day' : 'days'}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Constraints info when nothing selected */}
-            {!selectedCalendarDate && (minDays > 1 || maxDays) && (
+            {!customDate && (minDays > 1 || maxDays) && (
               <div className="text-xs text-muted-foreground space-y-0.5">
                 {minDays > 1 && <p>Minimum: {minDays} days</p>}
                 {maxDays && <p>Maximum: {maxDays} days</p>}

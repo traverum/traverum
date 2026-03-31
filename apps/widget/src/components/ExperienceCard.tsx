@@ -3,9 +3,10 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Clock, MapPin } from 'lucide-react'
+import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDuration, formatPrice } from '@/lib/utils'
+import { getPriceDisplay } from '@/lib/pricing'
 import { trackExperienceView } from '@/lib/analytics.client'
 import { useTranslatedExperience } from '@/hooks/useTranslatedExperience'
 import type { ExperienceWithMedia } from '@/lib/hotels'
@@ -18,11 +19,13 @@ interface ExperienceCardProps {
   /** When 'veyond', uses large portrait card with duration badge, location, and "From X" price (for /experiences) */
   cardStyle?: 'default' | 'veyond'
   hotelConfigId?: string | null
+  /** Show "On Request" badge for request-based experiences when date/time filters are active */
+  showRequestBadge?: boolean
 }
 
 const MAX_RETRIES = 2
 
-export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', returnUrl, cardStyle = 'default', hotelConfigId }: ExperienceCardProps) {
+export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', returnUrl, cardStyle = 'default', hotelConfigId, showRequestBadge }: ExperienceCardProps) {
   const [imgError, setImgError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const cardRef = useRef<HTMLAnchorElement>(null)
@@ -63,8 +66,8 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
     ? { target: '_blank' as const, rel: 'noopener noreferrer' }
     : {}
 
-  const fromPriceCents = experience.base_price_cents ?? experience.price_cents ?? 0
   const currency = experience.currency ?? 'EUR'
+  const priceDisplay = getPriceDisplay({ ...experience, currency })
 
   if (cardStyle === 'veyond') {
     return (
@@ -73,7 +76,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
         href={href}
         {...linkProps}
         className={cn(
-          'block rounded-3xl border-0 shadow-lg hover:shadow-xl overflow-hidden transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
+          'block rounded-3xl border-0 shadow-md hover:shadow-lg transition-shadow duration-300 ease-out overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
           embedMode === 'section' && 'experience-card'
         )}
       >
@@ -96,25 +99,26 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
               </svg>
             </div>
           )}
-          {/* Duration badge - top left, frosted glass */}
-          <div className="absolute top-4 left-4 flex items-center gap-1.5 rounded-lg bg-background/80 backdrop-blur-sm border-0 px-2.5 py-1.5 text-sm font-medium text-foreground">
-            <Clock className="w-4 h-4" aria-hidden />
-            {formatDuration(experience.duration_minutes)}
+          {/* Badges row - top, frosted glass */}
+          <div className="absolute top-4 left-4 right-4 flex items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-lg bg-background/80 backdrop-blur-sm border-0 px-2.5 py-1.5 text-sm font-medium text-foreground">
+              <Clock className="w-4 h-4" aria-hidden />
+              {formatDuration(experience.duration_minutes)}
+            </div>
+            {showRequestBadge && (
+              <div className="rounded-lg bg-background/80 backdrop-blur-sm border-0 px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+                On Request
+              </div>
+            )}
           </div>
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           {/* Text overlay at bottom */}
           <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-            <h3 className={cn("text-2xl font-light mb-4", isTranslating && "animate-pulse")}>{translatedTitle}</h3>
-            <div className="flex items-center justify-between gap-3">
-              <span className="flex items-center gap-1.5 text-white/90 text-sm min-w-0">
-                <MapPin className="w-4 h-4 flex-shrink-0" aria-hidden />
-                <span className="truncate">{experience.location_address ?? '—'}</span>
-              </span>
-              <span className="flex-shrink-0 text-sm font-medium tabular-nums">
-                From {formatPrice(fromPriceCents, currency)}
-              </span>
-            </div>
+            <h3 className={cn("text-2xl font-light mb-3", isTranslating && "animate-pulse")}>{translatedTitle}</h3>
+            <span className="text-sm font-medium tabular-nums">
+              From {formatPrice(priceDisplay.amount, currency)}
+            </span>
           </div>
         </div>
       </Link>

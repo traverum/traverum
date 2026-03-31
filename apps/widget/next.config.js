@@ -5,9 +5,14 @@ const nextConfig = {
   },
   transpilePackages: ['@traverum/shared'],
   webpack: (config) => {
+    const path = require('path');
+    const lucideDir = path.dirname(
+      require.resolve('lucide-react/package.json', { paths: [__dirname] })
+    );
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@traverum/shared': require('path').resolve(__dirname, '../../packages/shared/src'),
+      '@traverum/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      'lucide-react': lucideDir,
     };
     return config;
   },
@@ -24,6 +29,10 @@ const nextConfig = {
       {
         protocol: 'https',
         hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
       },
     ],
   },

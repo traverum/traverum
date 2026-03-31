@@ -378,11 +378,12 @@ async function handleAccountUpdated(account: Stripe.Account) {
       .from('partners') as any)
       .update({
         stripe_onboarding_complete: isOnboardingComplete,
+        payment_mode: isOnboardingComplete ? 'stripe' : 'pay_on_site',
         updated_at: new Date().toISOString(),
       })
       .eq('id', partner.id)
     
-    console.log(`Partner ${partner.id} onboarding status updated to: ${isOnboardingComplete}`)
+    console.log(`Partner ${partner.id} onboarding status updated to: ${isOnboardingComplete}, payment_mode: ${isOnboardingComplete ? 'stripe' : 'pay_on_site'}`)
     
     // Send admin notification email about status change
     const adminEmail = process.env.ADMIN_EMAIL
@@ -531,13 +532,25 @@ async function createBookingFromPayment(
   const isDirect = !reservation.hotel_id
   let distributionData = null
   if (!isDirect) {
-    const { data } = await supabase
+    let query = supabase
       .from('distributions')
       .select('*')
       .eq('experience_id', experience.id)
       .eq('hotel_id', reservation.hotel_id)
       .eq('is_active', true)
-      .single()
+
+    if (reservation.hotel_config_id) {
+      query = query.eq('hotel_config_id', reservation.hotel_config_id)
+    }
+
+    const { data, error: distError } = await query.limit(1).maybeSingle()
+    if (distError) {
+      console.error('Distribution lookup failed:', distError, {
+        experienceId: experience.id,
+        hotelId: reservation.hotel_id,
+        hotelConfigId: reservation.hotel_config_id,
+      })
+    }
     distributionData = data as any
   }
 

@@ -19,7 +19,8 @@ interface AnalyticsBooking {
   booking_status: string;
   amount_cents: number;
   supplier_amount_cents: number;
-  paid_at: string;
+  payment_mode: string | null;
+  paid_at: string | null;
   completed_at: string | null;
   session: {
     session_date: string;
@@ -60,7 +61,7 @@ export interface MonthlyBooking {
   grossCents: number;
   commissionCents: number;
   netCents: number;
-  status: 'confirmed' | 'completed';
+  status: 'completed';
 }
 
 function periodKey(date: Date, granularity: PeriodGranularity): { label: string; sortKey: string } {
@@ -87,7 +88,8 @@ function bookingDate(b: AnalyticsBooking): Date {
     b.session?.session_date ??
     b.reservation?.requested_date ??
     b.completed_at ??
-    b.paid_at;
+    b.paid_at ??
+    new Date().toISOString();
   return parseISO(dateStr);
 }
 
@@ -121,12 +123,13 @@ export function useSupplierAnalytics() {
           booking_status,
           amount_cents,
           supplier_amount_cents,
+          payment_mode,
           paid_at,
           completed_at,
-          session:experience_sessions!bookings_session_fk(
+          session:experience_sessions(
             session_date
           ),
-          reservation:reservations!bookings_reservation_fk(
+          reservation:reservations(
             experience_id,
             hotel_id,
             guest_name,
@@ -138,7 +141,7 @@ export function useSupplierAnalytics() {
           )
         `)
         .in('booking_status', ['confirmed', 'completed'])
-        .order('paid_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -167,10 +170,9 @@ export function useSupplierAnalytics() {
       0
     );
 
-    const pendingPayoutsCents = confirmedBookings.reduce(
-      (sum, b) => sum + (b.supplier_amount_cents || 0),
-      0
-    );
+    const pendingPayoutsCents = confirmedBookings
+      .filter((b) => b.payment_mode !== 'pay_on_site')
+      .reduce((sum, b) => sum + (b.supplier_amount_cents || 0), 0);
 
     const now = new Date();
     const currentMonth = getMonth(now);
@@ -190,7 +192,7 @@ export function useSupplierAnalytics() {
     const availableMonths: { year: number; month: number; label: string; sortKey: string }[] = (() => {
       const seen = new Set<string>();
       const months: { year: number; month: number; label: string; sortKey: string }[] = [];
-      for (const b of rawBookings) {
+      for (const b of completedBookings) {
         const d = bookingDate(b);
         const y = getYear(d);
         const m = getMonth(d);
@@ -209,7 +211,7 @@ export function useSupplierAnalytics() {
     })();
 
     const monthlyBookings = (year: number, month: number): MonthlyBooking[] => {
-      return rawBookings
+      return completedBookings
         .map((b) => {
           const d = bookingDate(b);
           if (getYear(d) !== year || getMonth(d) !== month) return null;
@@ -223,7 +225,7 @@ export function useSupplierAnalytics() {
             grossCents: b.amount_cents || 0,
             commissionCents: (b.amount_cents || 0) - (b.supplier_amount_cents || 0),
             netCents: b.supplier_amount_cents || 0,
-            status: b.booking_status as 'confirmed' | 'completed',
+            status: 'completed' as const,
           };
         })
         .filter((b): b is MonthlyBooking => b !== null)
@@ -233,8 +235,9 @@ export function useSupplierAnalytics() {
     const revenueByPeriod = (granularity: PeriodGranularity): PeriodRevenue[] => {
       const map = new Map<string, PeriodRevenue>();
       for (const b of completedBookings) {
-        if (!b.paid_at) continue;
-        const date = parseISO(b.paid_at);
+        const dateStr = b.paid_at ?? b.completed_at;
+        if (!dateStr) continue;
+        const date = parseISO(dateStr);
         const { label, sortKey } = periodKey(date, granularity);
         const existing = map.get(sortKey);
         if (existing) {

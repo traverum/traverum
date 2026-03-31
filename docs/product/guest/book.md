@@ -17,7 +17,7 @@ Guests who clicked on an experience and are evaluating whether to book. They nee
 ## Key stories
 
 - Guest reads description, views gallery, sees duration and group size → decides to book → picks a date with available sessions → selects a time → proceeds to checkout
-- Guest wants a time that's not listed → clicks "Request a different time" → picks a 30-min slot → sends request
+- Guest wants a time that's not listed → clicks "Request a different time" → picks a slot → sends request
 - Guest wants to rent equipment (e.g., Vespas) → picks a start date, number of days, quantity → sends rental request
 
 ## Design decisions

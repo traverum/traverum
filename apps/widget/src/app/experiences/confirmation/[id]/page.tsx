@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
 import { formatDate, formatTime, formatPrice } from '@/lib/utils'
-import { VeyondHeader } from '@/components/VeyondHeader'
 import { TranslatedText } from '@/components/TranslatedText'
 
 export const dynamic = 'force-dynamic'
@@ -63,10 +62,7 @@ export default async function DirectConfirmationPage({ params }: ConfirmationPag
   const time = session?.start_time || reservation.requested_time || ''
 
   return (
-    <div className="min-h-screen bg-background">
-      <VeyondHeader />
-
-      <main className="max-w-2xl mx-auto px-4 py-12">
+      <div className="max-w-2xl mx-auto">
         <div className="bg-card rounded-card border border-border p-8 text-center">
           {/* Success icon */}
           <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center bg-success/10">
@@ -172,7 +168,6 @@ export default async function DirectConfirmationPage({ params }: ConfirmationPag
             Browse More Experiences
           </Link>
         </div>
-      </main>
-    </div>
+      </div>
   )
 }

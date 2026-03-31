@@ -21,17 +21,8 @@ import {
 } from '@/components/ui/table';
 import {
   useSupplierAnalytics,
-  type PeriodGranularity,
-  type RankedItem,
   type MonthlyBooking,
 } from '@/hooks/useSupplierAnalytics';
-import { cn } from '@/lib/utils';
-
-const GRANULARITIES: { value: PeriodGranularity; label: string }[] = [
-  { value: 'year', label: 'Year' },
-  { value: 'month', label: 'Month' },
-  { value: 'week', label: 'Week' },
-];
 
 const euroFinanceFormatter = new Intl.NumberFormat('it-IT', {
   style: 'currency',
@@ -44,52 +35,13 @@ function formatFinanceAmount(cents: number): string {
   return euroFinanceFormatter.format(cents / 100);
 }
 
-function RankedList({ title, items }: { title: string; items: RankedItem[] }) {
-  if (items.length === 0) return null;
-
-  return (
-    <div className="space-y-2">
-      <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-        {title}
-      </h2>
-      <Card className="border border-border">
-        <CardContent className="p-0 divide-y divide-border">
-          {items.map((item, i) => (
-            <div
-              key={item.id}
-              className="flex items-center justify-between px-4 py-3"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="text-xs text-muted-foreground w-4 text-right flex-shrink-0">
-                  {i + 1}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {item.name}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {item.count} {item.count === 1 ? 'booking' : 'bookings'}
-                  </p>
-                </div>
-              </div>
-              <p className="text-sm font-semibold text-foreground flex-shrink-0 tabular-nums">
-                {formatFinanceAmount(item.revenueCents)}
-              </p>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 function formatCentsForCSV(cents: number): string {
   return (cents / 100).toFixed(2).replace('.', ',');
 }
 
 function downloadMonthlyCSV(bookings: MonthlyBooking[], year: number, month: number) {
   const BOM = '\uFEFF';
-  const header = 'Data;Esperienza;Cliente;Azienda;Fattura;Lordo (\u20AC);Commissione (\u20AC);Netto (\u20AC);Stato';
+  const header = 'Data;Esperienza;Cliente;Azienda;Fattura;Lordo (\u20AC);Commissione (\u20AC);Netto (\u20AC)';
   const rows = bookings.map((b) =>
     [
       format(b.date, 'dd.MM.yyyy'),
@@ -100,7 +52,6 @@ function downloadMonthlyCSV(bookings: MonthlyBooking[], year: number, month: num
       formatCentsForCSV(b.grossCents),
       formatCentsForCSV(b.commissionCents),
       formatCentsForCSV(b.netCents),
-      b.status === 'completed' ? 'Completato' : 'Confermato',
     ].join(';')
   );
   const csv = BOM + [header, ...rows].join('\n');
@@ -117,18 +68,12 @@ export default function SupplierAnalytics() {
   const {
     totalBookings,
     totalRevenueCents,
-    pendingPayoutsCents,
     totalCommissionsCentsThisMonth,
     availableMonths,
     monthlyBookings,
-    revenueByPeriod,
-    topExperiences,
-    topHotels,
     isLoading,
     hasData,
   } = useSupplierAnalytics();
-
-  const [granularity, setGranularity] = useState<PeriodGranularity>('month');
 
   const now = new Date();
   const defaultMonthKey = `${getYear(now)}-${String(getMonth(now)).padStart(2, '0')}`;
@@ -180,15 +125,13 @@ export default function SupplierAnalytics() {
     );
   }
 
-  const periods = revenueByPeriod(granularity);
-
   return (
     <div className="container max-w-6xl mx-auto px-4 py-6">
       <div className="space-y-8">
         <h1 className="text-lg font-semibold text-foreground">Financial overview</h1>
 
         {/* Section 1: Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <Card className="border border-border">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground mb-1">Total bookings</p>
@@ -203,16 +146,6 @@ export default function SupplierAnalytics() {
                 {formatFinanceAmount(totalRevenueCents)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">completed</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-border">
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground mb-1">Pending payouts</p>
-              <p className="text-xl font-semibold text-foreground tabular-nums">
-                {formatFinanceAmount(pendingPayoutsCents)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">pending transfer</p>
             </CardContent>
           </Card>
 
@@ -268,7 +201,6 @@ export default function SupplierAnalytics() {
                         <TableHead className="text-xs text-right">Gross</TableHead>
                         <TableHead className="text-xs text-right">Commission</TableHead>
                         <TableHead className="text-xs text-right">Net to you</TableHead>
-                        <TableHead className="text-xs">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -298,18 +230,6 @@ export default function SupplierAnalytics() {
                           <TableCell className="text-sm text-right whitespace-nowrap font-medium">
                             <span className="tabular-nums">{formatFinanceAmount(b.netCents)}</span>
                           </TableCell>
-                          <TableCell>
-                            <span
-                              className={cn(
-                                'text-xs px-1.5 py-0.5 rounded',
-                                b.status === 'completed'
-                                  ? 'bg-emerald-500/10 text-emerald-600'
-                                  : 'bg-amber-500/10 text-amber-600'
-                              )}
-                            >
-                              {b.status}
-                            </span>
-                          </TableCell>
                         </TableRow>
                       ))}
                       <TableRow className="border-t-2 border-border font-semibold">
@@ -325,7 +245,6 @@ export default function SupplierAnalytics() {
                         <TableCell className="text-sm text-right">
                           <span className="tabular-nums">{formatFinanceAmount(statementTotals.net)}</span>
                         </TableCell>
-                        <TableCell />
                       </TableRow>
                     </TableBody>
                   </Table>
@@ -360,74 +279,6 @@ export default function SupplierAnalytics() {
           </p>
         </div>
 
-        {/* Section 3: Commission Invoices (placeholder) */}
-        <div className="space-y-2">
-          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">
-            Commission invoices
-          </h2>
-          <Card className="border border-border">
-            <CardContent className="p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Le fatture commissioni verranno visualizzate qui. Attualmente inviate via SdI.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Section 4: Revenue by Period */}
-        {periods.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                Revenue by period
-              </h2>
-              <div className="flex gap-1">
-                {GRANULARITIES.map((g) => (
-                  <button
-                    key={g.value}
-                    onClick={() => setGranularity(g.value)}
-                    className={cn(
-                      'px-2 py-0.5 text-xs rounded-sm transition-colors',
-                      granularity === g.value
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {g.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <Card className="border border-border">
-              <CardContent className="p-0 divide-y divide-border">
-                {periods.map((p) => (
-                  <div
-                    key={p.sortKey}
-                    className="flex items-center justify-between px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">
-                        {p.label}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {p.count} {p.count === 1 ? 'booking' : 'bookings'}
-                      </p>
-                    </div>
-                    <p className="text-sm font-semibold text-foreground flex-shrink-0 tabular-nums">
-                      {formatFinanceAmount(p.revenueCents)}
-                    </p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Top Experiences & Hotels */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <RankedList title="Top experiences" items={topExperiences} />
-          <RankedList title="Top hotels" items={topHotels} />
-        </div>
       </div>
     </div>
   );

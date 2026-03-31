@@ -1,17 +1,27 @@
 import { notFound } from 'next/navigation'
-import { getExperienceDirect } from '@/lib/hotels'
+import { getExperienceDirect, getAllActiveExperiences } from '@/lib/hotels'
 import { getAvailableSessions } from '@/lib/sessions'
 import { getExperienceAvailability } from '@/lib/availability.server'
 import { logAnalyticsEvent } from '@/lib/analytics.server'
 import { formatDuration } from '@/lib/utils'
-import { getCancellationPolicyExperienceIntro } from '@/lib/availability'
 import { getLanguageName } from '@/lib/languages'
-import { VeyondHeader } from '@/components/VeyondHeader'
 import { ImageGallery } from '@/components/ImageGallery'
-import { BookingPanel } from '@/components/BookingPanel'
+import { BookingFlowProvider } from '@/components/BookingFlowContext'
+import { StickyBookingCard } from '@/components/StickyBookingCard'
+import { AvailabilityResults } from '@/components/AvailabilityResults'
 import { ExperienceDetailClient } from '@/components/ExperienceDetailClient'
+import { ExperienceInfoTabs } from '@/components/ExperienceInfoTabs'
+import { YouMightAlsoLike } from '@/components/YouMightAlsoLike'
 import { TranslatedText } from '@/components/TranslatedText'
 import { TranslatedRichText } from '@/components/TranslatedRichText'
+import {
+  buildHowItWorksText,
+  buildPaymentText,
+  buildExperienceCancellationSummary,
+} from '@/lib/experience-detail-copy'
+import { parseLatLng } from '@/lib/geo'
+import { LocationMap } from '@/components/LocationMap'
+import { sortByTagRelevance } from '@/lib/experience-relevance'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -50,16 +60,25 @@ export default async function ExperienceDirectPage({ params }: ExperiencePagePro
     embed_mode: 'standalone',
   })
 
-  const [sessions, availabilityRules] = await Promise.all([
+  const [sessions, availabilityRules, allExperiences] = await Promise.all([
     getAvailableSessions(experience.id),
     getExperienceAvailability(experience.id),
+    getAllActiveExperiences(),
   ])
 
-  return (
-    <div className="min-h-screen pb-20 md:pb-0 bg-background">
-      <VeyondHeader showBack backTo="/experiences" />
+  const siblingExperiences = sortByTagRelevance(
+    experience,
+    allExperiences.filter((e) => e.id !== experience.id)
+  )
 
-      <main className="container px-4 py-4 md:py-6">
+  return (
+    <div className="pb-20 md:pb-0">
+      <BookingFlowProvider
+        experience={experience}
+        sessions={sessions}
+        availabilityRules={availabilityRules}
+        hotelSlug="experiences"
+      >
         <div className="md:grid md:grid-cols-5 md:gap-6">
           {/* Left Column - Content */}
           <div className="md:col-span-3">
@@ -85,78 +104,89 @@ export default async function ExperienceDirectPage({ params }: ExperiencePagePro
                   <> · {experience.available_languages.map((code: string) => getLanguageName(code)).join(', ')}</>
                 )}
               </p>
-              <TranslatedRichText
-                experienceId={experience.id}
-                fallbackText={experience.description}
-                className="text-foreground mt-3 leading-relaxed font-body"
-                style={{ fontSize: 'var(--font-size-body)' }}
-              />
             </div>
 
-            {/* Info Sections */}
-            <div className="mt-6 pt-6 border-t border-border space-y-4">
-              <div>
-                <h3
-                  className="font-body text-heading-foreground"
-                  style={{ fontSize: 'var(--font-size-h3)' }}
-                >
-                  Booking
-                </h3>
-                <p
-                  className="text-muted-foreground mt-0.5"
-                  style={{ fontSize: 'var(--font-size-sm)' }}
-                >
-                  Select your preferred date and time and send a request. The provider will respond within 48 hours, and you'll only pay once your request has been approved.
-                </p>
-              </div>
-              <div>
-                <h3
-                  className="font-body text-heading-foreground"
-                  style={{ fontSize: 'var(--font-size-h3)' }}
-                >
-                  Cancellation
-                </h3>
-                <p
-                  className="text-muted-foreground mt-0.5"
-                  style={{ fontSize: 'var(--font-size-sm)' }}
-                >
-                  {getCancellationPolicyExperienceIntro(experience.cancellation_policy)} You will receive a full refund if the provider cancels due to weather or emergency.
-                </p>
-              </div>
-              {experience.meeting_point && (
-                <div>
-                  <h3
-                    className="font-body text-heading-foreground"
-                    style={{ fontSize: 'var(--font-size-h3)' }}
-                  >
-                    Meeting point
-                  </h3>
-                  <p
-                    className="text-muted-foreground mt-0.5"
-                    style={{ fontSize: 'var(--font-size-sm)' }}
-                  >
-                    <TranslatedText experienceId={experience.id} field="meetingPoint" fallback={experience.meeting_point} />
-                  </p>
-                </div>
-              )}
-            </div>
+            <ExperienceInfoTabs
+              description={
+                <TranslatedRichText
+                  experienceId={experience.id}
+                  fallbackText={experience.description}
+                  className="text-foreground leading-relaxed font-body"
+                  style={{ fontSize: 'var(--font-size-body)' }}
+                />
+              }
+              location={(() => {
+                const coords = parseLatLng(experience.location)
+                const hasMap = !!coords
+                const hasMeetingPoint = !!experience.meeting_point
+                if (!hasMap && !hasMeetingPoint) return undefined
+                return (
+                  <>
+                    <h2
+                      className="font-body text-heading-foreground"
+                      style={{ fontSize: 'var(--font-size-h3)' }}
+                    >
+                      {hasMap ? 'Location' : 'Meeting point'}
+                    </h2>
+                    {coords && (
+                      <div className="mt-3">
+                        <LocationMap lat={coords.lat} lng={coords.lng} />
+                      </div>
+                    )}
+                    {hasMeetingPoint && (
+                      <div className={hasMap ? 'mt-4' : 'mt-1.5'}>
+                        {hasMap && (
+                          <p
+                            className="font-body text-heading-foreground mb-1"
+                            style={{ fontSize: 'var(--font-size-sm)' }}
+                          >
+                            Meeting point
+                          </p>
+                        )}
+                        <p
+                          className="text-muted-foreground"
+                          style={{ fontSize: 'var(--font-size-sm)' }}
+                        >
+                          <TranslatedText experienceId={experience.id} field="meetingPoint" fallback={experience.meeting_point} />
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+              bookingSection={<AvailabilityResults />}
+              howItWorksText={buildHowItWorksText({
+                paymentMode: experience.supplier.payment_mode,
+                hasSessions: sessions.length > 0,
+                allowsRequests: experience.allows_requests,
+                isRental: experience.pricing_type === 'per_day',
+              })}
+              paymentText={buildPaymentText({
+                paymentMode: experience.supplier.payment_mode,
+                isRental: experience.pricing_type === 'per_day',
+              })}
+              cancellationText={buildExperienceCancellationSummary(experience.cancellation_policy)}
+            />
           </div>
 
-          {/* Right Column - Booking Panel (Desktop) */}
+          {/* Right Column — sticky booking card (desktop) */}
           <div className="hidden md:block md:col-span-2">
-            <div className="sticky top-6">
-              <BookingPanel
-                experience={experience}
-                sessions={sessions}
-                hotelSlug="experiences"
-                availabilityRules={availabilityRules}
-              />
+            <div className="sticky top-6 z-10">
+              <StickyBookingCard />
             </div>
           </div>
         </div>
-      </main>
+      </BookingFlowProvider>
 
-      {/* Mobile Booking Components */}
+      {siblingExperiences.length > 0 && (
+        <YouMightAlsoLike
+          experiences={siblingExperiences}
+          hotelSlug="experiences"
+          hotelConfigId={null}
+        />
+      )}
+
+      {/* Mobile booking bar + sheet */}
       <ExperienceDetailClient
         experience={experience}
         sessions={sessions}

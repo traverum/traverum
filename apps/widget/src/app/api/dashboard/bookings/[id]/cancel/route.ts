@@ -3,7 +3,9 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 import { createRefund } from '@/lib/stripe'
 import { sendEmail } from '@/lib/email/index'
-import { guestRefundProcessed } from '@/lib/email/templates'
+import { guestRefundProcessed, baseTemplate } from '@/lib/email/templates'
+import { escapeHtml } from '@/lib/sanitize'
+import { PAYMENT_MODES } from '@traverum/shared'
 import type { Database } from '@/lib/supabase/types'
 
 interface RouteParams {
@@ -95,12 +97,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Forbidden: you do not own this experience' }, { status: 403 })
     }
 
-    // Process Stripe refund
-    if (booking.stripe_charge_id) {
+    const isPayOnSite = booking.payment_mode === PAYMENT_MODES.PAY_ON_SITE
+
+    if (!isPayOnSite && booking.stripe_charge_id) {
       await createRefund(booking.stripe_charge_id)
     }
 
-    // Update booking status to cancelled and clear session reference so we can delete the session
     await (supabase
       .from('bookings') as any)
       .update({
@@ -111,36 +113,59 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       })
       .eq('id', id)
 
-    // Delete the session so the slot is removed from the calendar
     if (reservation.session_id) {
       await (supabase.from('experience_sessions') as any)
         .delete()
         .eq('id', reservation.session_id)
     }
 
-    // Email guest with refund confirmation
     const date = session?.session_date || reservation.requested_date || ''
     const time = session?.start_time || reservation.requested_time || ''
 
-    const guestEmailHtml = guestRefundProcessed({
-      experienceTitle: experience.title,
-      guestName: reservation.guest_name,
-      date,
-      time,
-      participants: reservation.participants,
-      totalCents: reservation.total_cents,
-      currency: experience.currency,
-      bookingId: booking.id,
-      refundAmount: booking.amount_cents,
-    })
+    if (isPayOnSite) {
+      await sendEmail({
+        to: reservation.guest_email,
+        subject: `Booking cancelled - ${experience.title}`,
+        html: baseTemplate(`
+          <div class="card">
+            <div class="header"><h1>Booking Cancelled</h1></div>
+            <p>Hi ${escapeHtml(reservation.guest_name)},</p>
+            <p>Your booking has been cancelled by the experience provider.</p>
+            <div class="info-box">
+              <div class="info-row">
+                <span class="info-label">Experience</span>
+                <span class="info-value">${experience.title}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Date</span>
+                <span class="info-value">${date}</span>
+              </div>
+            </div>
+            <p class="text-muted">No charge was made to your card. We apologize for any inconvenience.</p>
+          </div>
+        `, 'Booking Cancelled'),
+      })
+    } else {
+      const guestEmailHtml = guestRefundProcessed({
+        experienceTitle: experience.title,
+        guestName: reservation.guest_name,
+        date,
+        time,
+        participants: reservation.participants,
+        totalCents: reservation.total_cents,
+        currency: experience.currency,
+        bookingId: booking.id,
+        refundAmount: booking.amount_cents,
+      })
 
-    await sendEmail({
-      to: reservation.guest_email,
-      subject: `Refund processed - ${experience.title}`,
-      html: guestEmailHtml,
-    })
+      await sendEmail({
+        to: reservation.guest_email,
+        subject: `Refund processed - ${experience.title}`,
+        html: guestEmailHtml,
+      })
+    }
 
-    console.log(`Supplier cancelled booking ${id}, refund initiated`)
+    console.log(`Supplier cancelled booking ${id}${isPayOnSite ? ' (pay on site, no refund)' : ', refund initiated'}`)
 
     return NextResponse.json({ success: true })
   } catch (error) {

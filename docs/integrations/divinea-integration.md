@@ -1,8 +1,10 @@
 # Divinea Integration Plan
 
-Integrate Divinea Wine Suite (OCTO API) with Traverum to sync availability and manage bookings. Phased approach: Phase 1 is read-only availability sync, Phase 2 tests holds and booking lifecycle — both against Divinea staging.
+Integrate Divinea Wine Suite (OCTO API + Integration v2) with Traverum to sync availability and manage bookings. Phased approach: Phase 1 is read-only availability sync, Phase 2 is hold/confirm/release lifecycle — both against Divinea staging first.
 
-**Status:** Planned — to be implemented later.
+**Status:** Planned — API access confirmed, testing connectivity.
+
+**API Documentation:** `docs/context7/divinea-api-documentation.md`
 
 ---
 
@@ -11,7 +13,7 @@ Integrate Divinea Wine Suite (OCTO API) with Traverum to sync availability and m
 ```mermaid
 sequenceDiagram
     participant Cron as SyncCron
-    participant Divinea as DivineCRM
+    participant Divinea as DivineaCRM
     participant DB as Supabase
     participant Widget as WidgetUI
     participant Checkout as ReservationAPI
@@ -19,8 +21,8 @@ sequenceDiagram
     participant Expire as ExpireCron
 
     Note over Cron,DB: Phase 1: Availability Sync
-    Cron->>Divinea: POST /octo/availability
-    Divinea-->>Cron: slots with ids
+    Cron->>Divinea: POST /octo/availability/extended
+    Divinea-->>Cron: slots with ids, languages, capacity
     Cron->>DB: upsert experience_sessions
 
     Note over Widget,DB: Existing flow unchanged
@@ -28,57 +30,121 @@ sequenceDiagram
     DB-->>Widget: sessions incl Divinea-synced
 
     Note over Checkout,Expire: Phase 2: Hold/Confirm/Release
+    Checkout->>Divinea: POST /octo/availability (re-check)
     Checkout->>Divinea: POST /v2/reservations/integration/NEW
     Divinea-->>Checkout: divinea reservation id
-    Checkout->>DB: store divinea_hold_id on reservation
+    Checkout->>DB: store divinea_reservation_id on reservation
 
-    Stripe->>Divinea: PUT /v2/reservations/{id}/confirm
-    Expire->>Divinea: PUT /v2/reservations/{id}/cancel
+    Stripe->>Divinea: PUT /v2/reservations/{id}/confirm?forcePayment=true
+    Expire->>Divinea: PUT /v2/reservations/{id}/cancel (draft)
+    Note over Expire: or PUT .../revoke (confirmed)
 ```
+
+---
+
+## Authentication
+
+Two headers on every request:
+
+| Header | Value | Description |
+|--------|-------|-------------|
+| `APIKey` | env var `DIVINEA_API_KEY` | API key for authentication |
+| `X-DWS-WINERY` | env var `DIVINEA_WINERY_ID` | Winery UUID — scopes requests |
+
+No secret, no token pair. Just these two headers + `Content-Type: application/json`.
 
 ---
 
 ## Phase 1: Read-only availability sync
 
-Goal: Fetch slots from Divinea staging and see them as `experience_sessions` in Traverum. No writes to Divinea. No changes to the booking flow.
+Goal: Fetch slots from Divinea staging and see them as `experience_sessions` in Traverum. No writes to Divinea. No changes to the booking flow. Guest sees Divinea availability in the widget calendar — indistinguishable from manually created sessions.
 
 ### 1a. Environment variables
 
 Add to `apps/widget/.env.local`:
 
 ```
-DIVINEA_API_KEY=<your-api-key>
-DIVINEA_API_SECRET=<your-secret>
-DIVINEA_WINERY_ID=<your-winery-id>
+DIVINEA_API_KEY=<api-key>
+DIVINEA_WINERY_ID=<winery-uuid>
 DIVINEA_API_BASE_URL=https://api-crm-staging.divinea.com/api
 ```
 
-### 1b. Divinea client module
+Three vars. No secret needed.
+
+### 1b. Database migration
+
+New migration file in `apps/dashboard/supabase/migrations/`:
+
+```sql
+-- experiences table
+ALTER TABLE experiences
+  ADD COLUMN calendar_source text NOT NULL DEFAULT 'traverum'
+    CHECK (calendar_source IN ('traverum', 'divinea')),
+  ADD COLUMN divinea_product_id text,
+  ADD COLUMN divinea_option_id text;
+
+-- experience_sessions table
+ALTER TABLE experience_sessions
+  ADD COLUMN divinea_slot_id text;
+
+CREATE UNIQUE INDEX idx_sessions_divinea_slot_id
+  ON experience_sessions (divinea_slot_id)
+  WHERE divinea_slot_id IS NOT NULL;
+
+-- reservations table (for Phase 2, but migrate now to avoid a second migration)
+ALTER TABLE reservations
+  ADD COLUMN divinea_reservation_id text;
+```
+
+The unique partial index on `divinea_slot_id` prevents duplicate sync and makes upsert reliable.
+
+Regenerate types: `npx supabase gen types typescript --project-id <id> > apps/widget/src/lib/supabase/types.ts`
+
+### 1c. Divinea client module
 
 Create `apps/widget/src/lib/divinea.ts` following the same pattern as `apps/widget/src/lib/stripe.ts`:
 
 - **Config** from env vars (`DIVINEA_API_KEY`, `DIVINEA_WINERY_ID`, `DIVINEA_API_BASE_URL`)
-- **Typed interfaces** for OCTO request/response shapes (`AvailabilityRequest`, `OCTOAvailabilityDTO`, `OCTOAvailabilityCalendarDTO`)
+- **Typed interfaces** for OCTO request/response shapes
 - **Functions (Phase 1, read-only):**
-  - `getAvailabilityCalendar(productId, optionId, dateRange)` — POST `/octo/availability/calendar`
-  - `getAvailabilitySlots(productId, optionId, dateRange)` — POST `/octo/availability`
-  - `getSupplier()` — GET `/octo/supplier` (for testing connectivity)
-- **Functions (Phase 2, added later):**
-  - `createReservationHold(...)` — POST `/v2/reservations/integration/NEW`
-  - `confirmReservation(reservationId)` — PUT `/v2/reservations/{id}/confirm`
-  - `cancelReservation(reservationId)` — PUT `/v2/reservations/{id}/cancel`
+  - `getSupplier()` — `GET /octo/supplier` (connectivity test)
+  - `getAvailabilityCalendar(productId, optionId, dateRange)` — `POST /octo/availability/calendar` (which dates have slots)
+  - `getAvailabilityExtended(productId, optionId, dateRange)` — `POST /octo/availability/extended` (full slot data with languages, capacity, rooms)
 
-All requests send headers: `APIKey: <key>`, `X-DWS-WINERY: <wineryId>`, `Content-Type: application/json`.
+Key types:
 
-### 1c. Database migration
+```typescript
+interface AvailabilityRequest {
+  productId: string;
+  optionId?: string;
+  localDateStart: string;  // yyyy-MM-dd
+  localDateEnd: string;    // yyyy-MM-dd
+  availabilityIds?: string[];
+}
 
-New migration file in `apps/dashboard/supabase/migrations/`:
+interface DivineaSlot {
+  id: string;
+  day: string;             // yyyy-MM-dd
+  startTime: string;       // ISO datetime
+  endTime: string;         // ISO datetime
+  active: boolean;
+  availableSeats: number;
+  occupiedCount: number;
+  maxParties: number;
+  enabledLanguages: string[];
+  experience: { id: string; title: string; duration: number };
+  room?: { id: string; name: string; capacity: number };
+}
+```
 
-- **`experiences` table:** Add `divinea_product_id` (text, nullable), `divinea_option_id` (text, nullable), `calendar_source` (text, default `'traverum'`, check constraint: `'traverum'` or `'divinea'`)
-- **`experience_sessions` table:** Add `divinea_slot_id` (text, nullable) to link each synced session to its Divinea availability ID
-- **`reservations` table:** Add `divinea_reservation_id` (text, nullable) for Phase 2
-
-Regenerate types: `npx supabase gen types typescript --project-id <id> > apps/widget/src/lib/supabase/types.ts`
+All requests include headers:
+```typescript
+{
+  'APIKey': process.env.DIVINEA_API_KEY,
+  'X-DWS-WINERY': process.env.DIVINEA_WINERY_ID,
+  'Content-Type': 'application/json',
+}
+```
 
 ### 1d. Test API route (manual trigger)
 
@@ -86,7 +152,7 @@ Create `apps/widget/src/app/api/divinea/test-availability/route.ts`:
 
 - Protected by `CRON_SECRET` (same pattern as existing crons)
 - Accepts query params: `productId`, `optionId`, `days` (default 30)
-- Calls `getAvailabilitySlots()` from the Divinea client
+- Calls `getAvailabilityExtended()` from the Divinea client
 - Returns raw Divinea response as JSON (for inspection)
 - No DB writes — pure read-only test
 
@@ -96,134 +162,109 @@ Create `apps/widget/src/app/api/cron/sync-divinea/route.ts`:
 
 - Protected by `CRON_SECRET`
 - Query all experiences where `calendar_source = 'divinea'` and `divinea_product_id` is not null
-- For each: call `getAvailabilitySlots(productId, optionId, next 90 days)`
-- **Upsert** into `experience_sessions`:
-  - Match on `divinea_slot_id` (if exists, update; if new, insert)
-  - Map: `localDateTimeStart` -> `session_date` + `start_time`, `vacancies` -> `spots_available` / `spots_total`, `status` -> `session_status` (AVAILABLE/FREESALE -> `'available'`, SOLD_OUT/CLOSED -> skip or `'booked'`)
-  - Store `id` from Divinea response as `divinea_slot_id`
-- **Cleanup:** sessions with `divinea_slot_id` that no longer appear in Divinea response -> delete (or mark cancelled) if `session_status = 'available'`
+- For each: call `getAvailabilityExtended(productId, optionId, next 90 days)`
+- **Status mapping:**
+  - `AVAILABLE`, `FREESALE`, `LIMITED` + `active=true` + `availableSeats > 0` → `session_status: 'available'`, `spots_available: 1, spots_total: 1`
+  - `SOLD_OUT`, `CLOSED`, `active=false`, `availableSeats <= 0` → skip (don't create) or set `session_status: 'cancelled'` if already exists
+- **Field mapping:**
+  - `slot.day` → `session_date`
+  - `format(parseISO(slot.startTime), 'HH:mm:ss')` → `start_time`
+  - `slot.enabledLanguages[0]` → `session_language` (first language; our UI shows one)
+  - `slot.id` → `divinea_slot_id`
+- **Upsert logic:** match on `divinea_slot_id` — if exists update, if new insert
+- **Cleanup:** sessions with `divinea_slot_id` that no longer appear in Divinea response → set `session_status = 'cancelled'` (NOT delete — FK constraint prevents deletion of sessions with reservations)
 - Return summary: `{ synced: N, created: N, updated: N, removed: N }`
-- Add to `vercel.json` crons later (e.g. every 15 min) — for now, manual trigger only
 
-### 1f. Set up a test experience
+### 1f. Cron schedule
+
+Add to `apps/widget/vercel.json`:
+```json
+{
+  "path": "/api/cron/sync-divinea",
+  "schedule": "*/30 * * * *"
+}
+```
+
+Every 30 minutes. For a wine tasting calendar this is more than adequate.
+
+### 1g. Dashboard: calendar source indicator
+
+For experiences with `calendar_source = 'divinea'` in `ExperienceSessions.tsx` and `SupplierSessions.tsx`:
+
+- Show a badge "Synced from Divinea"
+- Hide "Create session" / "Delete session" buttons
+- Sessions are read-only in the dashboard
+
+### 1h. Set up a test experience
 
 - Pick (or create) one test experience in the dashboard
-- Set `calendar_source = 'divinea'`, `divinea_product_id`, `divinea_option_id` (get these from `GET /octo/supplier` or from the Divinea dashboard)
+- Set `calendar_source = 'divinea'`, `divinea_product_id`, `divinea_option_id` (get IDs from `GET /v2/experiences?lang=en` or from the Divinea dashboard)
 - Run the sync manually via `GET /api/cron/sync-divinea?authorization=Bearer <CRON_SECRET>`
 - Verify: sessions appear in the widget for that experience
 
 ---
 
-## Phase 2: Holds and booking lifecycle (staging only)
+## What does NOT change
 
-Goal: Test full hold -> confirm -> release flow against Divinea staging. Wire into existing Traverum booking flow.
-
-### 2a. Divinea client — reservation functions
-
-Add to `apps/widget/src/lib/divinea.ts`:
-
-- `createReservationHold(params)` — POST `/v2/reservations/integration/NEW` with:
-  - `experienceId` (Divinea UUID), `date`, `time`, `guestCount`, `state: 'draft'`
-  - Guest contact info (name, email, phone)
-  - Returns: `reservationId` (Divinea's)
-- `confirmReservation(reservationId)` — PUT `/v2/reservations/{id}/confirm`
-- `cancelReservation(reservationId)` — PUT `/v2/reservations/{id}/cancel`
-
-### 2b. Test API route for holds
-
-Create `apps/widget/src/app/api/divinea/test-hold/route.ts`:
-
-- Protected by `CRON_SECRET`
-- Accepts: `slotId`, test guest details
-- Calls `createReservationHold()`, then immediately `cancelReservation()` (so we never leave a real hold)
-- Returns both responses for inspection
-- This lets us verify the hold/cancel cycle works without affecting anything
-
-### 2c. Wire into reservation creation
-
-In `apps/widget/src/app/api/reservations/route.ts`:
-
-- After validating the session is available (existing code around line 171)
-- Check: does this experience have `calendar_source = 'divinea'`?
-- If yes: load the session's `divinea_slot_id`, call `createReservationHold()` with guest details
-- Store the returned Divinea reservation ID as `divinea_reservation_id` on the Traverum reservation
-- If the hold fails (slot taken in Divinea): return 400 "Slot no longer available"
-- Existing flow continues: create reservation, payment link, etc.
-
-### 2d. Wire into Stripe webhook (confirm on payment)
-
-In `apps/widget/src/app/api/webhooks/stripe/route.ts`:
-
-- In `createBookingFromPayment` (around line 437, after booking insert):
-  - Check: does the reservation have `divinea_reservation_id`?
-  - If yes: call `confirmReservation(divinea_reservation_id)`
-  - Log success/failure; if failure, log error but do NOT block the booking (guest already paid — flag for manual review)
-
-### 2e. Wire into expiry and cancellation
-
-In `apps/widget/src/app/api/cron/expire-reservations/route.ts`:
-
-- In both Part 1 (pending expired) and Part 2 (unpaid expired):
-  - After releasing the session in DB, check `reservation.divinea_reservation_id`
-  - If set: call `cancelReservation(divinea_reservation_id)`
-  - Log result; continue on failure (don't block expiry)
-
-In the Stripe webhook `handlePaymentFailed` (around line 219):
-  - Same: if `reservation.divinea_reservation_id`, call `cancelReservation()`
-
-In booking cancel routes (`apps/widget/src/app/api/bookings/[id]/cancel/route.ts` and `apps/widget/src/app/api/dashboard/bookings/[id]/cancel/route.ts`):
-  - After refunding and releasing the session, if `divinea_reservation_id` is set, call `cancelReservation()`
-
-### 2f. Dashboard: disable manual session management
-
-For experiences with `calendar_source = 'divinea'`:
-
-- Hide "Create Session" / "Delete Session" buttons
-- Show a badge like "Synced from Divinea" on the sessions page
-- This is in `apps/dashboard/src/pages/supplier/ExperienceSessions.tsx` and `apps/dashboard/src/pages/supplier/SupplierSessions.tsx`
+- **Widget UI** (`SessionPicker`, `BookingPanel`, `Calendar`) — zero changes. Divinea sessions appear as regular `experience_sessions` rows.
+- **Pricing** — stays on our side. We set our own price on the Traverum experience. Divinea's pricing is irrelevant.
+- **Email flow** — unchanged. Booking confirmation emails go through our Resend flow.
+- **Commission logic** — unchanged. Divinea bookings follow the same split rules.
+- **Guest experience** — the guest never knows Divinea exists.
 
 ---
 
 ## Key files touched
 
-| File | Change |
-|------|--------|
-| `apps/widget/src/lib/divinea.ts` | **New** — Divinea API client |
-| `apps/widget/src/app/api/divinea/test-availability/route.ts` | **New** — manual test endpoint |
-| `apps/widget/src/app/api/divinea/test-hold/route.ts` | **New** — Phase 2 hold test |
-| `apps/widget/src/app/api/cron/sync-divinea/route.ts` | **New** — availability sync cron |
-| `apps/dashboard/supabase/migrations/...divinea.sql` | **New** — DB migration |
-| `apps/widget/src/lib/supabase/types.ts` | Regenerated |
-| `apps/widget/src/app/api/reservations/route.ts` | Phase 2: add Divinea hold on reserve |
-| `apps/widget/src/app/api/webhooks/stripe/route.ts` | Phase 2: confirm Divinea on payment |
-| `apps/widget/src/app/api/cron/expire-reservations/route.ts` | Phase 2: cancel Divinea on expiry |
-| `apps/widget/src/app/api/bookings/[id]/cancel/route.ts` | Phase 2: cancel Divinea on booking cancel |
-| `apps/widget/vercel.json` | Phase 2: add sync-divinea cron schedule |
-| `apps/dashboard/src/pages/supplier/ExperienceSessions.tsx` | Phase 2: read-only for Divinea experiences |
+| File | Phase | Change |
+|------|-------|--------|
+| `apps/widget/src/lib/divinea.ts` | 1 | **New** — Divinea API client |
+| `apps/dashboard/supabase/migrations/...divinea.sql` | 1 | **New** — DB migration |
+| `apps/widget/src/lib/supabase/types.ts` | 1 | Regenerated |
+| `apps/widget/src/app/api/divinea/test-availability/route.ts` | 1 | **New** — manual test endpoint |
+| `apps/widget/src/app/api/cron/sync-divinea/route.ts` | 1 | **New** — availability sync cron |
+| `apps/widget/vercel.json` | 1 | Add sync-divinea cron schedule |
+| `apps/dashboard/src/pages/supplier/ExperienceSessions.tsx` | 1 | Read-only badge for Divinea experiences |
+| `apps/widget/src/app/api/divinea/test-hold/route.ts` | 2 | **New** — hold cycle test |
+| `apps/widget/src/app/api/reservations/route.ts` | 2 | Add Divinea hold + availability re-check |
+| `apps/widget/src/app/api/webhooks/stripe/route.ts` | 2 | Confirm Divinea on payment |
+| `apps/widget/src/app/api/cron/expire-reservations/route.ts` | 2 | Cancel draft in Divinea on expiry |
+| `apps/widget/src/app/api/bookings/[id]/cancel/route.ts` | 2 | Revoke in Divinea on booking cancel |
+| `apps/dashboard/src/pages/supplier/SupplierSessions.tsx` | 2 | Read-only for Divinea experiences |
+
+---
+
+## Open questions (resolve before Phase 2)
+
+1. **Does `POST /v2/reservations/integration/NEW` accept inline contacts in `reservationContacts`, or do we need `POST /v2/contacts` first?** Test against staging.
+2. **What does `forcePayment=true` actually do?** Does it mark as paid in Divinea, or trigger Divinea's payment flow? Verify.
+3. **Does `hold_seat` state work with confirm/cancel endpoints?** Could be cleaner than `draft` for our payment-window hold pattern.
+4. **When we create a reservation in Divinea, does it consume one party slot or the entire slot?** Affects multi-party capacity. Test with staging.
+5. **Is `optionId` required or optional for each experience?** Some OCTO products may have only one option.
+6. **Cron frequency limits on Vercel plan.** Every 30 min = 48/day. Check plan limits.
+
+---
+
+## Estimated effort
+
+| Step | Effort | Description |
+|------|--------|-------------|
+| 1 | 30 min | DB migration (all columns for both phases) |
+| 2 | 1 hour | `divinea.ts` client with availability functions |
+| 3 | 30 min | Test route: hit Divinea staging, inspect response |
+| 4 | 2 hours | Sync cron: extended availability → experience_sessions |
+| 5 | 30 min | Manual test: set up one experience, run sync, verify in widget |
+| 6 | 30 min | Dashboard: read-only badge for Divinea sessions |
+| **Phase 1 done** | **~5h** | **Guests see Divinea availability in widget calendar** |
+| 7 | 1 hour | Add reservation functions to `divinea.ts` |
+| 8 | 30 min | Test route: create + cancel hold cycle |
+| 9 | 2 hours | Wire hold into reservation creation |
+| 10 | 1 hour | Wire confirm into Stripe webhook |
+| 11 | 1 hour | Wire cancel/revoke into expiry + cancellation |
+| **Phase 2 done** | **~5.5h** | **Full lifecycle: book → pay → confirm in Divinea** |
 
 ---
 
 ## Testing strategy
 
 - **Phase 1:** All calls to Divinea staging, read-only. No risk. Verify slots appear correctly in the widget.
-- **Phase 2:** All calls to Divinea **staging** (not production). Use the test-hold endpoint first to verify create/cancel works. Then test full flow: reserve -> pay -> confirm (or expire -> cancel). Monitor staging calendar in Divinea to verify slots are held/released correctly.
-- **Switch to production:** Only after staging tests pass — change `DIVINEA_API_BASE_URL` to `https://api-crm.divinea.com/api`.
-
----
-
-## Todo checklist (when implementing)
-
-- [ ] Add Divinea env vars to apps/widget/.env.local
-- [ ] Create apps/widget/src/lib/divinea.ts with availability functions (getAvailabilityCalendar, getAvailabilitySlots, getSupplier)
-- [ ] Create migration: add divinea_product_id, divinea_option_id, calendar_source to experiences; divinea_slot_id to experience_sessions; divinea_reservation_id to reservations
-- [ ] Regenerate Supabase types after migration
-- [ ] Create /api/divinea/test-availability route (read-only, returns raw Divinea response)
-- [ ] Create /api/cron/sync-divinea route (fetch Divinea slots, upsert into experience_sessions)
-- [ ] Set up one test experience with Divinea IDs, run sync, verify sessions appear in widget
-- [ ] Add createReservationHold, confirmReservation, cancelReservation to divinea.ts
-- [ ] Create /api/divinea/test-hold route (create + immediately cancel, verify cycle works)
-- [ ] Wire Divinea hold into POST /api/reservations for Divinea-linked experiences
-- [ ] Wire Divinea confirm into Stripe webhook createBookingFromPayment
-- [ ] Wire Divinea cancel into expire-reservations cron and payment-failed handler
-- [ ] Wire Divinea cancel into booking cancel routes
-- [ ] Hide session create/delete for Divinea experiences in dashboard

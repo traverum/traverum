@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatPrice } from '@/lib/utils'
 import { calculatePrice, getDisplayPrice } from '@/lib/pricing'
@@ -34,7 +34,7 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
 
   // Rental-specific state (per_day pricing)
   const [rentalDate, setRentalDate] = useState('')
-  const [rentalDays, setRentalDays] = useState(experience.min_days || 1)
+  const [rentalEndDate, setRentalEndDate] = useState('')
   const [quantity, setQuantity] = useState(1)
 
   const selectedSession = sessions.find(s => s.id === selectedSessionId) || null
@@ -42,23 +42,36 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
   const minDays = experience.min_days || 1
   const maxDays = experience.max_days || null
 
+  const rentalDays = useMemo(() => {
+    if (!isRental || !rentalDate || !rentalEndDate) return experience.min_days || 1
+    const s = new Date(rentalDate + 'T12:00:00')
+    const e = new Date(rentalEndDate + 'T12:00:00')
+    return Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1)
+  }, [isRental, rentalDate, rentalEndDate, experience.min_days])
+
   const priceCalc = isRental
     ? calculatePrice(experience, quantity, null, rentalDays, quantity)
     : calculatePrice(experience, participants, selectedSession)
   const displayPrice = getDisplayPrice(experience)
   
   const hasDateSelection = isRental
-    ? !!rentalDate
+    ? !!(rentalDate && rentalEndDate)
     : (isCustomRequest ? (customDate && requestTime) : selectedSessionId)
 
   const getDateDisplayText = () => {
     if (isRental) {
-      if (!rentalDate) return 'Select date'
-      const d = new Date(rentalDate + 'T12:00:00')
-      const day = d.getDate().toString().padStart(2, '0')
-      const month = (d.getMonth() + 1).toString().padStart(2, '0')
-      const year = d.getFullYear()
-      return `${day}.${month}.${year} · ${rentalDays} ${rentalDays === 1 ? 'day' : 'days'}`
+      if (!rentalDate) return 'Select dates'
+      if (!rentalEndDate) {
+        const d = new Date(rentalDate + 'T12:00:00')
+        const day = d.getDate().toString().padStart(2, '0')
+        const month = (d.getMonth() + 1).toString().padStart(2, '0')
+        const year = d.getFullYear()
+        return `${day}.${month}.${year} – …`
+      }
+      const ds = new Date(rentalDate + 'T12:00:00')
+      const de = new Date(rentalEndDate + 'T12:00:00')
+      const fmt = (d: Date) => `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}`
+      return `${fmt(ds)} – ${fmt(de)} · ${rentalDays} ${rentalDays === 1 ? 'day' : 'days'}`
     }
     if (!hasDateSelection) return 'Select date'
     if (isCustomRequest && customDate) {
@@ -221,8 +234,8 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
         participants={isRental ? quantity : participants}
         availabilityRules={availabilityRules}
         mode={isRental ? 'rental' : 'session'}
-        rentalDays={rentalDays}
-        onRentalDaysChange={setRentalDays}
+        rentalEndDate={rentalEndDate}
+        onRentalEndDateChange={setRentalEndDate}
         minDays={minDays}
         maxDays={maxDays}
       />

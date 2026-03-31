@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      attendance_verifications: {
+        Row: {
+          booking_id: string
+          created_at: string
+          deadline: string
+          guest_response: string | null
+          id: string
+          outcome: string
+          reminder_sent: boolean
+          responded_at: string | null
+          supplier_claim: string
+          verification_token: string
+        }
+        Insert: {
+          booking_id: string
+          created_at?: string
+          deadline: string
+          guest_response?: string | null
+          id?: string
+          outcome?: string
+          reminder_sent?: boolean
+          responded_at?: string | null
+          supplier_claim?: string
+          verification_token: string
+        }
+        Update: {
+          booking_id?: string
+          created_at?: string
+          deadline?: string
+          guest_response?: string | null
+          id?: string
+          outcome?: string
+          reminder_sent?: boolean
+          responded_at?: string | null
+          supplier_claim?: string
+          verification_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_verifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           amount_cents: number
@@ -25,6 +72,7 @@ export type Database = {
           hotel_payout_id: string | null
           id: string
           paid_at: string
+          payment_mode: string
           platform_amount_cents: number
           reservation_id: string
           session_id: string | null
@@ -45,6 +93,7 @@ export type Database = {
           hotel_payout_id?: string | null
           id?: string
           paid_at?: string
+          payment_mode?: string
           platform_amount_cents: number
           reservation_id: string
           session_id?: string | null
@@ -65,6 +114,7 @@ export type Database = {
           hotel_payout_id?: string | null
           id?: string
           paid_at?: string
+          payment_mode?: string
           platform_amount_cents?: number
           reservation_id?: string
           session_id?: string | null
@@ -95,6 +145,100 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "experience_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cancellation_charges: {
+        Row: {
+          amount_cents: number
+          booking_id: string
+          commission_split_cents: Json | null
+          created_at: string
+          id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_payment_intent_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          booking_id: string
+          commission_split_cents?: Json | null
+          created_at?: string
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          booking_id?: string
+          commission_split_cents?: Json | null
+          created_at?: string
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_payment_intent_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cancellation_charges_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_invoices: {
+        Row: {
+          cancellation_credit_cents: number
+          commission_amount_cents: number
+          created_at: string
+          id: string
+          net_amount_cents: number
+          paid_at: string | null
+          partner_id: string
+          pdf_url: string | null
+          period_end: string
+          period_start: string
+          sent_at: string | null
+          status: string
+        }
+        Insert: {
+          cancellation_credit_cents?: number
+          commission_amount_cents: number
+          created_at?: string
+          id?: string
+          net_amount_cents: number
+          paid_at?: string | null
+          partner_id: string
+          pdf_url?: string | null
+          period_end: string
+          period_start: string
+          sent_at?: string | null
+          status?: string
+        }
+        Update: {
+          cancellation_credit_cents?: number
+          commission_amount_cents?: number
+          created_at?: string
+          id?: string
+          net_amount_cents?: number
+          paid_at?: string | null
+          partner_id?: string
+          pdf_url?: string | null
+          period_end?: string
+          period_start?: string
+          sent_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_invoices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
             referencedColumns: ["id"]
           },
         ]
@@ -583,40 +727,58 @@ export type Database = {
       }
       partners: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           city: string | null
           country: string | null
           created_at: string | null
+          display_name: string | null
           email: string
           id: string
           name: string
+          partner_slug: string | null
           partner_type: string
+          payment_mode: string
           phone: string | null
+          profile_visible: boolean
           stripe_account_id: string | null
           stripe_onboarding_complete: boolean | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
+          display_name?: string | null
           email: string
           id?: string
           name: string
+          partner_slug?: string | null
           partner_type: string
+          payment_mode?: string
           phone?: string | null
+          profile_visible?: boolean
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           city?: string | null
           country?: string | null
           created_at?: string | null
+          display_name?: string | null
           email?: string
           id?: string
           name?: string
+          partner_slug?: string | null
           partner_type?: string
+          payment_mode?: string
           phone?: string | null
+          profile_visible?: boolean
           stripe_account_id?: string | null
           stripe_onboarding_complete?: boolean | null
           updated_at?: string | null
@@ -649,8 +811,10 @@ export type Database = {
           reservation_status: string
           response_deadline: string
           session_id: string | null
+          stripe_customer_id: string | null
           stripe_payment_link_id: string | null
           stripe_payment_link_url: string | null
+          stripe_setup_intent_id: string | null
           time_preference: string | null
           total_cents: number
           updated_at: string | null
@@ -680,8 +844,10 @@ export type Database = {
           reservation_status?: string
           response_deadline: string
           session_id?: string | null
+          stripe_customer_id?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
+          stripe_setup_intent_id?: string | null
           time_preference?: string | null
           total_cents: number
           updated_at?: string | null
@@ -711,8 +877,10 @@ export type Database = {
           reservation_status?: string
           response_deadline?: string
           session_id?: string | null
+          stripe_customer_id?: string | null
           stripe_payment_link_id?: string | null
           stripe_payment_link_url?: string | null
+          stripe_setup_intent_id?: string | null
           time_preference?: string | null
           total_cents?: number
           updated_at?: string | null

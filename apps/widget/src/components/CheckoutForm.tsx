@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,6 +9,8 @@ import { AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
 import { getAnalyticsSource } from '@/lib/analytics.client'
 import { DemoSuccessOverlay } from './DemoSuccessOverlay'
+import { CardGuaranteeSection, type CardGuaranteeHandle } from './CardGuaranteeSection'
+import type { PaymentMode } from '@traverum/shared'
 
 const checkoutSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -42,6 +44,8 @@ interface CheckoutFormProps {
   preferredLanguage?: string
   rentalDays?: number
   quantity?: number
+  paymentMode?: PaymentMode
+  cancellationPolicyText?: string
 }
 
 export function CheckoutForm({
@@ -62,12 +66,18 @@ export function CheckoutForm({
   preferredLanguage,
   rentalDays,
   quantity,
+  paymentMode = 'stripe',
+  cancellationPolicyText = 'Free cancellation up to 7 days before.',
 }: CheckoutFormProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showDemoSuccess, setShowDemoSuccess] = useState(false)
   const [submittedData, setSubmittedData] = useState<CheckoutFormData | null>(null)
+  const [policyAccepted, setPolicyAccepted] = useState(false)
+  const stripeRef = useRef<CardGuaranteeHandle>(null)
+
+  const showCardGuarantee = paymentMode === 'pay_on_site' && !isRequest
   
   const {
     register,
@@ -89,18 +99,37 @@ export function CheckoutForm({
     setIsSubmitting(true)
     setError(null)
     
-    // Demo mode: show success overlay without making API call
     if (isDemo) {
-      // Simulate a brief delay for realism
       await new Promise(resolve => setTimeout(resolve, 800))
       setSubmittedData(data)
       setShowDemoSuccess(true)
       setIsSubmitting(false)
       return
     }
+
+    if (showCardGuarantee && !policyAccepted) {
+      setError('Please accept the cancellation policy to continue.')
+      setIsSubmitting(false)
+      return
+    }
     
     try {
       const isDirect = !hotelSlug || hotelSlug === 'experiences'
+      const basePath = isDirect ? '/experiences' : `/${hotelSlug}`
+
+      // Pay-on-site session-based: validate card first via Stripe Elements
+      if (showCardGuarantee) {
+        const handle = stripeRef.current
+        if (!handle?.stripe || !handle?.elements) {
+          throw new Error('Card form is not ready. Please wait a moment and try again.')
+        }
+
+        const { error: submitError } = await handle.elements.submit()
+        if (submitError) {
+          throw new Error(submitError.message ?? 'Card validation failed')
+        }
+      }
+
       const response = await fetch('/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,13 +165,45 @@ export function CheckoutForm({
       if (!response.ok) {
         throw new Error(result.error || 'Failed to create reservation')
       }
+
+      // Pay-on-site session-based: confirm the Setup Intent with Stripe
+      if (showCardGuarantee && result.setupIntentClientSecret) {
+        const handle = stripeRef.current!
+        const reservationUrl = `${window.location.origin}${basePath}/reservation/${result.reservationId}`
+
+        const { error: confirmError } = await handle.stripe!.confirmSetup({
+          elements: handle.elements!,
+          clientSecret: result.setupIntentClientSecret,
+          confirmParams: {
+            return_url: reservationUrl,
+          },
+          redirect: 'if_required',
+        })
+
+        if (confirmError) {
+          throw new Error(confirmError.message ?? 'Failed to save card')
+        }
+
+        // Card saved — create booking via confirm-guarantee
+        const confirmRes = await fetch(`/api/reservations/${result.reservationId}/confirm-guarantee`, {
+          method: 'POST',
+        })
+        const confirmResult = await confirmRes.json()
+        if (!confirmRes.ok) {
+          throw new Error(confirmResult.error || 'Failed to confirm reservation')
+        }
+
+        const next = returnUrl
+          ? `${basePath}/reservation/${result.reservationId}?returnUrl=${encodeURIComponent(returnUrl)}`
+          : `${basePath}/reservation/${result.reservationId}`
+        router.push(next)
+        return
+      }
       
-      // For session-based bookings, redirect directly to payment
-      // For request-based bookings, redirect to reservation page
+      // Stripe session-based: redirect to payment
       if (!isRequest && result.paymentUrl) {
         window.location.href = result.paymentUrl
       } else {
-        const basePath = isDirect ? '/experiences' : `/${hotelSlug}`
         const next = returnUrl
           ? `${basePath}/reservation/${result.reservationId}?returnUrl=${encodeURIComponent(returnUrl)}`
           : `${basePath}/reservation/${result.reservationId}`
@@ -163,7 +224,7 @@ export function CheckoutForm({
             {error}
           </div>
         )}
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="firstName" className="block text-sm font-medium text-foreground mb-2">
@@ -217,7 +278,6 @@ export function CheckoutForm({
               errors.email ? 'border-destructive' : 'border-border'
             )}
             disabled={isSubmitting}
-            placeholder="you@example.com"
           />
           {errors.email && (
             <p className="mt-1.5 text-xs text-destructive">{errors.email.message}</p>
@@ -237,7 +297,6 @@ export function CheckoutForm({
               errors.phone ? 'border-destructive' : 'border-border'
             )}
             disabled={isSubmitting}
-            placeholder="+358 40 123 4567"
           />
           {errors.phone && (
             <p className="mt-1.5 text-xs text-destructive">{errors.phone.message}</p>
@@ -246,6 +305,16 @@ export function CheckoutForm({
             The provider may contact you about your booking
           </p>
         </div>
+
+        {showCardGuarantee && (
+          <CardGuaranteeSection
+            ref={stripeRef}
+            disabled={isSubmitting}
+            cancellationPolicyText={cancellationPolicyText}
+            policyAccepted={policyAccepted}
+            onPolicyChange={setPolicyAccepted}
+          />
+        )}
 
         <div className="space-y-2 pt-1">
           <label className="flex cursor-pointer items-center gap-2.5">
@@ -322,28 +391,32 @@ export function CheckoutForm({
         
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || (showCardGuarantee && !policyAccepted)}
           className={cn(
             'w-full py-3.5 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2',
             isSubmitting && 'opacity-50 cursor-not-allowed'
           )}
         >
           {isSubmitting 
-            ? (isRequest ? 'Sending...' : 'Processing...') 
-            : (isRequest ? 'Send Request' : 'Book Now')
+            ? (showCardGuarantee ? 'Reserving...' : isRequest ? 'Sending...' : 'Processing...')
+            : (showCardGuarantee ? 'Reserve' : isRequest ? 'Send Request' : 'Book Now')
           }
         </button>
         
         <p className="text-xs text-center text-muted-foreground">
-          {isRequest ? (
+          {showCardGuarantee ? (
+            <>
+              By reserving, you agree to our terms of service and cancellation policy.
+            </>
+          ) : isRequest ? (
             <>
               By submitting, you agree to our terms of service and privacy policy.
-              You won't be charged until the provider accepts and you complete payment.
+              You won&apos;t be charged until the provider accepts and you complete payment.
             </>
           ) : (
             <>
               By booking, you agree to our terms of service and privacy policy.
-              You'll be redirected to complete payment securely.
+              You&apos;ll be redirected to complete payment securely.
             </>
           )}
         </p>

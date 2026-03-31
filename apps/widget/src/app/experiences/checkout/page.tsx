@@ -1,9 +1,10 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/server'
-import { VeyondHeader } from '@/components/VeyondHeader'
 import { CheckoutForm } from '@/components/CheckoutForm'
+import { StripeSetupProvider } from '@/components/StripeSetupProvider'
 import { TranslatedBookingSummary } from '@/components/TranslatedBookingSummary'
+import { getCancellationPolicyExperienceIntro } from '@/lib/availability'
+import { PAYMENT_MODES } from '@traverum/shared'
 import type { Experience, ExperienceSession } from '@/lib/supabase/types'
 
 export const dynamic = 'force-dynamic'
@@ -38,7 +39,7 @@ export default async function DirectCheckoutPage({ searchParams }: CheckoutPageP
 
   const { data: experienceData } = await supabase
     .from('experiences')
-    .select('*')
+    .select('*, supplier:partners!experiences_partner_fk(payment_mode)')
     .eq('id', experienceId)
     .single()
 
@@ -47,6 +48,8 @@ export default async function DirectCheckoutPage({ searchParams }: CheckoutPageP
   }
 
   const experience = experienceData as Experience
+  const supplierPaymentMode = (experienceData as any)?.supplier?.payment_mode || PAYMENT_MODES.PAY_ON_SITE
+  const cancellationPolicy = (experience as any).cancellation_policy
 
   let session: ExperienceSession | null = null
   if (search.sessionId) {
@@ -71,56 +74,21 @@ export default async function DirectCheckoutPage({ searchParams }: CheckoutPageP
   const participants = parseInt(participantsStr)
   const totalCents = parseInt(totalStr)
   const isRequest = search.isRequest === 'true'
+  const showCardGuarantee = supplierPaymentMode === PAYMENT_MODES.PAY_ON_SITE && !isRequest
+  const cancellationPolicyText = getCancellationPolicyExperienceIntro(cancellationPolicy)
 
   const sessionDate = session?.session_date
   const sessionTime = session?.start_time
 
   return (
-    <div className="min-h-screen bg-background">
-      <VeyondHeader showBack backTo={`/experiences/${experience.slug}`} />
-
-      <main className="container px-4 py-6">
-        <Link
-          href={`/experiences/${experience.slug}`}
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to experience
-        </Link>
-
+    <>
         <h1 className="text-2xl mb-6 text-heading-foreground">
-          {isRequest ? 'Complete Your Request' : 'Complete Your Booking'}
+          {showCardGuarantee ? 'Reserve Your Spot' : isRequest ? 'Complete Your Request' : 'Complete Your Booking'}
         </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <div className="lg:col-span-3">
-            <div className="bg-card rounded-card border border-border p-6">
-              <h2 className="text-lg font-body text-card-foreground mb-5">
-                Guest Details
-              </h2>
-
-              <CheckoutForm
-                experienceId={experience.id}
-                experienceTitle={experience.title}
-                currency={experience.currency}
-                sessionId={search.sessionId}
-                participants={participants}
-                totalCents={totalCents}
-                isRequest={isRequest}
-                requestDate={search.requestDate}
-                requestTime={search.requestTime}
-                sessionDate={sessionDate}
-                sessionTime={sessionTime}
-                preferredLanguage={search.preferredLanguage}
-                rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
-                quantity={search.quantity ? parseInt(search.quantity) : undefined}
-              />
-            </div>
-          </div>
-
-          <div className="lg:col-span-2">
+          {/* Summary — shown first on mobile, second on desktop */}
+          <div className="order-first lg:order-last lg:col-span-2">
             <TranslatedBookingSummary
               experience={experience}
               session={session}
@@ -132,10 +100,61 @@ export default async function DirectCheckoutPage({ searchParams }: CheckoutPageP
               coverImage={coverImage}
               rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
               quantity={search.quantity ? parseInt(search.quantity) : undefined}
+              payOnSite={showCardGuarantee}
             />
           </div>
+
+          {/* Form */}
+          <div className="lg:col-span-3">
+            <div className="bg-card rounded-card border border-border p-6">
+              <h2 className="text-sm font-medium text-muted-foreground mb-5">
+                Your details
+              </h2>
+
+              {showCardGuarantee ? (
+                <StripeSetupProvider>
+                  <CheckoutForm
+                    experienceId={experience.id}
+                    experienceTitle={experience.title}
+                    currency={experience.currency}
+                    sessionId={search.sessionId}
+                    participants={participants}
+                    totalCents={totalCents}
+                    isRequest={isRequest}
+                    requestDate={search.requestDate}
+                    requestTime={search.requestTime}
+                    sessionDate={sessionDate}
+                    sessionTime={sessionTime}
+                    preferredLanguage={search.preferredLanguage}
+                    rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
+                    quantity={search.quantity ? parseInt(search.quantity) : undefined}
+                    paymentMode={supplierPaymentMode}
+                    cancellationPolicyText={cancellationPolicyText}
+                  />
+                </StripeSetupProvider>
+              ) : (
+                <CheckoutForm
+                  experienceId={experience.id}
+                  experienceTitle={experience.title}
+                  currency={experience.currency}
+                  sessionId={search.sessionId}
+                  participants={participants}
+                  totalCents={totalCents}
+                  isRequest={isRequest}
+                  requestDate={search.requestDate}
+                  requestTime={search.requestTime}
+                  sessionDate={sessionDate}
+                  sessionTime={sessionTime}
+                  preferredLanguage={search.preferredLanguage}
+                  rentalDays={search.rentalDays ? parseInt(search.rentalDays) : undefined}
+                  quantity={search.quantity ? parseInt(search.quantity) : undefined}
+                  paymentMode={supplierPaymentMode}
+                  cancellationPolicyText={cancellationPolicyText}
+                />
+              )}
+            </div>
+          </div>
         </div>
-      </main>
-    </div>
+    </>
   )
 }
