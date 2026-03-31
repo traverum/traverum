@@ -115,15 +115,15 @@ export async function getReceptionistContext(): Promise<ReceptionistAuthResult> 
     }
 
     // No hotel_config_id — fetch all configs for this partner
-    const { data: allConfigs } = await supabase
-      .from('hotel_configs')
+    const { data: allConfigs } = await (supabase
+      .from('hotel_configs') as any)
       .select('*')
       .eq('partner_id', membership.partner_id)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: true }) as { data: HotelConfig[] | null }
 
     if (!allConfigs?.length) continue
 
-    const availableHotelConfigs: AvailableHotelConfig[] = allConfigs.map(c => ({
+    const availableHotelConfigs: AvailableHotelConfig[] = allConfigs.map((c: HotelConfig) => ({
       id: c.id,
       slug: c.slug,
       display_name: c.display_name,
@@ -131,7 +131,7 @@ export async function getReceptionistContext(): Promise<ReceptionistAuthResult> 
 
     const selectedConfig = (
       preferredPropertyId
-        ? allConfigs.find(c => c.id === preferredPropertyId)
+        ? allConfigs.find((c: HotelConfig) => c.id === preferredPropertyId)
         : null
     ) ?? allConfigs[0]
 

@@ -26,10 +26,10 @@ export async function POST(request: NextRequest) {
   const periodLabel = format(previousMonth, 'MMMM yyyy')
 
   // 1. Find all partners with payment_mode = 'pay_on_site'
-  const { data: partners, error: partnersErr } = await supabase
-    .from('partners')
+  const { data: partners, error: partnersErr } = await (supabase
+    .from('partners') as any)
     .select('id, name, email')
-    .eq('payment_mode', PAYMENT_MODES.PAY_ON_SITE)
+    .eq('payment_mode', PAYMENT_MODES.PAY_ON_SITE) as { data: { id: string; name: string; email: string }[] | null; error: any }
 
   if (partnersErr) {
     console.error('Error fetching pay_on_site partners:', partnersErr)
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 6. Create commission_invoices record
-      const { data: invoice, error: insertErr } = await (supabase
+      const { data: invoice, error: insertErr }: { data: any; error: any } = await (supabase
         .from('commission_invoices') as any)
         .insert({
           partner_id: partner.id,

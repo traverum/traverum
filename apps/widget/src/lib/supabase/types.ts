@@ -2434,3 +2434,20 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
+// Convenience types — re-append after every types regeneration
+export type Booking = Database['public']['Tables']['bookings']['Row']
+export type Distribution = Database['public']['Tables']['distributions']['Row']
+export type ExperienceSession = Database['public']['Tables']['experience_sessions']['Row']
+export type Experience = Database['public']['Tables']['experiences']['Row']
+export type HotelConfig = Database['public']['Tables']['hotel_configs']['Row']
+export type HotelPayout = Database['public']['Tables']['hotel_payouts']['Row']
+export type Media = Database['public']['Tables']['media']['Row']
+export type Partner = Database['public']['Tables']['partners']['Row']
+export type Reservation = Database['public']['Tables']['reservations']['Row']
+export type User = Database['public']['Tables']['users']['Row']
+
+// Status enums
+export type ReservationStatus = 'pending' | 'approved' | 'declined' | 'expired'
+export type BookingStatus = 'confirmed' | 'completed' | 'cancelled'
+export type SessionStatus = 'available' | 'booked' | 'cancelled'

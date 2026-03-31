@@ -147,7 +147,7 @@ export default async function ExperienceDirectPage({ params }: ExperiencePagePro
                           className="text-muted-foreground"
                           style={{ fontSize: 'var(--font-size-sm)' }}
                         >
-                          <TranslatedText experienceId={experience.id} field="meetingPoint" fallback={experience.meeting_point} />
+                          <TranslatedText experienceId={experience.id} field="meetingPoint" fallback={experience.meeting_point ?? ''} />
                         </p>
                       </div>
                     )}
@@ -158,7 +158,7 @@ export default async function ExperienceDirectPage({ params }: ExperiencePagePro
               howItWorksText={buildHowItWorksText({
                 paymentMode: experience.supplier.payment_mode,
                 hasSessions: sessions.length > 0,
-                allowsRequests: experience.allows_requests,
+                allowsRequests: experience.allows_requests ?? false,
                 isRental: experience.pricing_type === 'per_day',
               })}
               paymentText={buildPaymentText({

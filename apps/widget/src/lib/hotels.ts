@@ -12,12 +12,9 @@ export interface HotelWithExperiences {
   experiences: ExperienceWithMedia[]
 }
 
-export interface ExperienceWithMedia extends Experience {
+export type ExperienceWithMedia = Experience & {
   media: Media[]
   coverImage: string | null
-  location_city?: string | null
-  location_region?: string | null
-  location_country?: string | null
   supplier: {
     id: string
     name: string
@@ -245,6 +242,7 @@ const DIRECT_DISTRIBUTION: Distribution = {
   commission_hotel: SELF_OWNED_COMMISSION.hotel,
   commission_platform: SELF_OWNED_COMMISSION.platform,
   is_active: true,
+  selected_for_widget: true,
   sort_order: 0,
   created_at: null,
 }
@@ -414,14 +412,12 @@ export async function getVisibleHosts(
 
     if (!distData || distData.length === 0) return []
 
-    const partnerIds = [
-      ...new Set(
-        (distData as any[])
-          .filter(d => d.experience?.experience_status === 'active')
-          .map(d => d.experience.partner_id)
-          .filter(Boolean) as string[]
-      ),
-    ]
+    const partnerIds = Array.from(new Set(
+      (distData as any[])
+        .filter(d => d.experience?.experience_status === 'active')
+        .map(d => d.experience.partner_id)
+        .filter(Boolean) as string[]
+    ))
 
     if (partnerIds.length === 0) return []
 
@@ -497,12 +493,12 @@ export async function getHostBySlug(
 ): Promise<HostWithExperiences | null> {
   const supabase = createAdminClient()
 
-  const { data: partnerData } = await supabase
-    .from('partners')
+  const { data: partnerData } = await (supabase
+    .from('partners') as any)
     .select('id, display_name, bio, avatar_url, partner_slug, city, country, profile_visible')
     .eq('partner_slug', hostSlug)
     .eq('profile_visible', true)
-    .single()
+    .single() as { data: any }
 
   if (!partnerData || !partnerData.display_name || !partnerData.partner_slug) {
     return null

@@ -62,7 +62,7 @@ export function AvailabilityResults() {
 
   return (
     <section
-      ref={resultsRef}
+      ref={resultsRef as React.RefObject<HTMLElement>}
       id="availability-results"
       className="hidden md:block mt-10 pt-8 border-t border-border font-body scroll-mt-24"
       aria-labelledby="availability-heading"

@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Enrich with partner names
-  const partnerIds = [...new Set((invoices || []).map((i: any) => i.partner_id))]
+  const partnerIds = Array.from(new Set((invoices || []).map((i: any) => i.partner_id)))
 
   let partnerMap = new Map<string, string>()
   if (partnerIds.length > 0) {

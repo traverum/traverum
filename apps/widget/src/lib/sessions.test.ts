@@ -12,6 +12,7 @@ const makeSession = (overrides: Record<string, unknown> = {}) => ({
   price_override_cents: null,
   price_note: null,
   session_language: null,
+  divinea_slot_id: null,
   created_at: null,
   updated_at: null,
   ...overrides,

@@ -86,11 +86,11 @@ async function syncExperience(
       updated_at: new Date().toISOString(),
     }
 
-    const { data: existing } = await supabase
-      .from('experience_sessions')
+    const { data: existing } = await (supabase
+      .from('experience_sessions') as any)
       .select('id')
       .eq('divinea_slot_id', slot.id)
-      .maybeSingle()
+      .maybeSingle() as { data: { id: string } | null }
 
     if (existing) {
       await (supabase.from('experience_sessions') as any)
@@ -105,12 +105,12 @@ async function syncExperience(
   }
 
   // Cancel sessions that DiVinea no longer returns
-  const { data: existingSessions } = await supabase
-    .from('experience_sessions')
+  const { data: existingSessions } = await (supabase
+    .from('experience_sessions') as any)
     .select('id, divinea_slot_id')
     .eq('experience_id', experience.id)
     .not('divinea_slot_id', 'is', null)
-    .neq('session_status', 'cancelled')
+    .neq('session_status', 'cancelled') as { data: { id: string; divinea_slot_id: string }[] | null }
 
   for (const session of existingSessions ?? []) {
     if (session.divinea_slot_id && !freshSlotIds.has(session.divinea_slot_id)) {
@@ -134,11 +134,11 @@ async function handler(request: NextRequest) {
 
   const supabase = createAdminClient()
 
-  const { data: experiences, error } = await supabase
-    .from('experiences')
+  const { data: experiences, error } = await (supabase
+    .from('experiences') as any)
     .select('id, title, divinea_product_id, divinea_option_id')
     .eq('calendar_source', 'divinea')
-    .not('divinea_product_id', 'is', null)
+    .not('divinea_product_id', 'is', null) as { data: { id: string; title: string; divinea_product_id: string | null; divinea_option_id: string | null }[] | null; error: any }
 
   if (error) {
     console.error('sync-divinea: failed to query experiences:', error)
