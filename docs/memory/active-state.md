@@ -1,9 +1,10 @@
 # Active State
 
-Last updated: 2026-03-28
+Last updated: 2026-03-31
 
 ## Recently Done
 
+- [x] **Production migration Phase 1 (merge to main):** PR #1 created and pushed. 311 files committed. All 337 unit tests pass. Widget typecheck fixed (restored convenience type aliases, ExperienceWithMedia intersection type, Supabase query type assertions). Dashboard and Admin Vercel preview builds pass. See [2026-03-31_production-migration-phase1](sessions/2026-03-31_production-migration-phase1.md).
 - [x] **Experience search & filters:** Search bar (text + tag matching), date/time-of-day/people filters on full listing pages (hotel widget + Veyond direct). Netflix carousels switch to filtered grid when any filter is active. Session-based experiences filtered by actual session availability; request-based always shown with "On Request" badge. `CategoryAnchorSection` temporarily removed (redundant with tag pills). See [2026-03-28_experience-search-filters](sessions/2026-03-28_experience-search-filters.md).
 - [x] **Hosts section (guest-facing supplier profiles):** New "Hosts" section on Veyond direct (`/experiences`) and hotel widget full pages showing supplier profiles with avatar, name, city, and link to host detail page. Five new columns on `partners` (`display_name`, `bio`, `avatar_url`, `profile_visible`, `partner_slug`). Migration `20260328120000_add_partner_profiles.sql` applied to staging. Dashboard Settings has new "Host profile" card with avatar upload, bio, slug, visibility toggle. `ScrollRow` extracted from `NetflixLayout` for reuse. Host detail pages at `/experiences/hosts/[hostSlug]` and `/[hotelSlug]/hosts/[hostSlug]`. Section renders at bottom of listing pages; renders nothing when no hosts have opted in. See [2026-03-28_hosts-section](sessions/2026-03-28_hosts-section.md).
 - [x] **Experience tags + Veyond browse (Netflix rows):** Replaced single-category model with eight multi-select tags (`EXPERIENCE_TAGS` in `@traverum/shared`). Stored in existing `experiences.tags` (`text[]`). Data migration `20260327120000_replace_categories_with_tags.sql` remaps old slugs. Dashboard: `TagSelector`, form + dashboard + hotel selection updated. Widget: `/experiences` uses `NetflixLayout` (horizontal scroll per tag row); hotel widget `ExperienceListClient` filters by any tag. See [2026-03-27_experience-tags](sessions/2026-03-27_experience-tags.md) and `docs/deployment/DEPLOYMENT.md` (Experience tags subsection).
@@ -31,15 +32,16 @@ Last updated: 2026-03-28
 
 - Staging DB may drift from production schema (`sort_order` fallback in `hotels.ts`)
 - Placeholder highlights/included/not-included shown for all experiences (no DB columns yet)
-- Pre-existing widget `pnpm typecheck` failures (e.g. `sync-divinea` route, `hotels.ts`, `commission.test.ts`, `sessions.test.ts`) — not introduced by Pay on Site Phase 4; not blocking local UI work
 - Root `node_modules/lucide-react` still resolves to v0.462.0 despite pnpm overrides — mitigated by webpack alias in widget's `next.config.js`
+- **CRITICAL before production deploy:** `partners.payment_mode` defaults to `'pay_on_site'`. Existing Stripe-active partners may need a data migration setting `payment_mode = 'stripe'` where `stripe_onboarding_complete = true`.
 
 ## Open Items
 
-- [ ] **Hosts section — production rollout:** (1) Apply migration `20260328120000_add_partner_profiles` on production. (2) Deploy dashboard (suppliers set up profiles). (3) Deploy widget. Suppliers enable via Settings > Host profile.
-- [ ] **Experience tags — production rollout:** (1) Deploy dashboard (suppliers can set multiple tags). (2) Apply migration `20260327120000_replace_categories_with_tags.sql` on production (same SQL as in git). (3) Deploy widget. Optional: verify on staging first. No `types.ts` regen required (no DDL).
-- [x] **Checkout date format blast radius check:** `formatDate` changed from `27.03` to `27 Mar` globally — verified confirmation pages (hotel + experiences), reservation pages (hotel + experiences), receptionist bookings list, demo overlay, BookingSummary sidebar, ExperienceCard availability label, and supplier respond page all render correctly with new format. 36 unit tests pass.
-- [ ] **Reserve & Pay on Site — deploy all 7 phases:** All code complete. Deploy to staging, test end-to-end with a test pay_on_site partner. Set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` on Vercel.
+- [ ] **Production migration Phase 2–5:** Merge PR #1 → apply 8 migrations to production → regenerate types → deploy Dashboard → Widget → Admin → verify. Full checklist in [2026-03-31_production-migration-phase1](sessions/2026-03-31_production-migration-phase1.md).
+- [ ] **CRITICAL: Check `payment_mode` default for existing partners** before applying `20260326120000_pay_on_site_schema.sql` to production. Existing Stripe partners will get `payment_mode = 'pay_on_site'` default. Likely need a follow-up migration: `UPDATE partners SET payment_mode = 'stripe' WHERE stripe_onboarding_complete = true`.
+- [ ] **Verify `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** is set on production Vercel (widget project) — required for pay-on-site card guarantee UI.
+- [ ] **DiVinea `sync-divinea` cron** — verify it exits gracefully when env vars are not set on production (runs every 30 min).
+- [x] **Checkout date format blast radius check:** `formatDate` changed from `27.03` to `27 Mar` globally — verified. 36 unit tests pass.
 - [ ] **Invoice cron test:** Trigger `/api/cron/generate-invoices` manually on staging with a test partner that has completed pay_on_site bookings
 - [ ] **PDF invoices (optional):** `commission_invoices.pdf_url` column exists but is unused — consider PDF generation later
 - [ ] **DiVinea go-live:** Apply migration to production → set Vercel env vars → link one experience with `productId` → run first sync → verify widget
@@ -48,4 +50,4 @@ Last updated: 2026-03-28
 
 ## Latest Session
 
-[2026-03-28_experience-search-filters](sessions/2026-03-28_experience-search-filters.md)
+[2026-03-31_production-migration-phase1](sessions/2026-03-31_production-migration-phase1.md)

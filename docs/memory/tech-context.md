@@ -6,6 +6,24 @@ Entries are reverse chronological. Most recent first.
 
 ---
 
+## 2026-03 — ExperienceWithMedia: intersection type, not interface extends
+
+`ExperienceWithMedia` in `apps/widget/src/lib/hotels.ts` uses `type X = Experience & { ... }` (intersection) instead of `interface X extends Experience { ... }`. The generated `Experience` Row type has nullable fields like `allows_requests: boolean | null`, and an interface `extends` breaks when it redeclares those with different optionality (e.g. `allows_requests?: boolean | null`). Intersection types merge cleanly. **Rule:** always use `&` intersection for types that extend generated Supabase Row types.
+
+---
+
+## 2026-03 — Supabase generated types: convenience aliases are mandatory
+
+The widget types file (`apps/widget/src/lib/supabase/types.ts`) **must** have convenience type aliases appended at the bottom after every regeneration: `Experience`, `Booking`, `Partner`, `HotelConfig`, `Media`, `Distribution`, `ExperienceSession`, `Reservation`, `User`, `HotelPayout`, plus status union types. Without them, `next build` fails on Vercel (200+ type errors). The dashboard types file (`apps/dashboard/src/integrations/supabase/types.ts`) has the same pattern. Both files have a comment block `// Convenience types` marking the section.
+
+---
+
+## 2026-03 — Supabase query `never` types: use type assertions
+
+Some Supabase queries return `never` because the generated types have empty `Relationships: []` on tables that actually have foreign keys (e.g. `partners`, `hotel_configs`, `experience_sessions`). The runtime queries work correctly. Fix with `as any` on `.from()` plus explicit return type: `await (supabase.from('partners') as any).select('id, name, email') as { data: { id: string; name: string; email: string }[] | null; error: any }`. This pattern is used in `generate-invoices`, `sync-divinea`, `receptionist/auth.ts`, and `hotels.ts`.
+
+---
+
 ## 2026-03 — Hosts section (partner profile columns + ScrollRow extraction)
 
 **Schema:** Five new columns on `partners`: `display_name text`, `bio text`, `avatar_url text`, `profile_visible boolean NOT NULL DEFAULT false`, `partner_slug text` (partial unique index on non-null values). Migration: `20260328120000_add_partner_profiles.sql`.
