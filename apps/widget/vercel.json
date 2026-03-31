@@ -9,7 +9,7 @@
     },
     {
       "path": "/api/cron/completion-check",
-      "schedule": "0 * * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/cron/expire-unpaid",
@@ -21,7 +21,7 @@
     },
     {
       "path": "/api/cron/sync-divinea",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 5 * * *"
     },
     {
       "path": "/api/cron/attendance-reminder",
