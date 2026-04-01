@@ -85,7 +85,7 @@ const LEGACY_TAG_MAP: Record<string, ExperienceTag> = {
  */
 export const migrateLegacyTags = (tags: string[]): string[] => {
   const mapped = tags.map(t => LEGACY_TAG_MAP[t] ?? t);
-  return [...new Set(mapped)];
+  return Array.from(new Set(mapped));
 };
 
 export const getTagLabel = (tagId: string | null): string => {
