@@ -114,9 +114,9 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
           {/* Gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
           {/* Text overlay at bottom */}
-          <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-            <h3 className={cn("text-2xl font-light mb-3", isTranslating && "animate-pulse")}>{translatedTitle}</h3>
-            <span className="text-sm font-medium tabular-nums">
+          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 md:p-6 text-white">
+            <h3 className={cn("text-sm sm:text-base md:text-2xl font-light mb-1 sm:mb-2 md:mb-3 line-clamp-2", isTranslating && "animate-pulse")}>{translatedTitle}</h3>
+            <span className="text-xs sm:text-sm font-medium tabular-nums">
               From {formatPrice(priceDisplay.amount, currency)}
             </span>
           </div>
@@ -154,8 +154,8 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
             </svg>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        <h3 className={cn("absolute bottom-4 left-4 right-4 font-heading text-lg text-white", isTranslating && "animate-pulse")}>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        <h3 className={cn("absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4 font-heading text-xs sm:text-sm md:text-base lg:text-lg text-white line-clamp-2", isTranslating && "animate-pulse")}>
           {translatedTitle}
         </h3>
       </div>
