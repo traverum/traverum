@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { EXPERIENCE_TAGS, getTagLabel } from '@traverum/shared'
+import { EXPERIENCE_TAGS, getTagLabel, migrateLegacyTags } from '@traverum/shared'
 import type { ExperienceWithMedia } from '@/lib/hotels'
 
 /**
@@ -226,17 +226,17 @@ export interface TagSection {
 export function groupExperiencesByTag(experiences: ExperienceWithMedia[]): TagSection[] {
   const result: TagSection[] = []
   const grouped = new Map<string, ExperienceWithMedia[]>()
-  const untagged: ExperienceWithMedia[] = []
+  const ungrouped: ExperienceWithMedia[] = []
 
   for (const exp of experiences) {
-    const expTags = (exp.tags || []).filter((t: string) =>
+    const validTags = migrateLegacyTags(exp.tags || []).filter((t: string) =>
       EXPERIENCE_TAGS.some(tag => tag.id === t)
     )
 
-    if (expTags.length === 0) {
-      untagged.push(exp)
+    if (validTags.length === 0) {
+      ungrouped.push(exp)
     } else {
-      for (const tag of expTags) {
+      for (const tag of validTags) {
         if (!grouped.has(tag)) grouped.set(tag, [])
         grouped.get(tag)!.push(exp)
       }
@@ -251,6 +251,10 @@ export function groupExperiencesByTag(experiences: ExperienceWithMedia[]): TagSe
   }
 
   result.sort((a, b) => b.experiences.length - a.experiences.length)
+
+  if (ungrouped.length > 0) {
+    result.push({ id: 'other', label: 'More Experiences', experiences: ungrouped })
+  }
 
   return result
 }

@@ -26,6 +26,7 @@ import { useExperienceAvailability } from '@/hooks/useExperienceAvailability';
 import { supabase } from '@/integrations/supabase/client';
 import { ImageUploader, MediaItem } from '@/components/ImageUploader';
 import { TagSelector } from '@/components/TagSelector';
+import { migrateLegacyTags } from '@traverum/shared';
 import { AvailabilityEditor } from '@/components/experience/AvailabilityEditor';
 import { CancellationPolicySelector } from '@/components/experience/CancellationPolicySelector';
 import { PricingType } from '@/lib/pricing';
@@ -107,7 +108,7 @@ function ExperienceDashboardInner() {
 
   // Form state — seeded from cached experience so the first render already shows correct data
   const [title, setTitle] = useState(() => experience?.title || '');
-  const [selectedTags, setSelectedTags] = useState<string[]>(() => exp?.tags || []);
+  const [selectedTags, setSelectedTags] = useState<string[]>(() => migrateLegacyTags(exp?.tags || []));
   const [description, setDescription] = useState(() => experience?.description || '');
   const [images, setImages] = useState<MediaItem[]>([]);
   const [durationMinutes, setDurationMinutes] = useState(() => experience?.duration_minutes?.toString() || '');
@@ -257,7 +258,7 @@ function ExperienceDashboardInner() {
   useEffect(() => {
     if (experience && !hasInitialized.current) {
       setTitle(experience.title);
-      setSelectedTags((experience as any).tags || []);
+      setSelectedTags(migrateLegacyTags((experience as any).tags || []));
       setDescription(experience.description);
       setDurationMinutes(experience.duration_minutes.toString());
       setAvailableLanguages((experience as any).available_languages || []);

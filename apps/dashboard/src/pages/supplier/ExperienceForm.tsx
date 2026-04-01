@@ -14,6 +14,7 @@ import { SupportToastAction } from '@/components/SupportToastAction';
 import { ImageUploader, MediaItem } from '@/components/ImageUploader';
 import { PricingType, PricingConfig, getPriceExamples } from '@/lib/pricing';
 import { TagSelector } from '@/components/TagSelector';
+import { migrateLegacyTags } from '@traverum/shared';
 import { FormSection } from '@/components/experience/FormSection';
 import { AvailabilityEditor, defaultAvailability } from '@/components/experience/AvailabilityEditor';
 import { CancellationPolicySelector, defaultCancellationPolicy } from '@/components/experience/CancellationPolicySelector';
@@ -105,7 +106,7 @@ export default function ExperienceForm() {
       if (experience) {
         // Basic info
         setTitle(experience.title);
-        setSelectedTags((experience as any).tags || []);
+        setSelectedTags(migrateLegacyTags((experience as any).tags || []));
         setDescription(experience.description);
         setDurationMinutes(experience.duration_minutes.toString());
         setMeetingPoint(experience.meeting_point || '');

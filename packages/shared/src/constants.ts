@@ -70,6 +70,24 @@ export const EXPERIENCE_TAGS = [
 
 export type ExperienceTag = typeof EXPERIENCE_TAGS[number]['id'];
 
+const LEGACY_TAG_MAP: Record<string, ExperienceTag> = {
+  food: 'food_wine',
+  culture: 'history',
+  nature: 'adventure_outdoors',
+  adventure: 'adventure_outdoors',
+  wellness: 'classic',
+  nightlife: 'local_life',
+};
+
+/**
+ * Map old category slugs to current tag IDs and deduplicate.
+ * Safe to call on already-migrated arrays — returns them unchanged.
+ */
+export const migrateLegacyTags = (tags: string[]): string[] => {
+  const mapped = tags.map(t => LEGACY_TAG_MAP[t] ?? t);
+  return [...new Set(mapped)];
+};
+
 export const getTagLabel = (tagId: string | null): string => {
   if (!tagId) return 'All';
   const tag = EXPERIENCE_TAGS.find(t => t.id === tagId);
