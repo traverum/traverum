@@ -13,6 +13,15 @@ description: >-
 
 Read this skill in full before writing or applying any migration.
 
+## Environments
+
+| Environment | MCP Server | Supabase Project | Vercel Scope | When to use |
+|---|---|---|---|---|
+| Staging | `user-supabase-staging` | Staging project | Preview deployments | All development, testing, new migrations |
+| Production | Production MCP | Production project | Production deployments | After staging is verified |
+
+Vercel env vars are scoped: `NEXT_PUBLIC_SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` point to staging on Preview, production on Production.
+
 ## Golden Rules
 
 1. **Migrations live in git.** Both environments consume the same SQL file.
@@ -20,6 +29,7 @@ Read this skill in full before writing or applying any migration.
 3. **Staging first, always.** Production only after staging is verified and tested.
 4. **Identical SQL.** The SQL applied to production must be byte-for-byte identical to what was applied to staging and saved in git.
 5. **One migration per logical change.** Don't bundle unrelated changes into one file.
+6. **Always regenerate types and re-append convenience aliases.** See `docs/kb/decisions.md` > Types.
 
 ## Before Writing Any SQL
 
@@ -225,3 +235,45 @@ Same workflow. Test by querying as different roles on staging.
 
 ### Function/RPC changes
 Use `CREATE OR REPLACE FUNCTION` so the migration is idempotent.
+
+## Breaking Changes (Two-Phase Migration)
+
+Breaking changes (dropping columns, renaming columns, changing types) require two phases to avoid downtime:
+
+### Phase 1 — Add the new, keep the old
+1. Add new column/table alongside the old one
+2. Update app code to write to **both** old and new
+3. Deploy app code
+4. Backfill new column from old data
+
+### Phase 2 — Remove the old (separate PR, later)
+1. Update app code to read/write only the new column
+2. Deploy app code
+3. Drop old column in a new migration
+
+**Never drop a column in the same deployment as the code change that stops using it.** The old code may still be running during deployment.
+
+## Rollback Patterns
+
+If a migration causes issues:
+
+- **Additive changes** (new column, new table): Safe to leave in place while fixing app code. Drop in a follow-up migration if needed.
+- **Data migrations**: Write a reverse migration before applying. Test the reverse on staging.
+- **Destructive changes**: This is why we require two-phase. If you followed the protocol, Phase 1 is always safe to roll back (old code still works).
+
+## Sync Check
+
+Before applying a migration to production, verify staging and production are in sync:
+
+```
+# On both staging and production MCP:
+list_migrations
+```
+
+Compare the migration lists. If production is behind, apply missing migrations in order before the new one.
+
+## Related KB Pages
+
+- Schema reference: `docs/kb/schema.md`
+- API routes (to check which apps use a table): `docs/kb/api-routes.md`
+- Technical decisions (type conventions, convenience aliases): `docs/kb/decisions.md`

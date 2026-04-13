@@ -18,13 +18,15 @@ Listen for moments where the user shares knowledge that should persist beyond th
 
 When you detect a trigger, route the knowledge to the right file:
 
-- **Product knowledge** (business rules, user flows, UX rules, how the product should behave) → `docs/memory/product-context.md`
-- **Technical decisions** (architecture choices, implementation patterns, code conventions, pitfalls) → `docs/memory/tech-context.md`
+- **Product knowledge** (business rules, user flows, UX rules, how the product should behave) → `docs/kb/product-notes.md` (update the relevant topic section in-place, never append chronologically)
+- **Technical decisions** (architecture choices, implementation patterns, code conventions, pitfalls) → `docs/kb/decisions.md` (update the relevant topic section in-place, never append chronologically)
+- **Schema changes** → also update `docs/kb/schema.md`
+- **New API routes or email triggers** → also update `docs/kb/api-routes.md` / `docs/kb/email-flows.md`
 - **Not sure where it belongs** → ask: *"Should I add this to [file]?"*
 
 ## After routing
 
-Briefly confirm in one line: *"Logged to product-context.md: cancellation is free within 24h."*
+Briefly confirm in one line: *"Logged to decisions.md > Stripe: card guarantee uses deferred pattern."*
 
 If the knowledge **contradicts** an existing entry in either context file, flag it before updating: *"This contradicts [existing entry]. Should I update it?"*
 

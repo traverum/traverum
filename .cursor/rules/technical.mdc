@@ -50,7 +50,7 @@ Most important flow is our booking flow.
 
 ## Technical decisions
 
-**For understanding your past decisions, read:** `docs/memory/active-state.md`, `docs/memory/product-context.md`, `docs/memory/tech-context.md`. These are decisions we have made in the past together. Not set in stone but useful for keeping the product working and our users happy.
+**For understanding past decisions and current state, read:** `docs/kb/active-state.md` (operational state), `docs/kb/decisions.md` (technical decisions by topic), `docs/kb/product-notes.md` (product knowledge by domain). For schema, API routes, emails, and Stripe setup see `docs/kb/INDEX.md`. These are decisions we have made together. Not set in stone but useful for keeping the product working and our users happy.
 
 ## AI Agent Readiness — Think Like a Fifth User
 
@@ -79,6 +79,10 @@ Your primary objective is to write code that is incredibly easy for *future AI s
 - **Emails** → `docs/product/system/communication.md`, `docs/design/email-design.md`
 - **Embed / widget** → `docs/product/system/embed.md`
 - **Dashboard & Admin UI** → `docs/design/dashboard-design-principles.md`
-- **Product rules & pitfalls** → `docs/memory/product-context.md`
-- **Tech decisions & pitfalls** → `docs/memory/tech-context.md`
+- **Product rules & pitfalls** → `docs/kb/product-notes.md`
+- **Tech decisions & pitfalls** → `docs/kb/decisions.md`
+- **Database schema** → `docs/kb/schema.md`
+- **API routes** → `docs/kb/api-routes.md`
+- **Email flows** → `docs/kb/email-flows.md`
+- **Stripe setup** → `docs/kb/stripe-setup.md`
 - **Deploy, env, crons** → `docs/deployment/DEPLOYMENT.md`

@@ -86,15 +86,22 @@ Organized by **persona** — the person using that part of the product. See `doc
 
 ---
 
-## Memory & Quality System
+## Knowledge Base (`docs/kb/`)
 
-| Doc | Purpose |
+AI-maintained, topic-based reference. See `docs/kb/INDEX.md` for full catalog.
+
+| Page | Purpose |
 |-----|---------|
-| `memory/active-state.md` | Living handover between sessions — open items, recently done, known issues |
-| `memory/product-context.md` | Product knowledge learned from chats — AI staging area for `docs/product/` |
-| `memory/tech-context.md` | Technical decisions made by the AI — not set in stone, override freely |
-| `testing.md` | Test coverage map (optional file at `docs/testing.md`; regenerated when `/test` runs) |
-| `memory/sessions/_template.md` | Session log template (Goal, Blast Radius, Done, Decisions, Open Items) |
+| `kb/INDEX.md` | Catalog of all KB pages with maintenance rules |
+| `kb/schema.md` | Every database table, column, type, RLS policy, and relationship |
+| `kb/api-routes.md` | All 53 widget API routes + 2 edge functions |
+| `kb/email-flows.md` | Every email trigger, recipient, template, and subject line |
+| `kb/stripe-setup.md` | Our Stripe Connect implementation: accounts, webhooks, payment flows |
+| `kb/decisions.md` | Technical decisions grouped by topic (replaces `memory/tech-context.md`) |
+| `kb/product-notes.md` | Product knowledge by domain (replaces `memory/product-context.md`) |
+| `kb/active-state.md` | Operational state: known issues, open items, latest session |
+| `kb/sessions/` | Session logs — one file per session. Template: `kb/sessions/_template.md` |
+| `testing.md` | Test coverage map (optional; regenerated when `/test` runs) |
 
 ### Slash commands
 
@@ -102,13 +109,13 @@ Defined in `.cursor/commands/` (Cursor exposes them as `/plan`, `/wrap-up`, `/te
 
 | Command | When | What it does |
 |---------|------|-------------|
-| `/plan` | Before a significant build | Reads memory, maps blast radius, creates `docs/memory/sessions/YYYY-MM-DD_topic.md` |
-| `/wrap-up` | End of session or switching chats | Updates session file + `docs/memory/active-state.md`, scans for missed knowledge capture |
+| `/plan` | Before a significant build | Reads KB, maps blast radius, creates `docs/kb/sessions/YYYY-MM-DD_topic.md` |
+| `/wrap-up` | End of session or switching chats | Updates session file + `docs/kb/active-state.md`, scans for missed knowledge capture |
 | `/test` | Deploy confidence | Runs unit + E2E tests, updates `docs/testing.md` when present, gives deploy verdict |
 
 ### Always-on rule
 
-`knowledge-capture.mdc` — listens for decisions, corrections, new product context, and constraints during conversation. Routes them to `memory/product-context.md`, `memory/tech-context.md`, or cursor rules and briefly confirms.
+`knowledge-capture.mdc` — listens for decisions, corrections, new product context, and constraints during conversation. Routes them to `kb/decisions.md`, `kb/product-notes.md`, or cursor rules and briefly confirms.
 
 ---
 
@@ -132,7 +139,7 @@ Injected according to each rule’s Cursor config (`alwaysApply` / globs). You d
 | [`integrations/divinea-integration.md`](integrations/divinea-integration.md) | Divinea Wine Suite (OCTO API): availability sync, holds, booking lifecycle. Phased plan — Phase 1 read-only, Phase 2 hold/confirm/release. |
 | [`context7/supabase-cli-reference.md`](context7/supabase-cli-reference.md) | Supabase CLI reference (local dev, migrations, etc.). |
 
-Most day-to-day specs live in `docs/product/`, `docs/design/`, `docs/memory/product-context.md`, and `docs/memory/tech-context.md`. Cursor rules point to those sources instead of duplicating them.
+Most day-to-day specs live in `docs/product/`, `docs/design/`, and `docs/kb/`. Cursor rules point to those sources instead of duplicating them.
 
 ---
 
@@ -152,6 +159,6 @@ Most day-to-day specs live in `docs/product/`, `docs/design/`, `docs/memory/prod
 |--------|-----------------|
 | `docs/deployment/` | [DEPLOYMENT.md](deployment/DEPLOYMENT.md) — env vars, cron schedules, Supabase migrations, Stripe webhooks. Architecture and build commands are in the `technical` cursor rule. |
 | `docs/planning/` | Planning and implementation docs. **Receptionist:** [receptionist-tool.md](planning/receptionist-tool.md) — purpose, user stories, implementation notes, branch testing. |
-| `docs/memory/sessions/` | Session logs — one file per session. Template: [`_template.md`](memory/sessions/_template.md). |
-| `docs/memory/active-state.md` | [active-state.md](memory/active-state.md) — living handover. Read this first in every new chat. |
+| `docs/kb/sessions/` | Session logs — one file per session. Template: [`_template.md`](kb/sessions/_template.md). |
+| `docs/kb/active-state.md` | [active-state.md](kb/active-state.md) — living handover. Read this first in every new chat. |
 | `docs/testing.md` | Test coverage map (gaps by product journey). Regenerated when you run the `/test` command; path may be absent until then. |
