@@ -1,0 +1,67 @@
+name: Migration Check
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/dashboard/supabase/migrations/**'
+
+jobs:
+  migration-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check migration files
+        run: |
+          # Get list of changed migration files
+          CHANGED=$(git diff --name-only origin/main...HEAD -- 'apps/dashboard/supabase/migrations/')
+
+          if [ -z "$CHANGED" ]; then
+            echo "No migration files changed"
+            exit 0
+          fi
+
+          echo "Changed migration files:"
+          echo "$CHANGED"
+          echo ""
+
+          ERRORS=0
+
+          for file in $CHANGED; do
+            filename=$(basename "$file")
+
+            # Check timestamp format (14 digits + underscore + name + .sql)
+            if ! echo "$filename" | grep -qE '^[0-9]{14}_[a-z][a-z0-9_]+\.sql$'; then
+              echo "ERROR: $filename does not match naming convention YYYYMMDDHHMMSS_descriptive_name.sql"
+              ERRORS=$((ERRORS + 1))
+            fi
+
+            # Check for destructive operations without IF EXISTS
+            if grep -qiE '^\s*DROP\s+(TABLE|COLUMN)' "$file"; then
+              if ! grep -qiE 'IF\s+EXISTS' "$file"; then
+                echo "WARNING: $filename contains DROP without IF EXISTS — ensure this is intentional"
+              fi
+            fi
+
+            # Check new tables have RLS enabled
+            if grep -qiE 'CREATE\s+TABLE' "$file"; then
+              if ! grep -qiE 'ENABLE\s+ROW\s+LEVEL\s+SECURITY' "$file"; then
+                echo "ERROR: $filename creates a table but does not enable RLS"
+                ERRORS=$((ERRORS + 1))
+              fi
+            fi
+          done
+
+          if [ $ERRORS -gt 0 ]; then
+            echo ""
+            echo "Found $ERRORS error(s) in migration files"
+            exit 1
+          fi
+
+          echo ""
+          echo "All migration checks passed"
