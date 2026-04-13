@@ -46,6 +46,15 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Origin', value: '*' },
         ],
       },
+      // CORS for public API (homepage and external consumers)
+      {
+        source: '/api/public/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET, OPTIONS' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' },
+        ],
+      },
       // CORS for embed API (Shadow DOM widget fetches data from any hotel site)
       {
         source: '/api/embed/:path*',
