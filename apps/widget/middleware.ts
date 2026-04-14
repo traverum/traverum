@@ -8,8 +8,39 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
+const VEYOND_APP_HOSTS = ['veyond.app', 'www.veyond.app']
+const VEYOND_URL = process.env.NEXT_PUBLIC_VEYOND_URL || 'https://veyond.app'
+
+const PASSTHROUGH_PREFIXES = [
+  '/api', '/_next', '/dashboard', '/receptionist',
+  '/embed', '/booking', '/request', '/experiences',
+]
+
+function isPassthroughPath(pathname: string): boolean {
+  return PASSTHROUGH_PREFIXES.some((p) => pathname.startsWith(p)) || pathname.includes('.')
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const hostname = request.headers.get('host')?.replace(/:\d+$/, '') || ''
+  const isVeyondApp = VEYOND_APP_HOSTS.includes(hostname)
+
+  // ── veyond.app domain: rewrite clean URLs → /experiences/* internally ──
+  if (isVeyondApp) {
+    if (pathname === '/') {
+      return NextResponse.rewrite(new URL('/experiences', request.url))
+    }
+    if (!isPassthroughPath(pathname)) {
+      return NextResponse.rewrite(new URL(`/experiences${pathname}`, request.url))
+    }
+  }
+
+  // ── book.veyond.eu: redirect /experiences* → veyond.app ──
+  if (!isVeyondApp && pathname.startsWith('/experiences')) {
+    const newPath = pathname.replace(/^\/experiences/, '') || '/'
+    const search = request.nextUrl.search
+    return NextResponse.redirect(`${VEYOND_URL}${newPath}${search}`, 301)
+  }
 
   // Handle CORS for dashboard/organization/admin APIs (cross-origin calls from dashboard & admin apps)
   if (pathname.startsWith('/api/dashboard') || pathname.startsWith('/api/organizations') || pathname.startsWith('/api/admin')) {
@@ -101,5 +132,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/receptionist/:path*', '/api/dashboard/:path*', '/api/organizations/:path*', '/api/admin/:path*'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|embed\\.js).*)'],
 }

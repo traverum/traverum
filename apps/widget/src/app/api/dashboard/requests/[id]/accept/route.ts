@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 import { createPaymentLink } from '@/lib/stripe'
-import { sendEmail, getAppUrl } from '@/lib/email/index'
+import { sendEmail, getAppUrl, getVeyondUrl } from '@/lib/email/index'
 import { guestBookingApproved, guestProvideGuarantee } from '@/lib/email/templates'
 import { PAYMENT_DEADLINE_HOURS, PAYMENT_MODES } from '@traverum/shared'
 import { addHours } from 'date-fns'
@@ -222,9 +222,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         })
         .eq('id', reservation.id)
 
-      const guaranteePath = (isDirect || !hotelSlug)
-        ? `/experiences/reservation/${reservation.id}/guarantee`
-        : `/${hotelSlug}/reservation/${reservation.id}/guarantee`
+      const guaranteeUrl = (isDirect || !hotelSlug)
+        ? getVeyondUrl(`/reservation/${reservation.id}/guarantee`)
+        : `${appUrl}/${hotelSlug}/reservation/${reservation.id}/guarantee`
 
       const emailHtml = guestProvideGuarantee({
         experienceTitle: experience.title,
@@ -234,7 +234,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         participants: reservation.participants,
         totalCents: reservation.total_cents,
         currency: experience.currency,
-        guaranteeUrl: `${appUrl}${guaranteePath}`,
+        guaranteeUrl,
         meetingPoint: experience.meeting_point,
         ...(isRental ? { rentalEndDate: emailRentalEndDate, rentalDays: emailRentalDays } : {}),
       })
@@ -250,20 +250,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // ── stripe (default): Create Payment Link ──
     const useDirectPaths = isDirect || !hotelSlug
-    const successPath = useDirectPaths
-      ? `/experiences/confirmation/${reservation.id}`
-      : `/${hotelSlug}/confirmation/${reservation.id}`
-    const cancelPath = useDirectPaths
-      ? `/experiences/reservation/${reservation.id}`
-      : `/${hotelSlug}/reservation/${reservation.id}`
+    const successUrl = useDirectPaths
+      ? getVeyondUrl(`/confirmation/${reservation.id}`)
+      : `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`
+    const cancelUrl = useDirectPaths
+      ? getVeyondUrl(`/reservation/${reservation.id}`)
+      : `${appUrl}/${hotelSlug}/reservation/${reservation.id}`
 
     const paymentLink = await createPaymentLink({
       reservationId: reservation.id,
       experienceTitle: experience.title,
       amountCents: reservation.total_cents,
       currency: experience.currency,
-      successUrl: `${appUrl}${successPath}`,
-      cancelUrl: `${appUrl}${cancelPath}`,
+      successUrl,
+      cancelUrl,
     })
 
     const paymentDeadline = addHours(new Date(), PAYMENT_DEADLINE_HOURS)

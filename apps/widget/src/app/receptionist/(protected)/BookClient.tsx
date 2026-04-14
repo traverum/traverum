@@ -13,11 +13,12 @@ interface BookClientProps {
   hotelName: string
   userId: string
   appUrl: string
+  veyondUrl: string
 }
 
 type TabKey = 'recommended' | 'nearby'
 
-export function BookClient({ selected, nearby, hotelSlug, hotelName, userId, appUrl }: BookClientProps) {
+export function BookClient({ selected, nearby, hotelSlug, hotelName, userId, appUrl, veyondUrl }: BookClientProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('recommended')
   const [search, setSearch] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
@@ -180,6 +181,7 @@ export function BookClient({ selected, nearby, hotelSlug, hotelName, userId, app
               hotelName={hotelName}
               userId={userId}
               appUrl={appUrl}
+              veyondUrl={veyondUrl}
               initialGuestName={guestName}
               initialGuestEmail={guestEmail}
               initialGuestPhone={guestPhone}

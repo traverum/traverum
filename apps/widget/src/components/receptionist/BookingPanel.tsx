@@ -17,6 +17,7 @@ interface BookingPanelProps {
   hotelName: string
   userId: string
   appUrl: string
+  veyondUrl: string
   initialGuestName?: string
   initialGuestEmail?: string
   initialGuestPhone?: string
@@ -52,6 +53,7 @@ export function BookingPanel({
   hotelName,
   userId,
   appUrl,
+  veyondUrl,
   initialGuestName = '',
   initialGuestEmail = '',
   initialGuestPhone = '',
@@ -249,10 +251,10 @@ export function BookingPanel({
 
   // Always Veyond direct URL: hotel widget may omit experiences not on their curated list
   const bookingSiteUrl = useMemo(() => {
-    const base = appUrl.replace(/\/$/, '')
+    const base = veyondUrl.replace(/\/$/, '')
     const slug = experience.slug || experience.id
-    return `${base}/experiences/${slug}`
-  }, [appUrl, experience.id, experience.slug])
+    return `${base}/${slug}`
+  }, [veyondUrl, experience.id, experience.slug])
 
   if (bookingState === 'success') {
     return (

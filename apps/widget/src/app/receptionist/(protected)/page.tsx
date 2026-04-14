@@ -30,6 +30,7 @@ export default async function ReceptionistBookPage() {
     }))
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://book.veyond.eu'
+  const veyondUrl = process.env.NEXT_PUBLIC_VEYOND_URL || 'https://veyond.app'
 
   return (
     <BookClient
@@ -39,6 +40,7 @@ export default async function ReceptionistBookPage() {
       hotelName={hotelConfig.display_name}
       userId={userId}
       appUrl={appUrl}
+      veyondUrl={veyondUrl}
     />
   )
 }

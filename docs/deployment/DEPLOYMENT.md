@@ -22,6 +22,7 @@ Dashboard and Admin are Vite SPAs. Widget is the only Next.js app (API routes, c
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only, never exposed to client |
 | `NEXT_PUBLIC_APP_URL` | Yes | `https://book.veyond.eu` |
+| `NEXT_PUBLIC_VEYOND_URL` | Yes | `https://veyond.app` — Veyond direct channel domain (email links, Stripe redirects) |
 | `STRIPE_SECRET_KEY` | Yes | `sk_live_...` in production |
 | `STRIPE_WEBHOOK_SECRET` | Yes | From Stripe Dashboard > Webhooks |
 | `RESEND_API_KEY` | Yes | |

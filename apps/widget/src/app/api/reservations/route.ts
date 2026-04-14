@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/server'
 import { generateAcceptToken, generateDeclineToken } from '@/lib/tokens'
-import { sendEmail, getAppUrl } from '@/lib/email/index'
+import { sendEmail, getAppUrl, getVeyondUrl } from '@/lib/email/index'
 import { 
   supplierNewRequest,
   guestRequestReceived,
@@ -296,18 +296,20 @@ export async function POST(request: NextRequest) {
       }
 
       // ── stripe (default): Create Payment Link ──
-      const successPath = isDirect
-        ? `/experiences/confirmation/${reservation.id}`
-        : `/${hotelSlug}/confirmation/${reservation.id}`
-      const cancelPath = isDirect ? '/experiences' : `/${hotelSlug}`
+      const successUrl = isDirect
+        ? getVeyondUrl(`/confirmation/${reservation.id}`)
+        : `${appUrl}/${hotelSlug}/confirmation/${reservation.id}`
+      const cancelUrl = isDirect
+        ? getVeyondUrl('/')
+        : `${appUrl}/${hotelSlug}`
 
       const paymentLink = await createPaymentLink({
         reservationId: reservation.id,
         experienceTitle: experience.title,
         amountCents: expectedTotal,
         currency: experience.currency,
-        successUrl: `${appUrl}${successPath}`,
-        cancelUrl: `${appUrl}${cancelPath}`,
+        successUrl,
+        cancelUrl,
       })
       
       await (supabase

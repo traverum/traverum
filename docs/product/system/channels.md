@@ -20,7 +20,7 @@ This is a platform-level product decision that affects all personas: guests see 
 
 ### Veyond direct channel
 
-- **URL:** `book.veyond.eu/experiences`
+- **URL:** `veyond.app` (previously `book.veyond.eu/experiences`, 301 redirects in place)
 - **Branding:** Veyond brand. No hotel involved.
 - **Commission:** Two-way split — supplier (92%) + platform (8%). Uses `SELF_OWNED_COMMISSION` constant from `@traverum/shared`.
 - **How it works:** All active experiences are browsable and bookable. Notification email to `info@traverum.com` on every direct booking.

@@ -6,9 +6,13 @@ export const resend = new Resend(resendApiKey)
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'Veyond <bookings@veyond.eu>'
 const PRODUCTION_URL = 'https://book.veyond.eu'
+const PRODUCTION_VEYOND_URL = 'https://veyond.app'
 // Never use localhost in production — always fall back to production URL
 const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL || PRODUCTION_URL
 const APP_URL = rawAppUrl.includes('localhost') && process.env.VERCEL ? PRODUCTION_URL : rawAppUrl
+
+const rawVeyondUrl = process.env.NEXT_PUBLIC_VEYOND_URL || PRODUCTION_VEYOND_URL
+const VEYOND_URL = rawVeyondUrl.includes('localhost') && process.env.VERCEL ? PRODUCTION_VEYOND_URL : rawVeyondUrl
 
 export interface EmailOptions {
   to: string
@@ -62,6 +66,14 @@ export async function sendBatchEmails(emails: EmailOptions[]): Promise<{ success
 // Email template utilities
 export function getAppUrl() {
   return APP_URL
+}
+
+/**
+ * Absolute URL for the Veyond direct channel (veyond.app).
+ * path should start with "/" — e.g. directChannelUrl('/confirmation/abc')
+ */
+export function getVeyondUrl(path: string = '/') {
+  return `${VEYOND_URL}${path}`
 }
 
 export function formatEmailDate(date: string): string {

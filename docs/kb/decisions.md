@@ -77,6 +77,10 @@ Multi-select from seven canonical tags in `EXPERIENCE_TAGS` (`@traverum/shared`)
 
 ## Architecture
 
+### Two domains, one widget deployment
+
+`veyond.app` serves the Veyond direct channel (consumer booking). `book.veyond.eu` serves hotel white-label (`/{hotelSlug}`) and internal tools (dashboard, receptionist, API). Both are served by the same Widget Vercel project. Next.js middleware rewrites `veyond.app/*` → `/experiences/*` internally and 301 redirects `book.veyond.eu/experiences*` → `veyond.app`. File system unchanged — `/experiences` route folder stays, middleware makes URLs clean. Email links and Stripe redirects for direct bookings use `NEXT_PUBLIC_VEYOND_URL`.
+
 ### Three separate Vercel projects
 
 One per app (widget, dashboard, admin), each with its own Root Directory and build command. Mixing Root Directories caused production issues.
