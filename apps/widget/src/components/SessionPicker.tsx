@@ -252,13 +252,17 @@ export function SessionPicker({
                 >
                   {rentalEndDateProp ? (
                     <p className="text-sm font-medium text-foreground">
-                      {format(new Date(customDate + 'T00:00:00'), 'EEE, MMM d')}
-                      {' – '}
-                      {format(new Date(rentalEndDateProp + 'T00:00:00'), 'EEE, MMM d')}
+                      {customDate === rentalEndDateProp
+                        ? `${format(new Date(customDate + 'T00:00:00'), 'EEE, MMM d')} · 1 day`
+                        : `${format(new Date(customDate + 'T00:00:00'), 'EEE, MMM d')} – ${format(new Date(rentalEndDateProp + 'T00:00:00'), 'EEE, MMM d')}`
+                      }
                     </p>
                   ) : (
                     <p className="text-sm text-muted-foreground">
-                      Select an end date on the calendar
+                      {minDays <= 1
+                        ? 'Tap the same date again for 1 day, or select an end date'
+                        : 'Select an end date on the calendar'
+                      }
                     </p>
                   )}
 

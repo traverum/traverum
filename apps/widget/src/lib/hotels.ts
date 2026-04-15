@@ -84,7 +84,8 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
         name,
         email,
         stripe_account_id,
-        stripe_onboarding_complete
+        stripe_onboarding_complete,
+        payment_mode
       )
     )
   `

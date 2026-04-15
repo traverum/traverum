@@ -1,12 +1,19 @@
 import { getCancellationPolicyExperienceIntro } from '@/lib/availability'
 
-export const EXPERIENCE_DETAIL_PROVIDER_CANCEL_REFUND =
+const PROVIDER_CANCEL_STRIPE =
   'You will receive a full refund if the provider cancels due to weather or emergency.'
 
+const PROVIDER_CANCEL_PAY_ON_SITE =
+  "You won't be charged in case the provider cancels due to emergency or weather conditions."
+
 export function buildExperienceCancellationSummary(
-  cancellationPolicy: Parameters<typeof getCancellationPolicyExperienceIntro>[0]
+  cancellationPolicy: Parameters<typeof getCancellationPolicyExperienceIntro>[0],
+  paymentMode?: PaymentMode,
 ) {
-  return `${getCancellationPolicyExperienceIntro(cancellationPolicy)} ${EXPERIENCE_DETAIL_PROVIDER_CANCEL_REFUND}`
+  const providerCancelNote = paymentMode === 'pay_on_site'
+    ? PROVIDER_CANCEL_PAY_ON_SITE
+    : PROVIDER_CANCEL_STRIPE
+  return `${getCancellationPolicyExperienceIntro(cancellationPolicy)} ${providerCancelNote}`
 }
 
 type PaymentMode = 'stripe' | 'pay_on_site'
