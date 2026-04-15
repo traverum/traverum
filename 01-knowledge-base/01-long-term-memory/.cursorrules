@@ -1,0 +1,139 @@
+# LLM Wiki — Schema
+
+> This file governs how the LLM operates on the wiki.
+> It is the single source of truth for structure, conventions, and workflows.
+> Co-evolve this with the human as the wiki matures.
+
+---
+
+## Directory layout
+
+```
+brain/
+├── raw/                # Immutable source documents. LLM reads, never writes.
+│   └── assets/         # Images and attachments referenced by sources.
+├── wiki/               # LLM-maintained knowledge base (markdown).
+│   ├── index.md        # Content catalog — updated on every ingest.
+│   ├── log.md          # Append-only chronological operation log.
+│   └── ...             # All other wiki pages live here.
+└── .cursorrules        # This file.
+```
+
+## Page types
+
+Pages are plain markdown files in `wiki/`. Each page starts with YAML frontmatter.
+
+### Frontmatter template
+
+```yaml
+---
+type: source | entity | concept | analysis | comparison | overview
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+sources: []          # list of source filenames this page draws from
+tags: []
+---
+```
+
+### Types
+
+| Type | Purpose |
+|------|---------|
+| `source` | Summary of a single raw source document. |
+| `entity` | Page about a person, place, organisation, product, etc. |
+| `concept` | Page about an idea, framework, theory, or recurring theme. |
+| `analysis` | A synthesised answer, comparison, or investigation filed back from a query. |
+| `overview` | High-level summary that ties multiple pages together. |
+
+## Naming conventions
+
+- Filenames: lowercase, hyphens for spaces. E.g. `wiki/some-concept.md`.
+- Wiki links use Obsidian-style `[[double brackets]]` so the graph view works.
+- Source summaries are named after the source: `wiki/source-<slug>.md`.
+
+## Workflows
+
+### 1. Ingest
+
+Trigger: human drops a file into `raw/` and asks to ingest it.
+
+Steps:
+1. Read the raw source fully.
+2. Discuss key takeaways with the human (unless told to batch-ingest silently).
+3. Create a `source` page in `wiki/` summarising the document.
+4. Identify entities and concepts mentioned. For each:
+   - If a wiki page exists → update it with new information from this source.
+   - If no page exists → create one.
+5. Add or update cross-references (`[[links]]`) across all touched pages.
+6. Update `wiki/index.md` — add new pages, refresh summaries of updated pages.
+7. Append an entry to `wiki/log.md`.
+
+### 2. Query
+
+Trigger: human asks a question.
+
+Steps:
+1. Read `wiki/index.md` to locate relevant pages.
+2. Read those pages.
+3. Synthesise an answer with `[[wiki links]]` as citations.
+4. If the answer is substantial and worth preserving, offer to file it as an `analysis` page. If the human agrees, create the page, update the index, and log it.
+
+### 3. Lint
+
+Trigger: human asks for a health check, or periodically.
+
+Checks:
+- Pages referenced in `[[links]]` that don't exist yet → suggest creating them.
+- Pages with no inbound links (orphans) → suggest linking or removing.
+- Contradictions between pages → flag and suggest resolution.
+- Stale claims superseded by newer sources → flag.
+- Concepts mentioned repeatedly but lacking a dedicated page → suggest.
+- Data gaps that could be filled with a web search → suggest.
+
+After lint, append a summary to `wiki/log.md`.
+
+## Principles
+
+- **Raw sources are immutable.** Never modify anything in `raw/`.
+- **The wiki is the LLM's artifact.** The human reads; the LLM writes.
+- **Every change is logged.** No silent edits.
+- **Cross-reference aggressively.** Links are the wiki's connective tissue.
+- **Prefer updating over creating.** Don't make a new page if an existing one covers the topic — enrich it instead.
+- **Frontmatter is mandatory.** Every wiki page must have it so tooling (Dataview, search) works.
+- **When in doubt, ask.** Don't assume the human's intent — ask before making large structural changes.
+
+## Domain — Traverum
+
+Traverum is a booking platform that connects hotels, experience suppliers, and guests. Hotels embed a white-label widget; suppliers manage availability; guests book and pay; everyone earns a commission share.
+
+### Key domain terms
+
+| Term | Meaning |
+|------|---------|
+| Traverum | The company, platform, and technology |
+| Veyond | Customer-facing brand for direct bookings |
+| Hotel channel | White-label widget embedded on hotel sites (`hotel_id` set) |
+| Veyond direct | Direct booking under Veyond brand (`hotel_id` null) |
+| Partner | Internal name for a supplier entity in the database |
+| Experience | An activity, tour, or rental offered by a supplier |
+| Session | A specific time slot for a session-based experience |
+| Reservation | A booking request awaiting supplier approval |
+| Booking | A confirmed, paid (or guaranteed) reservation |
+| Distribution | A hotel-experience pairing with commission split |
+
+### Personas
+
+| Persona | Wiki page | Description |
+|---------|-----------|-------------|
+| Guest | `[[guest]]` | Traveler who discovers, books, and attends experiences |
+| Supplier | `[[supplier]]` | Experience provider with dashboard, calendar, bookings |
+| Hotel | `[[hotel]]` | Embeds widget, curates local experiences, earns commission |
+| Receptionist | `[[receptionist]]` | Hotel front-desk staff using the receptionist widget |
+| Platform admin | (folded into `[[overview]]`) | Traverum internal team |
+
+### Wiki page conventions
+
+- Pages are synthesized from multiple raw sources, not 1:1 summaries.
+- Each page targets a coding agent's lookup pattern: "What rules apply to X?"
+- The `sources` frontmatter field lists raw file paths relative to `raw/assets/`.
+- Cross-link aggressively with `[[page-name]]` (Obsidian-style, no `.md` extension).
