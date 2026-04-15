@@ -43,18 +43,18 @@ Before building any feature or significant change, STOP.
 
 **We want our product to work for all users.** A change in one place must never break anything elsewhere. If the plan involves database or schema changes, think how we can make sure it does not cause errors or break anything in any of our apps.
 
-**Understand the people and the purpose behind all decisions.** Read `docs/product/` for context. Think about pain points separately for each user type and how we solve them.
+**Understand the people and the purpose behind all decisions.** Read `brain/memory/sources/product/` for context. Think about pain points separately for each user type and how we solve them.
 
 ### Product docs contract
 
-Product docs live in `docs/product/`. Goal sections are human-owned — never modify without approval.
+Product docs live in `brain/memory/sources/product/`. They are human-owned — never modify without approval.
 
 ### Before editing any feature
 
-1. Check for a matching product doc in `docs/product/` — read it first.
-2. Check `docs/kb/product-notes.md` — product knowledge and rules learned from chats.
-3. Check `docs/kb/decisions.md` — technical decisions and pitfalls.
-4. If your change affects booking flow, commission logic, or channel behavior — stop and ask.
+1. Check `brain/awareness/current.md` — what's in flight right now.
+2. Check `brain/memory/wiki/index.md` — synthesised answers across the codebase.
+3. Check the relevant source under `brain/memory/sources/product/` — authoritative product context.
+4. If your change affects booking flow, commission logic, or channel behaviour — stop and ask.
 
 ---
 
@@ -63,7 +63,7 @@ Product docs live in `docs/product/`. Goal sections are human-owned — never mo
 Nordic clean design meets Italian effortless elegance. Show only what's relevant now. Every element, every word, every pixel must justify its existence.
 
 Even an Italian nonna understands what our pages are for.
-Even a Finnish top designer loves how they look. For further context read `docs/design/`.
+Even a Finnish top designer loves how they look. For further context read `brain/memory/sources/design/`.
 
 ---
 
@@ -165,51 +165,40 @@ Before merging any PR with schema changes:
 - **Preview** scope: points to staging Supabase + test Stripe keys (`sk_test_*`)
 - **Development** scope: points to staging Supabase + test Stripe keys
 
-Full env var reference: `docs/deployment/DEPLOYMENT.md`
+Full env var reference: `brain/memory/sources/DEPLOYMENT.md`
 
 ---
 
 ## Knowledge System
 
-### Five Layers
+Cognitive layout. Always loaded: this file + `brain/CLAUDE.md` when working in `brain/`.
 
-| Layer | Location | Owner | Purpose |
+| Layer | Location | Owner | When to read |
 |---|---|---|---|
-| Entry point | `CLAUDE.md` (this file) | Co-owned | Rules, pointers, identity — always loaded |
-| Product docs | `docs/product/` | Human | What to build, for whom — Goal sections are sacred |
-| Knowledge Base | `docs/kb/` | AI | How OUR product works — schema, API, flows, decisions |
-| Skills | `.agents/skills/` | Mixed | How to DO things correctly — procedural, triggered by keywords |
-| Reference | `docs/context7/`, `docs/integrations/` | Mixed | Raw vendor docs — read for deep dives |
+| Entry point | `CLAUDE.md` | Co-owned | Always loaded |
+| Operating rules for `brain/` | `brain/CLAUDE.md` | Co-owned | Auto-loaded when working in `brain/` |
+| Source of truth | `brain/memory/sources/` | Human | When authority is needed |
+| Synthesised knowledge | `brain/memory/wiki/` | AI | First stop for lookups — `brain/memory/wiki/index.md` |
+| Working state | `brain/awareness/` | AI | Session start (`current.md`), mid-chat captures |
+| Reference | `brain/references/` | Vendor | Stripe, Supabase, Divinea deep-dives |
+| Skills | `.agents/skills/` | Mixed | Auto-triggered by keywords |
+| Slash commands | `.claude/commands/` | Mixed | User-initiated: `/wrap-up`, `/ingest`, `/promote`, `/lint-wiki` |
 
-**The layer test:** If you could copy-paste it to a different project and it still makes sense, it's a Skill or Reference. If it's specific to Traverum, it belongs in the Knowledge Base.
+### Flow
 
-### Knowledge Base (`docs/kb/`)
+- Product question? → `brain/memory/wiki/index.md` → follow `[[links]]`
+- What are we working on? → `brain/awareness/current.md`
+- Decision in chat? → the `capture-decision` skill auto-writes to `brain/awareness/decisions/`
+- End of session? → `/wrap-up`
+- New source to absorb? → drop in `brain/memory/sources/`, run `/ingest <file>`
+- Promote a decision? → `/promote <decision-slug>`
 
-AI-maintained. Human reviews occasionally.
+### Rules
 
-| Page | What it contains |
-|---|---|
-| `INDEX.md` | Catalog of all KB pages with one-line summaries |
-| `schema.md` | Every database table, column, RLS policy, relationship |
-| `api-routes.md` | All widget API routes, grouped by domain |
-| `email-flows.md` | Every email trigger, recipient, template |
-| `stripe-setup.md` | Our Stripe Connect setup, webhooks, payment flows |
-| `decisions.md` | Technical decisions grouped by topic |
-| `product-notes.md` | Product insights grouped by domain |
-| `active-state.md` | Operational state: open items, known issues, blockers |
-| `sessions/` | Session logs (one per significant session) |
-
-### KB Maintenance Rules
-
-**After any schema change:** Update `docs/kb/schema.md` — update the relevant table's entry, don't just append.
-
-**After building a new feature:** Update relevant KB pages (schema, API routes, email flows). Add a session log. Update `active-state.md`.
-
-**After wrapping up a session:** Scan `docs/kb/INDEX.md` — are any pages stale? Update if so.
-
-**KB page format:** Each page is self-contained. Content grouped by subtopic. Last-updated date in frontmatter. Links to related pages where helpful.
-
-**Never append chronologically.** Update the relevant section in-place. The old `docs/memory/` pattern of prepending entries is retired.
+- `brain/memory/sources/` is immutable to AI.
+- `brain/memory/wiki/` grows only via `/ingest` or `/promote`. Never direct chat writes.
+- `brain/awareness/` is the chat-to-wiki buffer.
+- Every wiki edit is logged in `brain/memory/wiki/log.md`.
 
 ---
 
@@ -228,37 +217,30 @@ Write code that is incredibly easy for future AI sessions to read, debug, and mo
 
 Listen for moments where knowledge should persist beyond this chat.
 
-**Triggers:** Corrections, new product context, decisions, constraints.
+**Triggers:** Corrections, new product context, decisions, constraints, policy shifts.
 
 **Routing:**
-- Product knowledge (business rules, user flows, UX rules) goes to `docs/kb/product-notes.md` — update the relevant topic section.
-- Technical decisions (architecture, patterns, conventions, pitfalls) goes to `docs/kb/decisions.md` — update the relevant topic section.
-- Not sure where it belongs — ask.
+- Decisions and rules that surface mid-chat → the `capture-decision` skill auto-fires and writes `brain/awareness/decisions/YYYY-MM-DD-<slug>.md`. Confirm in one line.
+- Ready to elevate a decision into long-term knowledge? → `/promote <slug>` moves it into the relevant `brain/memory/wiki/` page.
+- Absorbing a new source document? → drop it in `brain/memory/sources/` and run `/ingest <path>`.
 
-**After routing:** Confirm in one line. If it contradicts an existing entry, flag before updating. If it alters a user flow, ask before updating the product doc.
+**After routing:** Confirm in one line. If it contradicts an existing wiki entry, flag before promoting. If it alters a product flow, ask before touching `brain/memory/sources/` (human-owned).
 
-**Do NOT log:** Temporary debugging, implementation details for the current task, things already documented, code style preferences unless they should become a rule.
-
----
-
-## Technical decisions
-
-For understanding past decisions, read: `docs/kb/active-state.md`, `docs/kb/product-notes.md`, `docs/kb/decisions.md`. Not set in stone but useful for keeping the product working.
-
-Always before deployment read `docs/deployment/DEPLOYMENT.md`. Be cautious when pushing to production. We do not want to break our product.
+**Do NOT log:** Temporary debugging, implementation details for the current task, things already in the wiki, code style preferences unless they should become a rule.
 
 ---
 
 ## Further reading (read only if you need to)
 
-- **Full docs index:** `docs/CONTEXT.md`
-- **Vision & end goal:** `docs/product/vision.md`
-- **Booking lifecycle, payments, commission:** `docs/product/system/booking-flow.md`
-- **Pricing models:** `docs/product/system/pricing.md`
-- **Channels:** `docs/product/system/channels.md`
-- **Emails:** `docs/product/system/communication.md`, `docs/design/email-design.md`
-- **Embed / widget:** `docs/product/system/embed.md`
-- **Dashboard & Admin UI:** `docs/design/dashboard-design-principles.md`
-- **Deploy, env, crons:** `docs/deployment/DEPLOYMENT.md`
-- **Database schema reference:** `docs/kb/schema.md`
-- **API routes reference:** `docs/kb/api-routes.md`
+- **Knowledge system map:** `brain/README.md`
+- **Brain operating rules:** `brain/CLAUDE.md`
+- **Vision & end goal:** `brain/memory/sources/vision.md`
+- **Product context overview:** `brain/memory/sources/product-context.md`
+- **Booking lifecycle, payments, commission:** `brain/memory/sources/product/system/booking-flow.md`
+- **Pricing models:** `brain/memory/sources/product/system/pricing.md`
+- **Channels:** `brain/memory/sources/product/system/channels.md`
+- **Emails:** `brain/memory/sources/product/system/communication.md`, `brain/memory/sources/design/email-design.md`
+- **Embed / widget:** `brain/memory/sources/product/system/embed.md`
+- **Dashboard & Admin UI:** `brain/memory/sources/design/dashboard-design.md`
+- **Deploy, env, crons:** `brain/memory/sources/DEPLOYMENT.md`
+- **Wiki index:** `brain/memory/wiki/index.md`
