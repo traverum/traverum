@@ -68,6 +68,13 @@ export function BookingPanel({ experience, sessions, hotelSlug, availabilityRule
         const year = d.getFullYear()
         return `${day}.${month}.${year} – …`
       }
+      if (rentalDate === rentalEndDate) {
+        const d = new Date(rentalDate + 'T12:00:00')
+        const day = d.getDate().toString().padStart(2, '0')
+        const month = (d.getMonth() + 1).toString().padStart(2, '0')
+        const year = d.getFullYear()
+        return `${day}.${month}.${year} · 1 day`
+      }
       const ds = new Date(rentalDate + 'T12:00:00')
       const de = new Date(rentalEndDate + 'T12:00:00')
       const fmt = (d: Date) => `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}`

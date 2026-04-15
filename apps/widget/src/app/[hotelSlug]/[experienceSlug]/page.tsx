@@ -195,7 +195,7 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                   paymentMode: experience.supplier.payment_mode,
                   isRental: experience.pricing_type === 'per_day',
                 })}
-                cancellationText={buildExperienceCancellationSummary(experience.cancellation_policy)}
+                cancellationText={buildExperienceCancellationSummary(experience.cancellation_policy, experience.supplier.payment_mode)}
               />
             </div>
 

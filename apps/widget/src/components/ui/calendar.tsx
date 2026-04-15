@@ -332,10 +332,11 @@ function useRangeState(
     }
 
     if (newValue.isSame(start, 'day')) {
-      setStart(null)
-      setEnd(null)
-      setHoverDate(null)
-      onRangeChange?.(undefined, undefined)
+      if (minDays <= 1) {
+        setEnd(newValue)
+        setHoverDate(null)
+        onRangeChange?.(start.toDate(), newValue.toDate())
+      }
     } else if (newValue.isBefore(start, 'day')) {
       setStart(newValue)
       setEnd(null)
@@ -346,7 +347,7 @@ function useRangeState(
       setHoverDate(null)
       onRangeChange?.(start.toDate(), newValue.toDate())
     }
-  }, [start, end, onRangeChange])
+  }, [start, end, onRangeChange, minDays])
 
   const shouldDisableDate = React.useCallback((date: Dayjs) => {
     if (disabled?.(date.toDate())) return true

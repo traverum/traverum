@@ -1,7 +1,5 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 import { getHostBySlug } from '@/lib/hotels'
 import { ExperienceCard } from '@/components/ExperienceCard'
 import type { Metadata } from 'next'
@@ -47,14 +45,6 @@ export default async function HostDirectPage({ params }: HostPageProps) {
 
   return (
     <div className="space-y-10">
-      <Link
-        href="/experiences"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to experiences
-      </Link>
-
       {/* Host profile header */}
       <div className="flex flex-col items-center text-center">
         <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full overflow-hidden bg-muted mb-5 ring-2 ring-border/50">

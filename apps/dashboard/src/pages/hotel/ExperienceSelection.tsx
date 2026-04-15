@@ -322,10 +322,11 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
 
   // ── Fetch experiences within radius (when location set) or all (when not) ──
   const { data: experienceResults = [], isLoading: experiencesLoading } = useQuery({
-    queryKey: ['experiencesForHotel', hasLocation, debouncedLat, debouncedLng, debouncedRadiusKm],
+    queryKey: ['experiencesForHotel', partnerId, hasLocation, debouncedLat, debouncedLng, debouncedRadiusKm],
     queryFn: async () => {
+      let radiusResults: any[] = [];
+
       if (debouncedLat !== null && debouncedLng !== null) {
-        // Use RPC to get distance-filtered results
         const locationWkt = `POINT(${debouncedLng} ${debouncedLat})`;
         const radiusMeters = debouncedRadiusKm * 1000;
 
@@ -336,11 +337,10 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
 
         if (error) {
           console.error('RPC error, falling back to all experiences:', error);
-          // Fallback: fetch all
           return fetchAllExperiences();
         }
 
-        return (data || []).map((exp: any) => ({
+        radiusResults = (data || []).map((exp: any) => ({
           id: exp.id,
           title: exp.title,
           slug: exp.slug,
@@ -359,10 +359,39 @@ export default function ExperienceSelection({ embedded = false }: ExperienceSele
             city: exp.supplier_city,
           },
         }));
+      } else {
+        return fetchAllExperiences();
       }
 
-      // No location set — fetch all
-      return fetchAllExperiences();
+      // Always include the partner's own experiences so hybrid hotel+supplier
+      // orgs can select their own inventory even when it lacks a location or
+      // falls outside the search radius.
+      if (partnerId) {
+        const radiusIds = new Set(radiusResults.map(e => e.id));
+        const { data: ownData } = await supabase
+          .from('experiences')
+          .select(`
+            id, title, slug, description, image_url, price_cents,
+            duration_minutes, max_participants, meeting_point, tags,
+            experience_status,
+            supplier:partners!experiences_partner_fk(id, name, city)
+          `)
+          .eq('partner_id', partnerId)
+          .eq('experience_status', 'active');
+
+        for (const exp of (ownData || []) as any[]) {
+          if (!radiusIds.has(exp.id)) {
+            radiusResults.push({
+              ...exp,
+              supplier: exp.supplier as any,
+              tags: exp.tags || [],
+              distance_km: null,
+            });
+          }
+        }
+      }
+
+      return radiusResults;
     },
   });
 
