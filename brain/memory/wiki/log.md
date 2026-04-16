@@ -39,6 +39,12 @@ Ingested all 32 raw source files in 4 batches. Created 15 synthesized wiki pages
 
 **Cross-reference pass:** All `[[wiki links]]` verified — 15 target pages, zero broken links, zero orphans. Schema updated with Traverum domain conventions. Index rebuilt.
 
+## [2026-04-15] ingest | ai-agents/_overview.md — fifth user type added to wiki
+
+- Created: `wiki/source-ai-agents.md`, `wiki/ai-agents.md`
+- Updated: `wiki/tech-decisions.md` (cross-link in AI agent interfaces section), `wiki/index.md` (Personas + Source Summaries)
+- Notes: Establishes AI agents as fifth user type alongside guest/supplier/hotel/receptionist; three-question checklist documented.
+
 ## [2026-04-15] ingest | DEPLOYMENT.md added to wiki knowledge graph
 
 Ingested new source `raw/assets/DEPLOYMENT.md` and integrated deployment operations into existing technical documentation.
@@ -48,3 +54,5 @@ Ingested new source `raw/assets/DEPLOYMENT.md` and integrated deployment operati
 - Updated `wiki/tech-decisions.md` to include `DEPLOYMENT.md` in sources and cross-link `[[deployment]]`.
 - Updated `wiki/index.md` with new entries for `[[deployment]]` and `[[source-deployment]]`.
 - Cross-links added between `[[deployment]]`, `[[tech-decisions]]`, `[[booking]]`, `[[payment-modes]]`, and `[[source-deployment]]`.
+
+## [2026-04-16] session | widget-image-fix — Disabled Vercel image optimization to fix gray placeholder cards

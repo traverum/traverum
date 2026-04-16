@@ -50,6 +50,8 @@ Widget is the only Next.js app (`apps/widget`). Dashboard/Admin are Vite apps an
 
 CLI, MCP, and OpenAPI all wrap the same functions. Never duplicate business logic across interfaces. Widget API routes remain source of truth. Read-only operations unauthenticated; write operations use API keys with rate limiting.
 
+See [[ai-agents]] for the full agent persona, contract, and three-question checklist to run before every guest-facing or inventory-related change.
+
 ## Hard anti-patterns (the "Avoid" list)
 
 - **Never store money as floats.** Integer cents with `_cents` suffix.

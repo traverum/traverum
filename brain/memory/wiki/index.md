@@ -25,6 +25,7 @@
 - [[supplier]] — Experience provider: handle bookings, calendar, manage experiences, get paid, host profiles.
 - [[hotel]] — Distribution partner: embed widget, curate experiences, earn commission.
 - [[receptionist]] — Front-desk concierge: browse & book on behalf, track bookings, contact supplier.
+- [[ai-agents]] — Fifth user type: autonomous agents parsing the widget API; contract, checklist, and scope boundary.
 
 ## Reference (rules and constraints)
 
@@ -39,3 +40,4 @@
 ## Source Summaries
 
 - [[source-deployment]] — Source digest of deployment reference: projects, env vars, crons, migrations, webhooks.
+- [[source-ai-agents]] — Source digest of AI agents persona: contract, three-question checklist, design principles.
