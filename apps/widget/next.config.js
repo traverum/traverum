@@ -17,24 +17,7 @@ const nextConfig = {
     return config;
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'vwbxkkzzpacqzqvqxqvf.supabase.co',
-      },
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-    ],
+    unoptimized: true,
   },
   async headers() {
     return [
