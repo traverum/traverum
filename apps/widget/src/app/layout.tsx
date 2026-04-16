@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 import { Poppins, Fraunces, DM_Sans } from 'next/font/google'
 import localFont from 'next/font/local'
+import { Suspense } from 'react'
 import { TranslationProvider } from '@/components/TranslationProvider'
+import { PostHogProvider } from '@/app/providers'
+import { PostHogPageView } from '@/components/PostHogPageView'
 import './globals.css'
 
 const newYork = localFont({
@@ -42,9 +45,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${poppins.variable} ${fraunces.variable} ${dmSans.variable} ${newYork.variable} font-sans antialiased`} suppressHydrationWarning>
-        <TranslationProvider>
-          {children}
-        </TranslationProvider>
+        <PostHogProvider>
+          {/* PostHogPageView uses useSearchParams — must be wrapped in Suspense */}
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
+          <TranslationProvider>
+            {children}
+          </TranslationProvider>
+        </PostHogProvider>
       </body>
     </html>
   )

@@ -9,6 +9,7 @@ import { ExperienceListClient } from '@/components/ExperienceListClient'
 import { FilterableExperienceBrowser } from '@/components/FilterableExperienceBrowser'
 import { HostsSection } from '@/components/HostsSection'
 import { AnalyticsSessionInit } from '@/components/AnalyticsSessionInit'
+import { PostHogHotelContext } from '@/components/PostHogHotelContext'
 import { EmbedResizer } from '@/components/EmbedResizer'
 
 // Inherit dynamic from layout - hotel config changes take effect immediately
@@ -205,6 +206,12 @@ export default async function HotelPage({ params, searchParams }: HotelPageProps
       </main>
       
       <AnalyticsSessionInit source={source} />
+      <PostHogHotelContext
+        hotelConfigId={hotel.id}
+        hotelSlug={hotelSlug}
+        hotelName={hotel.display_name}
+        channel="white-label"
+      />
 
       {/* Embed mode resize + body classes (client-only, after hydration) */}
       {embedMode === 'section' && <EmbedResizer />}

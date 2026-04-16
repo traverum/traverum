@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useMemo, useCallback, useRef, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { usePostHog } from 'posthog-js/react'
 import { calculatePrice, getDisplayPrice } from '@/lib/pricing'
 import { isDateAvailable, getOperatingHours, generateTimeSlots, DEFAULT_TIME_GROUPS } from '@/lib/availability'
 import type { AvailabilityRule } from '@/lib/availability'
@@ -78,6 +79,7 @@ export function BookingFlowProvider({
   children,
 }: BookingFlowProviderProps) {
   const router = useRouter()
+  const posthog = usePostHog()
   const resultsRef = useRef<HTMLElement | null>(null)
   const isRental = experience.pricing_type === 'per_day'
 
@@ -185,6 +187,15 @@ export function BookingFlowProvider({
 
   const handleContinue = useCallback(() => {
     if (!canContinue) return
+
+    // Track the moment a guest commits to a booking — key funnel step
+    posthog?.capture('booking_started', {
+      experience_id: experience.id,
+      experience_title: experience.title,
+      booking_path: isRental ? 'rental' : isCustomRequest ? 'request' : 'session',
+      participants: isRental ? quantity : participants,
+      total_cents: priceCalc.totalPrice,
+    })
 
     const params = new URLSearchParams()
     params.set('experienceId', experience.id)

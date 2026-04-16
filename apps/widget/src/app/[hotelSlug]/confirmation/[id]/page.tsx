@@ -5,6 +5,7 @@ import { getHotelBySlug } from '@/lib/hotels'
 import { formatDate, formatTime, formatPrice } from '@/lib/utils'
 import { Header } from '@/components/Header'
 import { TranslatedText } from '@/components/TranslatedText'
+import { PostHogBookingConfirmed } from '@/components/PostHogBookingConfirmed'
 
 // Force dynamic rendering so hotel config changes take effect immediately
 export const dynamic = 'force-dynamic'
@@ -77,7 +78,15 @@ export default async function ConfirmationPage({ params, searchParams }: Confirm
   
   return (
     <div className="embed-full">
-      <Header 
+      <PostHogBookingConfirmed
+        bookingId={booking?.id ?? id}
+        experienceId={experience.id}
+        experienceTitle={experience.title}
+        totalCents={reservation.total_cents ?? 0}
+        currency={experience.currency}
+        isRequest={reservation.is_request ?? false}
+      />
+      <Header
         hotelName={hotel.display_name}
         logoUrl={hotel.logo_url}
         hotelSlug={hotelSlug}
