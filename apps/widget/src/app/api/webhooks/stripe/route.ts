@@ -13,6 +13,7 @@ import {
   adminAccountStatusChanged
 } from '@/lib/email/templates'
 import { generateCancelToken } from '@/lib/tokens'
+import { notifyAdminBookingConfirmed } from '@/lib/email/admin-booking-notify'
 import { getCancellationPolicyText, CANCELLATION_POLICIES } from '@/lib/availability'
 import { resolveCommissionRates, resolveExperienceDate, computeRentalDaysFromDates, buildBookingRecord } from '@/lib/booking-rules'
 import type Stripe from 'stripe'
@@ -694,57 +695,8 @@ async function createBookingFromPayment(
     { to: supplier.email, subject: `Payment received - ${experience.title}`, html: supplierEmailHtml, replyTo: reservation.guest_email },
   ]
 
-  if (isDirect) {
-    // Notify Traverum of direct Veyond bookings
-    const notifyEmail = process.env.VEYOND_BOOKING_NOTIFY_EMAIL || 'info@traverum.com'
-    const { baseTemplate } = await import('@/lib/email/templates')
-    const { escapeHtml } = await import('@/lib/sanitize')
-    const formatter = new Intl.NumberFormat('fi-FI', {
-      style: 'currency',
-      currency: experience.currency || 'EUR',
-    })
-    const veyondNotifyHtml = baseTemplate(`
-      <div class="card">
-        <div class="header"><h1>New Veyond Booking</h1></div>
-        <p>A new booking was made directly through Veyond.</p>
-        <div class="info-box">
-          <div class="info-row">
-            <span class="info-label">Experience</span>
-            <span class="info-value">${escapeHtml(experience.title)}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Supplier</span>
-            <span class="info-value">${escapeHtml(supplier.name)}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Guest</span>
-            <span class="info-value">${escapeHtml(reservation.guest_name)} (${escapeHtml(reservation.guest_email)})</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Date</span>
-            <span class="info-value">${date || 'TBD'}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Participants</span>
-            <span class="info-value">${reservation.participants}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Total</span>
-            <span class="info-value">${formatter.format(reservation.total_cents / 100)}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Platform commission</span>
-            <span class="info-value">${formatter.format(split.platformAmount / 100)}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Booking ID</span>
-            <span class="info-value">${booking.id.slice(0, 8).toUpperCase()}</span>
-          </div>
-        </div>
-      </div>
-    `, 'New Veyond Booking')
-    emailBatch.push({ to: notifyEmail, subject: `New Veyond booking - ${experience.title}`, html: veyondNotifyHtml })
-  } else if (hotelEmail) {
+  // Hotel notification (hotel-channel bookings only)
+  if (!isDirect && hotelEmail) {
     const hotelEmailHtml = hotelBookingNotification({
       experienceTitle: experience.title,
       supplierName: supplier.name,
@@ -759,9 +711,28 @@ async function createBookingFromPayment(
       ...(isRental && rentalEndDate ? { rentalEndDate, rentalDays } : {}),
     })
     emailBatch.push({ to: hotelEmail, subject: `New booking - ${experience.title}`, html: hotelEmailHtml })
-  } else {
+  } else if (!isDirect) {
     console.warn(`Booking ${booking.id}: no hotel email (hotel_id=${reservation.hotel_id}) — hotel notification skipped`)
   }
+
+  // Admin notification — all channels, fire-and-forget
+  notifyAdminBookingConfirmed({
+    experienceTitle: experience.title,
+    supplierName: supplier.name,
+    guestName: reservation.guest_name,
+    guestEmail: reservation.guest_email,
+    channel: isDirect ? 'Veyond' : (reservation.hotel?.name || 'Hotel'),
+    isDirect,
+    date,
+    time,
+    participants: reservation.participants,
+    totalCents: reservation.total_cents,
+    platformCommissionCents: split.platformAmount,
+    hotelCommissionCents: split.hotelAmount,
+    currency: experience.currency || 'EUR',
+    bookingId: booking.id,
+    paymentMode: 'stripe',
+  }).catch(() => {})
 
   const batchResult = await sendBatchEmails(emailBatch)
   if (!batchResult.success) {

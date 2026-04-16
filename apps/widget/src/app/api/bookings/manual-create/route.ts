@@ -11,6 +11,7 @@ import {
 } from '@/lib/email/templates'
 import { generateCancelToken } from '@/lib/tokens'
 import { getCancellationPolicyText, CANCELLATION_POLICIES } from '@/lib/availability'
+import { notifyAdminBookingConfirmed } from '@/lib/email/admin-booking-notify'
 
 // Verify cron secret to prevent unauthorized access
 function verifyCronSecret(request: NextRequest): boolean {
@@ -359,6 +360,25 @@ export async function POST(request: NextRequest) {
     if (!batchResult.success) {
       console.error('Failed to send booking confirmation emails:', batchResult.error)
     }
+
+    // Admin notification — fire-and-forget
+    notifyAdminBookingConfirmed({
+      experienceTitle: experience.title,
+      supplierName: supplier.name,
+      guestName: reservation.guest_name,
+      guestEmail: reservation.guest_email,
+      channel: isDirect ? 'Veyond' : (reservation.hotel?.name || 'Hotel'),
+      isDirect,
+      date,
+      time,
+      participants: reservation.participants,
+      totalCents: reservation.total_cents,
+      platformCommissionCents: split.platformAmount,
+      hotelCommissionCents: split.hotelAmount,
+      currency: experience.currency || 'EUR',
+      bookingId: booking.id,
+      paymentMode: 'manual',
+    }).catch(() => {})
 
     return NextResponse.json({
       success: true,

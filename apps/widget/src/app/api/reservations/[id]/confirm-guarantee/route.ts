@@ -16,6 +16,7 @@ import {
   computeRentalDaysFromDates,
 } from '@/lib/booking-rules'
 import { PAYMENT_MODES } from '@traverum/shared'
+import { notifyAdminBookingConfirmed } from '@/lib/email/admin-booking-notify'
 
 interface RouteParams {
   params: Promise<{ id: string }>
@@ -310,6 +311,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (!batchResult.success) {
       console.error('Failed to send pay_on_site confirmation emails:', batchResult.error)
     }
+
+    // Admin notification — fire-and-forget
+    notifyAdminBookingConfirmed({
+      experienceTitle: experience.title,
+      supplierName: supplier.name,
+      guestName: reservation.guest_name,
+      guestEmail: reservation.guest_email,
+      channel: channelName,
+      isDirect,
+      date,
+      time,
+      participants: reservation.participants,
+      totalCents: reservation.total_cents,
+      platformCommissionCents: split.platformAmount,
+      hotelCommissionCents: split.hotelAmount,
+      currency: experience.currency || 'EUR',
+      bookingId: booking.id,
+      paymentMode: 'pay_on_site',
+    }).catch(() => {})
 
     return NextResponse.json({
       success: true,

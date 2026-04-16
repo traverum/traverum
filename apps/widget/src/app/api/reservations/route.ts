@@ -23,6 +23,7 @@ import {
   normalizeRequestTime,
   resolveAutoDistributionRates,
 } from '@/lib/reservation-rules'
+import { notifyAdminNewReservation } from '@/lib/email/admin-booking-notify'
 
 export async function POST(request: NextRequest) {
   // Rate limiting — skip in development if KV is not configured
@@ -273,6 +274,22 @@ export async function POST(request: NextRequest) {
         )
       }
 
+      // Fire-and-forget admin notification
+      notifyAdminNewReservation({
+        experienceTitle: experience.title,
+        supplierName: experience.supplier?.name || 'Unknown',
+        guestName: cleanName,
+        guestEmail: cleanEmail,
+        channel: channelName,
+        isDirect,
+        isRequest: false,
+        date: date || '',
+        time: time || null,
+        participants,
+        totalCents: expectedTotal,
+        currency: experience.currency || 'EUR',
+      }).catch(() => {})
+
       // ── pay_on_site: Create Stripe Customer + Setup Intent ──
       if (isPayOnSite) {
         const customer = await createStripeCustomer(cleanEmail, cleanName, reservation.id)
@@ -374,7 +391,23 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       )
     }
-    
+
+    // Fire-and-forget admin notification
+    notifyAdminNewReservation({
+      experienceTitle: experience.title,
+      supplierName: experience.supplier?.name || 'Unknown',
+      guestName: cleanName,
+      guestEmail: cleanEmail,
+      channel: channelName,
+      isDirect,
+      isRequest: true,
+      date: requestDate || date || '',
+      time: isRental ? null : (requestTime || null),
+      participants: isRental ? (quantity || 1) : participants,
+      totalCents: expectedTotal,
+      currency: experience.currency || 'EUR',
+    }).catch(() => {})
+
     // Generate tokens for supplier actions
     const acceptToken = generateAcceptToken(reservation.id)
     const declineToken = generateDeclineToken(reservation.id)
