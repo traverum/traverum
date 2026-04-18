@@ -25,6 +25,7 @@ import { parseLatLng } from '@/lib/geo'
 import { LocationMap } from '@/components/LocationMap'
 import { sortByTagRelevance } from '@/lib/experience-relevance'
 import { PostHogHotelContext } from '@/components/PostHogHotelContext'
+import { PostHogExperienceViewed } from '@/components/PostHogExperienceViewed'
 import type { Metadata } from 'next'
 
 // Force dynamic rendering so hotel config changes take effect immediately
@@ -236,6 +237,11 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
         hotelSlug={hotelSlug}
         hotelName={hotel.display_name}
         channel="white-label"
+      />
+      <PostHogExperienceViewed
+        experienceId={experience.id}
+        experienceTitle={experience.title}
+        supplierId={experience.partner_id}
       />
 
       {/* Embed mode resize (client-only, after hydration) */}
