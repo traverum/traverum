@@ -14,6 +14,7 @@ import { ExperienceInfoTabs } from '@/components/ExperienceInfoTabs'
 import { YouMightAlsoLike } from '@/components/YouMightAlsoLike'
 import { TranslatedText } from '@/components/TranslatedText'
 import { TranslatedRichText } from '@/components/TranslatedRichText'
+import { PostHogExperienceViewed } from '@/components/PostHogExperienceViewed'
 import {
   buildHowItWorksText,
   buildPaymentText,
@@ -177,6 +178,12 @@ export default async function ExperienceDirectPage({ params }: ExperiencePagePro
           </div>
         </div>
       </BookingFlowProvider>
+
+      <PostHogExperienceViewed
+        experienceId={experience.id}
+        experienceTitle={experience.title}
+        supplierId={experience.partner_id}
+      />
 
       {siblingExperiences.length > 0 && (
         <YouMightAlsoLike
