@@ -63,7 +63,17 @@ export function trackEvent(event: Omit<TrackEventPayload, 'source' | 'session_id
 
 const trackedExperiences = new Set<string>()
 
-export function trackExperienceView(experienceId: string, hotelConfigId?: string | null) {
+interface ExperienceViewMeta {
+  positionInSection?: number
+  sectionId?: string
+  totalInSection?: number
+}
+
+export function trackExperienceView(
+  experienceId: string,
+  hotelConfigId?: string | null,
+  meta?: ExperienceViewMeta
+) {
   const key = `${experienceId}:${hotelConfigId || ''}`
   if (trackedExperiences.has(key)) return
   trackedExperiences.add(key)
@@ -73,4 +83,21 @@ export function trackExperienceView(experienceId: string, hotelConfigId?: string
     hotel_config_id: hotelConfigId || null,
     experience_id: experienceId,
   })
+
+  // PostHog card-view event carries the slot position so we can analyze
+  // conversion-by-slot once the shuffle rolls out. Internal analytics
+  // schema doesn't have position columns; PostHog event props are flexible.
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const ph = (window as any).posthog
+    if (ph && typeof ph.capture === 'function') {
+      ph.capture('experience_card_viewed', {
+        experience_id: experienceId,
+        hotel_config_id: hotelConfigId || null,
+        position_in_section: meta?.positionInSection ?? null,
+        section_id: meta?.sectionId ?? null,
+        total_in_section: meta?.totalInSection ?? null,
+      })
+    }
+  }
 }

@@ -215,6 +215,44 @@ export function hexToHsl(hex: string): string {
   return `${h} ${s}% ${l}%`
 }
 
+// --- Deterministic seeded shuffle (for per-session randomized card order) ---
+
+// 32-bit FNV-1a hash of an arbitrary string. Stable across runtimes.
+export function hashString(input: string): number {
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+// mulberry32 PRNG — tiny, deterministic, good enough for UI shuffling.
+export function mulberry32(seed: number): () => number {
+  let state = (seed >>> 0) || 1
+  return function () {
+    state = (state + 0x6d2b79f5) | 0
+    let t = state
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+// Seeded Fisher-Yates. Pure — returns a new array, never mutates input.
+// Same seed ⇒ same order, so users see stable order within a session but
+// equal exposure across sessions (lets us measure position→conversion).
+export function shuffleWithSeed<T>(arr: readonly T[], seed: string | number): T[] {
+  const seedNum = typeof seed === 'string' ? hashString(seed) : seed >>> 0
+  const rand = mulberry32(seedNum)
+  const out = arr.slice()
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
 // --- Tag section grouping (shared between NetflixLayout & CategoryAnchorSection) ---
 
 export interface TagSection {

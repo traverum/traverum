@@ -21,11 +21,17 @@ interface ExperienceCardProps {
   hotelConfigId?: string | null
   /** Show "On Request" badge for request-based experiences when date/time filters are active */
   showRequestBadge?: boolean
+  /** 0-based index within the current tag section (for conversion-by-slot analytics) */
+  positionInSection?: number
+  /** Tag id of the section this card is rendered under */
+  sectionId?: string
+  /** Total cards in this section */
+  totalInSection?: number
 }
 
 const MAX_RETRIES = 2
 
-export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', returnUrl, cardStyle = 'default', hotelConfigId, showRequestBadge }: ExperienceCardProps) {
+export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', returnUrl, cardStyle = 'default', hotelConfigId, showRequestBadge, positionInSection, sectionId, totalInSection }: ExperienceCardProps) {
   const [imgError, setImgError] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const cardRef = useRef<HTMLAnchorElement>(null)
@@ -37,7 +43,11 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          trackExperienceView(experience.id, hotelConfigId)
+          trackExperienceView(experience.id, hotelConfigId, {
+            positionInSection,
+            sectionId,
+            totalInSection,
+          })
           observer.disconnect()
         }
       },
@@ -45,7 +55,7 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
     )
     observer.observe(el)
     return () => observer.disconnect()
-  }, [experience.id, hotelConfigId])
+  }, [experience.id, hotelConfigId, positionInSection, sectionId, totalInSection])
   
   const handleImageError = useCallback(() => {
     if (retryCount < MAX_RETRIES) {

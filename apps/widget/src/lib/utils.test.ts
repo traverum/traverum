@@ -9,6 +9,8 @@ import {
   getEmbedMode,
   truncate,
   hexToHsl,
+  shuffleWithSeed,
+  hashString,
 } from './utils'
 
 describe('formatPrice (widget)', () => {
@@ -162,6 +164,62 @@ describe('truncate', () => {
 
   it('handles exact length', () => {
     expect(truncate('hello', 5)).toBe('hello')
+  })
+})
+
+describe('shuffleWithSeed', () => {
+  const input = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+
+  it('returns a new array (does not mutate input)', () => {
+    const copy = [...input]
+    shuffleWithSeed(input, 'seed')
+    expect(input).toEqual(copy)
+  })
+
+  it('preserves all items', () => {
+    const shuffled = shuffleWithSeed(input, 'seed')
+    expect(shuffled.slice().sort()).toEqual(input.slice().sort())
+    expect(shuffled).toHaveLength(input.length)
+  })
+
+  it('is deterministic for the same seed', () => {
+    const a = shuffleWithSeed(input, 'abc-123')
+    const b = shuffleWithSeed(input, 'abc-123')
+    expect(a).toEqual(b)
+  })
+
+  it('produces different orders for different seeds', () => {
+    const a = shuffleWithSeed(input, 'seed-one')
+    const b = shuffleWithSeed(input, 'seed-two')
+    expect(a).not.toEqual(b)
+  })
+
+  it('handles empty and single-item arrays', () => {
+    expect(shuffleWithSeed([], 'x')).toEqual([])
+    expect(shuffleWithSeed(['only'], 'x')).toEqual(['only'])
+  })
+
+  it('accepts numeric seeds', () => {
+    const a = shuffleWithSeed(input, 42)
+    const b = shuffleWithSeed(input, 42)
+    expect(a).toEqual(b)
+  })
+})
+
+describe('hashString', () => {
+  it('is deterministic', () => {
+    expect(hashString('hello')).toBe(hashString('hello'))
+  })
+
+  it('produces different hashes for different inputs', () => {
+    expect(hashString('hello')).not.toBe(hashString('world'))
+  })
+
+  it('returns a 32-bit unsigned integer', () => {
+    const h = hashString('anything')
+    expect(h).toBeGreaterThanOrEqual(0)
+    expect(h).toBeLessThanOrEqual(0xffffffff)
+    expect(Number.isInteger(h)).toBe(true)
   })
 })
 
