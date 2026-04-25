@@ -89,7 +89,7 @@ export default async function HostHotelPage({ params }: HostPageProps) {
         </div>
 
         {host.bio && (
-          <section className="mx-auto max-w-2xl">
+          <section>
             <h2 className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground mb-4">
               About
             </h2>
