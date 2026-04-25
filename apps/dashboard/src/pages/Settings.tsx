@@ -54,6 +54,8 @@ export default function Settings() {
   // Host profile
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
+  const [city, setCity] = useState('');
+  const [country, setCountry] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [profileVisible, setProfileVisible] = useState(false);
   const [partnerSlug, setPartnerSlug] = useState('');
@@ -81,7 +83,7 @@ export default function Settings() {
       if (!activePartnerId) return null;
       const { data } = await supabase
         .from('partners')
-        .select('display_name, bio, avatar_url, profile_visible, partner_slug')
+        .select('display_name, bio, avatar_url, profile_visible, partner_slug, city, country')
         .eq('id', activePartnerId)
         .single();
       return data;
@@ -93,6 +95,8 @@ export default function Settings() {
     if (profileData) {
       setDisplayName(profileData.display_name ?? '');
       setBio(profileData.bio ?? '');
+      setCity(profileData.city ?? '');
+      setCountry(profileData.country ?? '');
       setAvatarUrl(profileData.avatar_url ?? null);
       setProfileVisible(profileData.profile_visible ?? false);
       setPartnerSlug(profileData.partner_slug ?? '');
@@ -314,6 +318,8 @@ export default function Settings() {
         .update({
           display_name: displayName.trim() || null,
           bio: bio.trim() || null,
+          city: city.trim() || null,
+          country: country.trim() || null,
           avatar_url: avatarUrl,
           profile_visible: profileVisible,
           partner_slug: slug || null,
@@ -515,6 +521,30 @@ export default function Settings() {
                 onChange={(e) => { setBio(e.target.value); setProfileDirty(true); }}
               />
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="host-city" className="text-sm">City</Label>
+                <Input
+                  id="host-city"
+                  type="text"
+                  placeholder="Stresa"
+                  value={city}
+                  onChange={(e) => { setCity(e.target.value); setProfileDirty(true); }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="host-country" className="text-sm">Country</Label>
+                <Input
+                  id="host-country"
+                  type="text"
+                  placeholder="Italy"
+                  value={country}
+                  onChange={(e) => { setCountry(e.target.value); setProfileDirty(true); }}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">Shown under your name on the host page (e.g. "Stresa, Italy"). Optional.</p>
 
             <div className="space-y-1.5">
               <Label htmlFor="partner-slug" className="text-sm">URL slug</Label>
