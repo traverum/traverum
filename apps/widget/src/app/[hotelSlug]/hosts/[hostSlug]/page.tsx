@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { getHostBySlug, getHotelBySlug } from '@/lib/hotels'
 import { ExperienceCard } from '@/components/ExperienceCard'
+import { RichText } from '@/components/RichText'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -85,13 +86,19 @@ export default async function HostHotelPage({ params }: HostPageProps) {
               {subtitle}
             </p>
           )}
-
-          {host.bio && (
-            <p className="mt-4 max-w-xl text-base text-foreground/80 leading-relaxed">
-              {host.bio}
-            </p>
-          )}
         </div>
+
+        {host.bio && (
+          <section className="mx-auto max-w-2xl">
+            <h2 className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground mb-4">
+              About
+            </h2>
+            <RichText
+              text={host.bio}
+              className="text-base sm:text-[17px] text-foreground/85 leading-relaxed"
+            />
+          </section>
+        )}
 
         {/* Host's experiences */}
         {host.experiences.length > 0 && (

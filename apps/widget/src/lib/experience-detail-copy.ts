@@ -106,3 +106,40 @@ export function buildCtaNote({
   }
   return null
 }
+
+/**
+ * Short bullet list of reassurance points shown next to the primary CTA.
+ * Each bullet is one line, scannable in <2 seconds.
+ */
+export function buildTrustPoints({
+  paymentMode,
+  hasSessions,
+  allowsRequests,
+  isRental,
+}: {
+  paymentMode: PaymentMode
+  hasSessions: boolean
+  allowsRequests: boolean
+  isRental: boolean
+}): string[] {
+  const points: string[] = []
+
+  // Charging — strongest reassurance for hesitating buyers
+  if (paymentMode === 'pay_on_site') {
+    points.push('Pay the provider on site, after the experience')
+  } else if (isRental || !hasSessions || allowsRequests) {
+    points.push("You're only charged after the provider accepts")
+  } else {
+    points.push('Secure online payment at checkout')
+  }
+
+  // Cancellation
+  points.push('Free cancellation up to 7 days before')
+
+  // Response time — only relevant when a request is possible
+  if (isRental || !hasSessions || allowsRequests) {
+    points.push('Provider replies within 48h')
+  }
+
+  return points
+}

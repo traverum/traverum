@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDuration, formatPrice } from '@/lib/utils'
 import { getPriceDisplay } from '@/lib/pricing'
@@ -109,26 +108,30 @@ export function ExperienceCard({ experience, hotelSlug, embedMode = 'full', retu
               </svg>
             </div>
           )}
-          {/* Badges row - top, frosted glass */}
-          <div className="absolute top-4 left-4 right-4 flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-lg bg-background/80 backdrop-blur-sm border-0 px-2.5 py-1.5 text-sm font-medium text-foreground">
-              <Clock className="w-4 h-4" aria-hidden />
-              {formatDuration(experience.duration_minutes)}
+          {/* Top-right contextual badge — only when filtered by date */}
+          {showRequestBadge && (
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 rounded-lg bg-background/80 backdrop-blur-sm border-0 px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
+              On Request
             </div>
-            {showRequestBadge && (
-              <div className="rounded-lg bg-background/80 backdrop-blur-sm border-0 px-2.5 py-1.5 text-xs font-medium text-muted-foreground">
-                On Request
-              </div>
-            )}
-          </div>
+          )}
           {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-          {/* Text overlay at bottom */}
-          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 md:p-6 text-white">
-            <h3 className={cn("text-sm sm:text-base md:text-2xl font-light mb-1 sm:mb-2 md:mb-3 line-clamp-2", isTranslating && "animate-pulse")}>{translatedTitle}</h3>
-            <span className="text-xs sm:text-sm font-medium tabular-nums">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+          {/* Text overlay at bottom — title-first hierarchy. Duration & price suffix live on the detail page. */}
+          <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 md:p-5 text-white">
+            <h3 className={cn(
+              "text-sm sm:text-base md:text-xl font-light leading-snug line-clamp-2",
+              isTranslating && "animate-pulse"
+            )}>
+              {translatedTitle}
+            </h3>
+            {(experience.location_city || experience.location_region) && (
+              <p className="mt-1 text-[11px] sm:text-xs md:text-sm text-white/80 line-clamp-1">
+                {experience.location_city || experience.location_region}
+              </p>
+            )}
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm font-medium tabular-nums">
               From {formatPrice(priceDisplay.amount, currency)}
-            </span>
+            </p>
           </div>
         </div>
       </Link>

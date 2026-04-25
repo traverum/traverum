@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic'
 import { format } from 'date-fns'
 import { cn, formatPrice } from '@/lib/utils'
 import { isDateAvailable } from '@/lib/availability'
+import { buildTrustPoints } from '@/lib/experience-detail-copy'
 import { useBookingFlow } from './BookingFlowContext'
 import type { PriceCalculation } from '@/lib/pricing'
 import type { ExperienceWithMedia } from '@/lib/hotels'
@@ -22,6 +23,7 @@ const DualRangeCalendar = dynamic(
 export function StickyBookingCard() {
   const {
     experience,
+    sessions,
     selectedDate,
     setSelectedDate,
     participants,
@@ -38,11 +40,30 @@ export function StickyBookingCard() {
     handleContinue,
     availabilityRules,
     sessionsByDate,
+    sessionsForDate,
+    selectedSessionId,
+    isCustomRequest,
+    resultsRef,
   } = useBookingFlow()
 
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [travelersOpen, setTravelersOpen] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
+
+  const paymentMode = experience.supplier.payment_mode
+  const hasAnySessions = sessions.length > 0
+  const allowsRequests = experience.allows_requests ?? false
+
+  const trustPoints = useMemo(
+    () =>
+      buildTrustPoints({
+        paymentMode,
+        hasSessions: hasAnySessions,
+        allowsRequests,
+        isRental,
+      }),
+    [paymentMode, hasAnySessions, allowsRequests, isRental]
+  )
 
   const minParticipants = experience.min_participants || 1
   const maxParticipants = experience.max_participants
@@ -275,15 +296,100 @@ export function StickyBookingCard() {
           >
             Send Request
           </button>
-
-          <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
-            {experience.supplier.payment_mode === 'pay_on_site'
-              ? 'Provider responds within 48h. Pay on site after the experience.'
-              : "Provider responds within 48h. You're only charged after they approve."}
-          </p>
         </div>
       )}
+
+      {/* Non-rental CTA — always visible. Drives the funnel from any state. */}
+      {!isRental && (
+        <PrimaryCta
+          selectedDate={selectedDate}
+          canContinue={canContinue}
+          isCustomRequest={isCustomRequest}
+          hasSessionSelected={!!selectedSessionId}
+          hasSessionsForDate={sessionsForDate.length > 0}
+          paymentMode={paymentMode}
+          onOpenCalendar={() => {
+            setCalendarOpen(true)
+            setTravelersOpen(false)
+          }}
+          onScrollToResults={() => {
+            resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }}
+          onContinue={handleContinue}
+        />
+      )}
+
+      {/* Trust microcopy — concise reassurance points near the CTA */}
+      <ul className="space-y-1 pt-1">
+        {trustPoints.map(point => (
+          <li key={point} className="flex items-start gap-2 text-[12px] text-muted-foreground leading-snug">
+            <svg
+              aria-hidden="true"
+              className="w-3.5 h-3.5 flex-shrink-0 mt-[2px] text-accent"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            <span>{point}</span>
+          </li>
+        ))}
+      </ul>
     </div>
+  )
+}
+
+function PrimaryCta({
+  selectedDate,
+  canContinue,
+  isCustomRequest,
+  hasSessionSelected,
+  hasSessionsForDate,
+  paymentMode,
+  onOpenCalendar,
+  onScrollToResults,
+  onContinue,
+}: {
+  selectedDate: string
+  canContinue: boolean
+  isCustomRequest: boolean
+  hasSessionSelected: boolean
+  hasSessionsForDate: boolean
+  paymentMode: 'stripe' | 'pay_on_site'
+  onOpenCalendar: () => void
+  onScrollToResults: () => void
+  onContinue: () => void
+}) {
+  let label: string
+  let onClick: () => void
+
+  if (!selectedDate) {
+    label = 'Check availability'
+    onClick = onOpenCalendar
+  } else if (!canContinue) {
+    label = hasSessionsForDate ? 'Choose a time' : 'Pick a time'
+    onClick = onScrollToResults
+  } else if (isCustomRequest) {
+    label = 'Send Request'
+    onClick = onContinue
+  } else if (hasSessionSelected) {
+    label = paymentMode === 'pay_on_site' ? 'Reserve Now' : 'Book Now'
+    onClick = onContinue
+  } else {
+    label = 'Continue'
+    onClick = onContinue
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full py-3.5 bg-accent text-accent-foreground font-medium rounded-button hover:bg-accent-hover transition-colors duration-150 touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+    >
+      {label}
+    </button>
   )
 }
 

@@ -22,6 +22,10 @@ export type ExperienceWithMedia = Experience & {
     stripe_account_id: string | null
     stripe_onboarding_complete: boolean | null
     payment_mode: 'stripe' | 'pay_on_site'
+    display_name: string | null
+    avatar_url: string | null
+    partner_slug: string | null
+    profile_visible: boolean | null
   }
   distribution: Distribution
 }
@@ -85,7 +89,11 @@ export async function getHotelWithExperiences(slug: string): Promise<HotelWithEx
         email,
         stripe_account_id,
         stripe_onboarding_complete,
-        payment_mode
+        payment_mode,
+        display_name,
+        avatar_url,
+        partner_slug,
+        profile_visible
       )
     )
   `
@@ -191,13 +199,17 @@ export async function getExperienceForHotel(
           email,
           stripe_account_id,
           stripe_onboarding_complete,
-          payment_mode
+          payment_mode,
+          display_name,
+          avatar_url,
+          partner_slug,
+          profile_visible
         )
       )
     `)
     .eq('hotel_config_id', hotel.id)
     .eq('is_active', true)
-  
+
   if (!allDistData || allDistData.length === 0) return null
   
   const allDist = (allDistData || []) as any[]
@@ -259,7 +271,8 @@ export async function getAllActiveExperiences(): Promise<ExperienceWithMedia[]> 
     .select(`
       *,
       supplier:partners!experiences_partner_fk (
-        id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode
+        id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode,
+        display_name, avatar_url, partner_slug, profile_visible
       )
     `)
     .eq('experience_status', 'active')
@@ -305,7 +318,8 @@ export async function getExperienceDirect(
     .select(`
       *,
       supplier:partners!experiences_partner_fk (
-        id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode
+        id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode,
+        display_name, avatar_url, partner_slug, profile_visible
       )
     `)
     .eq('slug', experienceSlug)
@@ -518,7 +532,8 @@ export async function getHostBySlug(
         experience:experiences!distributions_experience_fk (
           *,
           supplier:partners!experiences_partner_fk (
-            id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode
+            id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode,
+            display_name, avatar_url, partner_slug, profile_visible
           )
         )
       `)
@@ -567,7 +582,8 @@ export async function getHostBySlug(
       .select(`
         *,
         supplier:partners!experiences_partner_fk (
-          id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode
+          id, name, email, stripe_account_id, stripe_onboarding_complete, payment_mode,
+          display_name, avatar_url, partner_slug, profile_visible
         )
       `)
       .eq('partner_id', partner.id)

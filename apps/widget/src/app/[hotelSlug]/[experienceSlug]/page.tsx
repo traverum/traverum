@@ -13,6 +13,7 @@ import { StickyBookingCard } from '@/components/StickyBookingCard'
 import { AvailabilityResults } from '@/components/AvailabilityResults'
 import { ExperienceDetailClient } from '@/components/ExperienceDetailClient'
 import { ExperienceInfoTabs } from '@/components/ExperienceInfoTabs'
+import { ExperienceHostBadge } from '@/components/ExperienceHostBadge'
 import { YouMightAlsoLike } from '@/components/YouMightAlsoLike'
 import { TranslatedText } from '@/components/TranslatedText'
 import { TranslatedRichText } from '@/components/TranslatedRichText'
@@ -136,6 +137,15 @@ export default async function ExperiencePage({ params, searchParams }: Experienc
                     <> · {experience.available_languages.map(code => getLanguageName(code)).join(', ')}</>
                   )}
                 </p>
+
+                {experience.supplier.profile_visible && experience.supplier.partner_slug && experience.supplier.display_name && (
+                  <ExperienceHostBadge
+                    hostSlug={experience.supplier.partner_slug}
+                    hostsBaseUrl={`/${hotelSlug}/hosts`}
+                    displayName={experience.supplier.display_name}
+                    avatarUrl={experience.supplier.avatar_url}
+                  />
+                )}
               </div>
 
               <ExperienceInfoTabs
